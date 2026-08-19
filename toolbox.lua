@@ -1860,13 +1860,13 @@ end
 -- TAHAP 6: RENDER LIST ASSET & AUTOMATIC SCROLL BAR CANVAS CALIBRATION (FIXED)
 -------------------------------------------------------------------------
 local AssetInfoCache = {}
-local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
+local AmountAssetLabel = LMG2L and (LMG2L["AmountAsset_4a"] or LMG2L["AmountAsset"])
 
 -- Fungsi Pembantu Format Teks AmountAsset
 local function UpdateAmountAssetDisplay(count, category, isSavedOnly)
     if not AmountAssetLabel or not AmountAssetLabel:IsA("TextLabel") then return end
     
-    local categoryName = category:upper()
+    local categoryName = tostring(category or "ASSET"):upper()
     if isSavedOnly then
         AmountAssetLabel.Text = string.format("SAVED (%s) • %d Assets", categoryName, count)
     else
@@ -1874,20 +1874,41 @@ local function UpdateAmountAssetDisplay(count, category, isSavedOnly)
     end
 end
 
-local function RenderAssets(searchQuery)
-    ClearList()
+-- Fungsi Helper: Pengecekan Akurat Status Saved Asset (Pencegah Bug Desync Type Data)
+local function CheckIsAssetSavedAcurate(category, numericId)
+    if typeof(IsAssetSaved) == "function" then
+        return IsAssetSaved(category, numericId)
+    end
     
+    local list = SavedAssets and SavedAssets[category]
+    if not list then return false end
+    
+    for _, id in ipairs(list) do
+        if tonumber(id) == tonumber(numericId) then
+            return true
+        end
+    end
+    return false
+end
+
+local function RenderAssets(searchQuery)
+    -- 1. TINGKATKAN SESSION ID: Batalkan secara mutlak seluruh coroutine render yang sedang berjalan sebelumnya
     CurrentSessionId = CurrentSessionId + 1
     local thisSession = CurrentSessionId
+    
+    -- Bersihkan UI Frame
+    ClearList()
+    
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
     
-    -- Switch Sumber Data Berdasarkan Filter Toggle SavedButton
+    -- Switch Sumber Data Berdasarkan Filter Toggle
     local targetList = isSavedModeAtCall and (SavedAssets[targetCategoryAtCall] or {}) or (MasterAssets[targetCategoryAtCall] or {})
     
     local renderedCount = 0
     UpdateAmountAssetDisplay(0, targetCategoryAtCall, isSavedModeAtCall)
     
+    -- Pre-Process Clean Query Search
     local query = ""
     if searchQuery and searchQuery ~= "Search asset..." then
         query = searchQuery:lower():match("^%s*(.-)%s*$") or ""
@@ -1901,11 +1922,11 @@ local function RenderAssets(searchQuery)
         end
     end
 
-    -- PENGGUNAAN TASK.SPAWN UTAMA UNTUK COROUTINE ASYNC BATCHING (ANTI-LAG)
+    -- PENGGUNAAN SINGLE COROUTINE WORKER (Satu Thread untuk Mencegah Multiple Load/Duplikasi Asset)
     task.spawn(function()
         for index, item in ipairs(targetList) do
-            -- Abort jika user mengganti tab / menekan filter saat proses render sedang berjalan
-            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall then 
+            -- HARUS BENTIKAN PROSES jika user pindah tab / trigger re-render baru
+            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly ~= isSavedModeAtCall then 
                 return 
             end
 
@@ -1913,6 +1934,12 @@ local function RenderAssets(searchQuery)
             local numericId = tonumber(assetId)
             
             if numericId then
+                -- Cegah Duplikasi Render jika Kartu Asset dengan ID ini Sudah Ada di UI Frame
+                if ScrollingFrame:FindFirstChild("Asset_" .. numericId) then
+                    continue
+                end
+
+                -- Fetch Market Data (Cache First)
                 local success, info = true, AssetInfoCache[numericId]
                 if not info then
                     success, info = pcall(function() return MarketplaceService:GetProductInfo(numericId) end)
@@ -1921,34 +1948,40 @@ local function RenderAssets(searchQuery)
                     end
                 end
 
-                -- Cek ulang session setelah pcall async
-                if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall then 
+                -- Validasi Ulang Session Setelah Network Call (Pcall Yield)
+                if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly ~= isSavedModeAtCall then 
                     return 
                 end
 
                 if success and info then
-                    -- Filter Search (Nama, Creator, ID)
+                    -- AKURASI SEARCH FILTER: Match Nama, Creator Name, atau Raw Asset ID
                     local isMatched = true
                     if query ~= "" then
                         local nameLower = info.Name and info.Name:lower() or ""
                         local creatorLower = (info.Creator and info.Creator.Name) and info.Creator.Name:lower() or ""
                         local assetIdStr = tostring(numericId)
+                        
                         if not nameLower:find(query, 1, true) and not creatorLower:find(query, 1, true) and not assetIdStr:find(query, 1, true) then
                             isMatched = false
                         end
                     end
 
                     if isMatched and TemplateFrame then
+                        -- Double Check Duplikasi Pasca Yield
+                        if ScrollingFrame:FindFirstChild("Asset_" .. numericId) then
+                            continue
+                        end
+
                         local card = TemplateFrame:Clone()
+                        card.Name = "Asset_" .. numericId
                         card.Visible = true
                         card.Parent = ScrollingFrame
-                        card.Name = "Asset_" .. numericId
 
-                        -- Update Hitungan Asset Sesuai yang Lolos Filter
+                        -- Update Hitungan Asset yang Berhasil Dirender
                         renderedCount = renderedCount + 1
                         UpdateAmountAssetDisplay(renderedCount, targetCategoryAtCall, isSavedModeAtCall)
 
-                        -- Referensi Elemen UI
+                        -- Referensi Elemen UI Card
                         local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
                         local NameLabel = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
                         local CreatorLabel = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
@@ -1960,7 +1993,7 @@ local function RenderAssets(searchQuery)
                         local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
                         local InsertBtn = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
 
-                        -- Apply Data UI
+                        -- Set Data Visual UI
                         if NameLabel then NameLabel.Text = info.Name end
                         if CreatorLabel then CreatorLabel.Text = "By: " .. (info.Creator and info.Creator.Name or "Unknown") end
                         if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
@@ -1973,27 +2006,28 @@ local function RenderAssets(searchQuery)
                             end
                         end
 
-                        -- Logika Save Icon Visibility
+                        -- LOGIKA PRESISI STATUS ICONSAVED
                         local function RefreshSaveIconVisibility()
                             if IconSaved then
-                                IconSaved.Visible = IsAssetSaved(targetCategoryAtCall, numericId)
+                                local isSaved = CheckIsAssetSavedAcurate(targetCategoryAtCall, numericId)
+                                IconSaved.Visible = isSaved
                             end
                         end
                         RefreshSaveIconVisibility()
 
-                        -- Toggle Save/Unsave via Icon Click
+                        -- TOGGLE SAVE / UNSAVE ACTION VIA ICON CLICK
                         if IconSaved then
                             local clickTarget = IconSaved:IsA("GuiButton") and IconSaved or IconSaved:FindFirstChildOfClass("GuiButton")
                             if clickTarget then
                                 clickTarget.MouseButton1Click:Connect(function()
-                                    local categoryList = SavedAssets[targetCategoryAtCall]
-                                    if not categoryList then
-                                        categoryList = {}
-                                        SavedAssets[targetCategoryAtCall] = categoryList
+                                    if not SavedAssets[targetCategoryAtCall] then
+                                        SavedAssets[targetCategoryAtCall] = {}
                                     end
+                                    local categoryList = SavedAssets[targetCategoryAtCall]
                                     
-                                    local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
+                                    local isSaved = CheckIsAssetSavedAcurate(targetCategoryAtCall, numericId)
                                     if isSaved then
+                                        -- Unsave: Hapus ID dari List
                                         for i, id in ipairs(categoryList) do
                                             if tonumber(id) == numericId then
                                                 table.remove(categoryList, i)
@@ -2001,12 +2035,17 @@ local function RenderAssets(searchQuery)
                                             end
                                         end
                                     else
+                                        -- Save: Tambahkan ID ke List
                                         table.insert(categoryList, numericId)
                                     end
                                     
-                                    SaveUserData()
+                                    if typeof(SaveUserData) == "function" then
+                                        SaveUserData()
+                                    end
+                                    
                                     RefreshSaveIconVisibility()
 
+                                    -- Mode Filter Active: Re-render otomatis agar item terhapus dari tampilan jika di-unsave
                                     if IsShowingSavedOnly then
                                         RenderAssets(SearchBox and SearchBox.Text or "")
                                     end
@@ -2025,23 +2064,25 @@ local function RenderAssets(searchQuery)
                             end)
                         end
 
-                        -- Listener Insert
+                        -- Listener Insert Asset
                         if InsertBtn and InsertBtn:IsA("GuiButton") then
                             InsertBtn.MouseButton1Click:Connect(function()
-                                InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                                if typeof(InsertAsset) == "function" then
+                                    InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                                end
                                 task.wait(1.5)
                                 InsertBtn.Text = "INSERT"
                             end)
                         end
 
-                        -- Update ukuran Canvas secara riil tiap ada item baru
+                        -- Update Canvas Size
                         UpdateCanvas()
                     end
                 end
             end
 
-            -- BATCHING SYSTEM: Beri jeda ke CPU setiap 3 item dimuat agar game TIDAK LAG
-            if index % 3 == 0 then
+            -- ANTI-LAG BATCHING SYSTEM: Beri nafas ke Roblox Client setiap 2 asset
+            if index % 2 == 0 then
                 task.wait()
             end
         end
