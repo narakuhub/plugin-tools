@@ -1857,26 +1857,25 @@ local function InsertAsset(assetId, category, statusTarget)
 end
 
 -------------------------------------------------------------------------
--- TAHAP 6: RENDER LIST ASSET & AUTOMATIC SCROLL BAR CANVAS CALIBRATION
+-- TAHAP 6: RENDER LIST ASSET & AUTOMATIC SCROLL BAR CANVAS CALIBRATION (FIXED)
 -------------------------------------------------------------------------
 local AssetInfoCache = {}
+local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
 
 local function RenderAssets(searchQuery)
     ClearList()
     
     CurrentSessionId = CurrentSessionId + 1
     local thisSession = CurrentSessionId
-    
     local targetCategoryAtCall = CurrentCategory
     
-    -- Pemilihan Sumber Data Berdasarkan Filter SavedButton
-    -- False: Render Katalog Remote (MasterAssets)
-    -- True: Render Khusus Data Lokal (SavedAssets/toolbox_assets.json)
-    local targetList = {}
-    if IsShowingSavedOnly then
-        targetList = SavedAssets[targetCategoryAtCall] or {}
-    else
-        targetList = MasterAssets[targetCategoryAtCall] or {}
+    -- Switch Sumber Data Berdasarkan Filter Toggle SavedButton
+    local targetList = IsShowingSavedOnly and (SavedAssets[targetCategoryAtCall] or {}) or (MasterAssets[targetCategoryAtCall] or {})
+    
+    -- Inisialisasi Counter Jumlah Asset yang Berhasil Dirender
+    local renderedCount = 0
+    if AmountAssetLabel and AmountAssetLabel:IsA("TextLabel") then
+        AmountAssetLabel.Text = "0"
     end
     
     local query = ""
@@ -1885,9 +1884,7 @@ local function RenderAssets(searchQuery)
     end
 
     local function UpdateCanvas()
-        if CurrentCategory ~= targetCategoryAtCall then return end
-        if not ScrollingFrame then return end
-        
+        if CurrentCategory ~= targetCategoryAtCall or not ScrollingFrame then return end
         local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
         if layout then
             ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
@@ -1898,15 +1895,13 @@ local function RenderAssets(searchQuery)
         task.spawn(function()
             local assetId = typeof(item) == "table" and item.Id or item
             local numericId = tonumber(assetId)
-            
             if not numericId then return end
 
             local success, info = true, AssetInfoCache[numericId]
-            
             if not info then
                 success, info = pcall(function() return MarketplaceService:GetProductInfo(numericId) end)
-                if success and info then
-                    AssetInfoCache[numericId] = info
+                if success and info then 
+                    AssetInfoCache[numericId] = info 
                 end
             end
             
@@ -1915,25 +1910,29 @@ local function RenderAssets(searchQuery)
             end
             
             if success and info then
-                -- Match Filter (Nama Asset, Creator Name, atau ID)
+                -- Match Filter Search (Nama, Creator, ID)
                 if query ~= "" then
                     local nameLower = info.Name and info.Name:lower() or ""
                     local creatorLower = (info.Creator and info.Creator.Name) and info.Creator.Name:lower() or ""
                     local assetIdStr = tostring(numericId)
-                    
                     if not nameLower:find(query, 1, true) and not creatorLower:find(query, 1, true) and not assetIdStr:find(query, 1, true) then
                         return 
                     end
                 end
 
-                -- Clone card berdasarkan Card_5d sebagai Template
                 if not TemplateFrame then return end
                 local card = TemplateFrame:Clone()
                 card.Visible = true
                 card.Parent = ScrollingFrame
                 card.Name = "Asset_" .. numericId
 
-                -- Referensi elemen presisi sesuai Hirarki Card_5d
+                -- Update Hitungan Jumlah Asset Ter-render
+                renderedCount = renderedCount + 1
+                if AmountAssetLabel and AmountAssetLabel:IsA("TextLabel") then
+                    AmountAssetLabel.Text = tostring(renderedCount)
+                end
+
+                -- Referensi Elemen Kartu Asset
                 local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
                 local NameLabel = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
                 local CreatorLabel = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
@@ -1942,39 +1941,38 @@ local function RenderAssets(searchQuery)
                 
                 local BackgroundCopy = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
                 local CopyBtn = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
-                
                 local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
                 local InsertBtn = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
 
-                -- Memasukkan Data Text & Gambar
+                -- Memasukkan Data Teks & Gambar
                 if NameLabel then NameLabel.Text = info.Name end
                 if CreatorLabel then CreatorLabel.Text = "By: " .. (info.Creator and info.Creator.Name or "Unknown") end
                 if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
 
                 if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
-                    if targetCategoryAtCall == "Decal" then
-                        ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
-                    elseif targetCategoryAtCall == "Audio" then
+                    if targetCategoryAtCall == "Audio" then
                         ThumbnailAsset.Image = "rbxassetid://16327318049"
                     else
                         ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
                     end
                 end
 
-                -- Refresh Status Warna Indicator IconSaved_62 pada Kartu
-                local function RefreshSaveIcon()
-                    if IconSaved and IconSaved:IsA("ImageLabel") or IconSaved:IsA("ImageButton") then
+                -- LOGIKA FILTER PENANDA ICONSAVED_62:
+                -- Visible = true  -> Hanya jika Asset terdaftar di saved_assets.json
+                -- Visible = false -> Jika Asset dimuat dari Master Assets.json & belum tersimpan
+                local function RefreshSaveIconVisibility()
+                    if IconSaved then
                         local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
-                        IconSaved.ImageColor3 = isSaved and COLOR_ACTIVE or Color3.fromRGB(150, 150, 150)
+                        IconSaved.Visible = isSaved
                     end
                 end
-                RefreshSaveIcon()
+                RefreshSaveIconVisibility()
 
-                -- Interaksi Toggle Save/Unsave via IconSaved_62 pada Kartu
+                -- TOGGLE SAVE / UNSAVE ACTION VIA ICONSAVED_62 (ATAU CARD CLICK)
                 if IconSaved then
-                    local clickEvent = IconSaved:IsA("ImageButton") and IconSaved.MouseButton1Click or (IconSaved:FindFirstChildOfClass("ClickDetector") and IconSaved.ClickDetector.MouseClick)
-                    if IconSaved:IsA("GuiButton") then
-                        IconSaved.MouseButton1Click:Connect(function()
+                    local clickTarget = IconSaved:IsA("GuiButton") and IconSaved or IconSaved:FindFirstChildOfClass("GuiButton")
+                    if clickTarget then
+                        clickTarget.MouseButton1Click:Connect(function()
                             local categoryList = SavedAssets[targetCategoryAtCall]
                             if not categoryList then
                                 categoryList = {}
@@ -1983,7 +1981,7 @@ local function RenderAssets(searchQuery)
                             
                             local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
                             if isSaved then
-                                -- Unsave: Hapus ID dari toolbox_assets.json
+                                -- Unsave: Hapus ID dari saved_assets.json
                                 for i, id in ipairs(categoryList) do
                                     if tonumber(id) == numericId then
                                         table.remove(categoryList, i)
@@ -1991,23 +1989,22 @@ local function RenderAssets(searchQuery)
                                     end
                                 end
                             else
-                                -- Save: Tambahkan ID ke toolbox_assets.json
+                                -- Save: Tambahkan ID ke saved_assets.json
                                 table.insert(categoryList, numericId)
                             end
                             
                             SaveUserData()
-                            RefreshSaveIcon()
+                            RefreshSaveIconVisibility()
 
-                            -- Re-render langsung jika sedang berada di mode IsShowingSavedOnly
+                            -- Re-render otomatis jika berada dalam mode filter Saved Only
                             if IsShowingSavedOnly then
-                                local currentQuery = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
-                                RenderAssets(currentQuery)
+                                RenderAssets(SearchBox and SearchBox.Text or "")
                             end
                         end)
                     end
                 end
 
-                -- Listener Tombol Copy ID (CopyButton_64)
+                -- Listener Tombol Copy ID
                 if CopyBtn and CopyBtn:IsA("GuiButton") then
                     CopyBtn.MouseButton1Click:Connect(function()
                         setclipboard(tostring(numericId))
@@ -2018,7 +2015,7 @@ local function RenderAssets(searchQuery)
                     end)
                 end
 
-                -- Listener Tombol Insert (InsertButton_6b)
+                -- Listener Tombol Insert
                 if InsertBtn and InsertBtn:IsA("GuiButton") then
                     InsertBtn.MouseButton1Click:Connect(function()
                         InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
