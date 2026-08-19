@@ -2507,8 +2507,8 @@ local ScrollingButton  = CardMenu and (CardMenu:FindFirstChild("ScrollingButton_
 local TemplateBgButton = ScrollingButton and (ScrollingButton:FindFirstChild("BackgroundButton_42") or ScrollingButton:FindFirstChild("BackgroundButton"))
 
 -- Icon ID Config
-local ICON_CLOSED = "rbxassetid://86595679119304"
-local ICON_OPENED = "rbxassetid://75539660682193"
+local ICON_CLOSED = "rbxassetid://76007989326576"
+local ICON_OPENED = "rbxassetid://86595679119304"
 
 -- State Menu Tracker
 local IsMenuOpen = false
@@ -2529,7 +2529,7 @@ local MenuFeatureList = {
     },
 	{
         Name = "IMPORT FILE",
-        Icon = "rbxassetid://130646038894506",
+        Icon = "rbxassetid://126926348062230",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/terrain.lua"
     },
     {
