@@ -2079,43 +2079,86 @@ SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
 -------------------------------------------------------------------------
 -- ACTION LISTENERS & EVENT HANDLERS
 -------------------------------------------------------------------------
-ModelButton.MouseButton1Click:Connect(function() SwitchTab("Model") end)
-DecalButton.MouseButton1Click:Connect(function() SwitchTab("Decal") end)
-AudioButton.MouseButton1Click:Connect(function() SwitchTab("Audio") end)
-if PluginButton then
+-- State Tracker Filter Saved
+local IsShowingSavedOnly = false
+
+-- Tab Navigation Listeners
+if ModelButton and ModelButton:IsA("GuiButton") then
+    ModelButton.MouseButton1Click:Connect(function() SwitchTab("Model") end)
+end
+
+if DecalButton and DecalButton:IsA("GuiButton") then
+    DecalButton.MouseButton1Click:Connect(function() SwitchTab("Decal") end)
+end
+
+if AudioButton and AudioButton:IsA("GuiButton") then
+    AudioButton.MouseButton1Click:Connect(function() SwitchTab("Audio") end)
+end
+
+if PluginButton and PluginButton:IsA("GuiButton") then
     PluginButton.MouseButton1Click:Connect(function() SwitchTab("Plugin") end)
 end
 
--- FUNGSIONALITAS 1: INSERT BUTTON
-InsertButton.MouseButton1Click:Connect(function()
-    local rawText = InsertIDBox.Text
+-- FUNGSIONALITAS: CARDSAVED FILTER TOGGLE (SavedButton_2c & IconSaved_2e)
+local function ToggleSavedFilter()
+    IsShowingSavedOnly = not IsShowingSavedOnly
     
-    -- Mengekstrak khusus deretan angka ID saja dari teks input
-    local cleanId = tonumber(rawText:match("%d+"))
-
-    if cleanId then
-        -- Mengubah teks box hanya menyisakan angka ID-nya saja
-        InsertIDBox.Text = tostring(cleanId)
-        InsertIDBox.TextTransparency = 0
-        InsertIDBox.TextColor3 = COLOR_TEXT_ACTIVE
-
-        InsertButton.Text = "WORKING"
-        InsertAsset(cleanId, nil, InsertButton)
-        task.wait(1.5)
-        InsertButton.Text = "INSERT"
-        -- Teks ID di InsertIDBox TIDAK DIHAPUS OTOMATIS (Sama seperti SearchBox & SaveBox)
-    else
-        InsertIDBox.Text = "Harus ID Angka!"
-        InsertIDBox.TextTransparency = 0
-        task.wait(1.5)
-        
-        -- Jika gagal validasi, kembalikan ke Placeholder default
-        if InsertIDBox.Text == "Harus ID Angka!" then
-            InsertIDBox.Text = "Masukan Id asset..."
-            InsertIDBox.TextTransparency = 0.5
-        end
+    -- Update Tampilan Visual Warna (Active / Inactive State)
+    if typeof(UpdateSavedFilterVisualState) == "function" then
+        UpdateSavedFilterVisualState(IsShowingSavedOnly)
     end
-end)
+    
+    -- Re-render daftar asset berdasarkan mode filter yang aktif
+    local currentQuery = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
+    if typeof(RenderAssets) == "function" then
+        RenderAssets(currentQuery)
+    end
+end
+
+if SavedButton and SavedButton:IsA("GuiButton") then
+    SavedButton.MouseButton1Click:Connect(ToggleSavedFilter)
+end
+
+if IconSaved and IconSaved:IsA("GuiButton") then
+    IconSaved.MouseButton1Click:Connect(ToggleSavedFilter)
+end
+
+-- FUNGSIONALITAS 1: INSERT BUTTON
+if InsertButton and InsertButton:IsA("GuiButton") then
+    InsertButton.MouseButton1Click:Connect(function()
+        if not InsertIDBox or not InsertIDBox:IsA("TextBox") then return end
+        local rawText = InsertIDBox.Text
+        
+        -- Mengekstrak khusus deretan angka ID saja dari teks input
+        local cleanId = tonumber(rawText:match("%d+"))
+
+        if cleanId then
+            -- Mengubah teks box hanya menyisakan angka ID-nya saja
+            InsertIDBox.Text = tostring(cleanId)
+            InsertIDBox.TextTransparency = 0
+            if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
+                InsertIDBox.TextColor3 = COLOR_TEXT_ACTIVE
+            end
+
+            InsertButton.Text = "WORKING"
+            if typeof(InsertAsset) == "function" then
+                InsertAsset(cleanId, nil, InsertButton)
+            end
+            task.wait(1.5)
+            if InsertButton then InsertButton.Text = "INSERT" end
+        else
+            InsertIDBox.Text = "Harus ID Angka!"
+            InsertIDBox.TextTransparency = 0
+            task.wait(1.5)
+            
+            -- Jika gagal validasi, kembalikan ke Placeholder default
+            if InsertIDBox and InsertIDBox.Text == "Harus ID Angka!" then
+                InsertIDBox.Text = "Masukan Id asset..."
+                InsertIDBox.TextTransparency = 0.5
+            end
+        end
+    end)
+end
 
 -------------------------------------------------------------------------
 -- FIX: LOGIC SEARCH & SAVE SYSTEM (SINKRONISASI STRUKTUR SCREENGUI BARU)
