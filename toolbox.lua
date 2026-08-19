@@ -1646,4 +1646,195 @@ local function GetCategoryFromAssetType(assetTypeId)
     end
 end
 
+-------------------------------------------------------------------------
+-- TAHAP 5: FUNGSI INSERT UTAMA & SAFE STUDIO FALLBACK (FIXED)
+-------------------------------------------------------------------------
+local function InsertAsset(assetId, category, statusTarget)
+    -- Safe Check Status Target (TextLabel / TextButton)
+    local function SetStatus(msg)
+        if statusTarget and typeof(statusTarget) == "Instance" then
+            if statusTarget:IsA("TextLabel") or statusTarget:IsA("TextButton") then
+                statusTarget.Text = msg
+            end
+        end
+    end
+
+    SetStatus("Working")
+    local stringId = tostring(assetId)
+
+    local successInfo, info = pcall(function() 
+        return MarketplaceService:GetProductInfo(tonumber(assetId)) 
+    end)
+    
+    if successInfo and info then
+        category = GetCategoryFromAssetType(info.AssetTypeId)
+    else
+        if not category then category = "Model" end
+    end
+
+    -- Handler kalkulasi posisi Kamera Workspace
+    local function SafeStudioFallback(obj)
+        if not obj then return end
+        local targetModel, isTemporary, tempContainer
+        
+        if obj.ClassName == "Model" then
+            targetModel = obj
+            isTemporary = false
+        else
+            targetModel = Instance.new("Model")
+            obj.Parent = targetModel
+            tempContainer = targetModel
+            isTemporary = true
+        end
+
+        local currentCFrame, boundingSize = targetModel:GetBoundingBox()
+        local lowestYOffset = not targetModel.PrimaryPart and 0 or targetModel.PrimaryPart.Position.Y - boundingSize.Y / 2
+        local camCFrame = workspace.Camera and workspace.Camera.CFrame or CFrame.new()
+        local posX = math.floor((camCFrame.X + camCFrame.LookVector.X * 30) * 2) / 2
+        local posY = boundingSize.Y / 2 + lowestYOffset
+        local posZ = math.floor((camCFrame.Z + camCFrame.LookVector.Z * 30) * 2) / 2
+        
+        local calculatedPos = Vector3.new(posX, posY, posZ)
+        local raycastOrigin = Vector3.new(calculatedPos.X, camCFrame.Y, calculatedPos.Z)
+        local raycastResult = workspace:Raycast(raycastOrigin, Vector3.new(0, -camCFrame.Y, 0))
+        
+        if raycastResult then
+            local newY = raycastResult.Instance.Position.Y + raycastResult.Instance.Size.Y / 2 + boundingSize.Y / 2 + lowestYOffset
+            calculatedPos = Vector3.new(calculatedPos.X, newY, calculatedPos.Z)
+        end
+
+        targetModel:PivotTo(CFrame.new(calculatedPos) * currentCFrame.Rotation)
+
+        if isTemporary then
+            local children = targetModel:GetChildren()
+            if #children > 0 then
+                local finalObj = children[1]:Clone()
+                finalObj.Parent = workspace
+            end
+            if tempContainer then tempContainer:Destroy() end
+        else
+            targetModel.Parent = workspace
+            targetModel:MakeJoints()
+        end
+    end
+
+    -- JIKA ASSET ADALAH AUDIO
+    if category == "Audio" then
+        local sound = Instance.new("Sound")
+        sound.Name = (successInfo and info and info.Name) or "SoundAsset_" .. stringId
+        sound.SoundId = "rbxassetid://" .. stringId
+        sound.Volume = 0.5
+        sound.Parent = workspace
+        SetStatus("Berhasil!")
+        return
+    end
+
+    -- JIKA ASSET ADALAH DECAL
+    if category == "Decal" then
+        if GetSelection and SetSelection then
+            local currentSelection = nil
+            pcall(function() currentSelection = GetSelection:Invoke() end)
+            
+            if currentSelection and typeof(currentSelection) == "table" and #currentSelection >= 1 and currentSelection[1]:IsA("BasePart") then
+                local decal = Instance.new("Decal")
+                decal.Name = (successInfo and info and info.Name) or "Decal"
+                decal.Texture = "rbxthumb://type=Asset&id=" .. stringId .. "&w=420&h=420"
+                decal.Parent = currentSelection[1]
+                
+                task.wait(0.2)
+                pcall(function() SetSelection:Invoke({ decal }) end)
+                SetStatus("Berhasil!")
+            else
+                SetStatus("Select Part!")
+            end
+        else
+            local decal = Instance.new("Decal")
+            decal.Name = (successInfo and info and info.Name) or "DecalAsset_" .. stringId
+            decal.Texture = "rbxassetid://" .. stringId
+            decal.Parent = workspace
+            SetStatus("Berhasil!")
+        end
+        return
+    end
+
+    -- JIKA ASSET ADALAH MODEL ATAU PLUGIN
+    if LoadAssetRemote and LoadAssetRemote:IsA("RemoteFunction") then
+        local loadSuccess = false
+        pcall(function()
+            loadSuccess = LoadAssetRemote:InvokeServer(stringId)
+        end)
+
+        if loadSuccess then
+            local serverFolder = PlayerGui:WaitForChild(stringId, 5)
+            if serverFolder then
+                local assetClone = serverFolder:Clone()
+                local children = assetClone:GetChildren()
+                if #children == 0 then
+                    local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+                    if clientSuccess and clientObj then
+                        SafeStudioFallback(clientObj)
+                    else
+                        assetClone.Parent = workspace
+                    end
+                else
+                    for _, obj in pairs(children) do
+                        if obj.ClassName == "Folder" and ("Workspace Lighting MaterialService ReplicatedStorage ServerStorage ServerScriptService StarterGui StarterPack Teams SoundService StarterPlayer InsertService TextChatService"):find(obj.Name, 1, true) then
+                            if obj.Name == "ServerStorage" then
+                                for _, item in pairs(obj:GetChildren()) do item.Parent = _G.ss or game:GetService("ServerStorage") end
+                            elseif obj.Name == "ServerScriptService" then
+                                for _, item in pairs(obj:GetChildren()) do item.Parent = _G.sss or game:GetService("ServerScriptService") end
+                            elseif obj.Name == "StarterPlayer" then
+                                for _, inner in pairs(obj:GetChildren()) do
+                                    if inner.Name == "StarterPlayerScripts" or inner.Name == "StarterCharacterScripts" then
+                                        for _, scr in pairs(inner:GetChildren()) do
+                                            if not game.StarterPlayer[inner.Name]:FindFirstChild(scr.Name) then
+                                                scr.Parent = game.StarterPlayer[inner.Name]
+                                            end
+                                        end
+                                    else
+                                        inner.Parent = game.StarterPlayer
+                                    end
+                                end
+                            elseif obj.Name ~= "InsertService" and obj.Name ~= "TextChatService" then
+                                for _, item in pairs(obj:GetChildren()) do item.Parent = game[obj.Name] end
+                            end
+                        elseif obj:IsA("PostEffect") or obj.ClassName == "Sky" then
+                            obj.Parent = game.Lighting
+                        else
+                            SafeStudioFallback(obj)
+                        end
+                    end
+                end
+                assetClone:Destroy()
+                if ClearAssetRemote then pcall(function() ClearAssetRemote:InvokeServer(stringId) end) end
+                SetStatus("Berhasil!")
+            else
+                local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+                if clientSuccess and clientObj then
+                    SafeStudioFallback(clientObj)
+                    SetStatus("Berhasil!")
+                else
+                    SetStatus("No Folder")
+                end
+            end
+        else
+            local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+            if clientSuccess and clientObj then
+                SafeStudioFallback(clientObj)
+                SetStatus("Berhasil!")
+            else
+                SetStatus("Gagal")
+            end
+        end
+    else
+        local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+        if clientSuccess and clientObj then
+            SafeStudioFallback(clientObj)
+            SetStatus("Berhasil!")
+        else
+            SetStatus("No Remote")
+        end
+    end
+end
+
 return LMG2L["ScreenGui_1"], require;
