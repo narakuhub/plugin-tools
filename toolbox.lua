@@ -2118,4 +2118,169 @@ InsertButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-------------------------------------------------------------------------
+-- FIX: LOGIC SEARCH & SAVE SYSTEM (SINKRONISASI STRUKTUR SCREENGUI BARU)
+-------------------------------------------------------------------------
+
+-- Referensi Tombol & Input Utama (Dengan Proteksi Anti Index Nil)
+local SearchButton = LMG2L and LMG2L["SearchButton_75"]
+local SaveButton = LMG2L and LMG2L["SaveButton_56"]
+local InsertButton = LMG2L and LMG2L["InsertButton_34"]
+
+-- 1. FUNGSIONALITAS SEARCH BUTTON & REALTIME FILTERING
+if SearchButton and SearchButton:IsA("GuiButton") then
+    SearchButton.MouseButton1Click:Connect(function()
+        if not SearchBox or not SearchBox:IsA("TextBox") then return end
+        local inputText = SearchBox.Text
+        
+        if inputText == "" or inputText:lower() == "search asset..." then
+            RenderAssets("")
+        else
+            local originalText = SearchButton.Text
+            SearchButton.Text = "..."
+            RenderAssets(inputText)
+            task.wait(0.5)
+            if SearchButton then SearchButton.Text = originalText end
+        end
+    end)
+end
+
+-- Deteksi Ketikan Dinamis dengan Debounce Protection
+if SearchBox and SearchBox:IsA("TextBox") then
+    local searchDebounceThread = nil
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        if searchDebounceThread then
+            task.cancel(searchDebounceThread)
+        end
+        
+        searchDebounceThread = task.delay(0.25, function()
+            local currentText = SearchBox.Text
+            if currentText == "" or currentText:lower() == "search asset..." then
+                RenderAssets("")
+            else
+                RenderAssets(currentText)
+            end
+        end)
+    end)
+end
+
+-- 2. FUNGSIONALITAS SAVE BUTTON (Validasi Duplikasi & Auto-Switch Tab)
+if SaveButton and SaveButton:IsA("GuiButton") then
+    SaveButton.MouseButton1Click:Connect(function()
+        if not SaveIDBox or not SaveIDBox:IsA("TextBox") then return end
+        local rawText = SaveIDBox.Text
+        local cleanId = tonumber(rawText:match("%d+"))
+
+        if not cleanId then
+            SaveIDBox.Text = "Harus ID Angka!"
+            SaveIDBox.TextTransparency = 0
+            task.wait(1.5)
+            if SaveIDBox and SaveIDBox.Text == "Harus ID Angka!" then
+                SaveIDBox.Text = "Masukan ID save asset..."
+                SaveIDBox.TextTransparency = 0.5
+            end
+            return
+        end
+
+        -- Format Teks Box
+        SaveIDBox.Text = tostring(cleanId)
+        SaveIDBox.TextTransparency = 0
+        if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
+            SaveIDBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+
+        SaveButton.Text = "..."
+        
+        -- Pengecekan Duplikasi ID di Seluruh Kategori
+        local isDuplicate = false
+        for _, assetList in pairs(SavedAssets or {}) do
+            if typeof(assetList) == "table" then
+                for _, id in ipairs(assetList) do
+                    if tonumber(id) == cleanId then
+                        isDuplicate = true
+                        break
+                    end
+                end
+            end
+            if isDuplicate then break end
+        end
+
+        if isDuplicate then
+            SaveIDBox.Text = "Sudah Ada!"
+            task.wait(1.5)
+            if SaveButton then SaveButton.Text = "SAVE" end
+            if SaveIDBox and SaveIDBox.Text == "Sudah Ada!" then
+                SaveIDBox.Text = tostring(cleanId)
+            end
+            return
+        end
+
+        -- Validasi Keberadaan Asset via MarketplaceService
+        local success, info = pcall(function() 
+            return MarketplaceService:GetProductInfo(cleanId) 
+        end)
+
+        if success and info then
+            local cat = GetCategoryFromAssetType(info.AssetTypeId)
+            if not SavedAssets[cat] then
+                SavedAssets[cat] = {}
+            end
+            
+            table.insert(SavedAssets[cat], cleanId)
+            
+            if typeof(SaveUserData) == "function" then
+                SaveUserData()
+            end
+            
+            if typeof(SwitchTab) == "function" then
+                SwitchTab(cat)
+            end
+            
+            SaveButton.Text = "SAVED!"
+        else
+            SaveIDBox.Text = "ID Gagal Validasi!"
+            task.wait(1.5)
+            if SaveIDBox and SaveIDBox.Text == "ID Gagal Validasi!" then
+                SaveIDBox.Text = tostring(cleanId)
+            end
+        end
+        
+        task.wait(1.5)
+        if SaveButton then SaveButton.Text = "SAVE" end
+    end)
+end
+
+-- 3. FUNGSIONALITAS DIRECT INSERT BUTTON (InsertButton_34)
+if InsertButton and InsertButton:IsA("GuiButton") then
+    InsertButton.MouseButton1Click:Connect(function()
+        local inputTarget = SaveIDBox or SearchBox
+        if not inputTarget or not inputTarget:IsA("TextBox") then return end
+        
+        local cleanId = tonumber(inputTarget.Text:match("%d+"))
+        if cleanId then
+            local originalText = InsertButton.Text
+            InsertButton.Text = "..."
+            
+            if typeof(InsertAsset) == "function" then
+                InsertAsset(cleanId, CurrentCategory, InsertButton)
+            end
+            
+            task.wait(1.5)
+            if InsertButton then InsertButton.Text = originalText end
+        else
+            local originalText = InsertButton.Text
+            InsertButton.Text = "Invalid ID!"
+            task.wait(1.5)
+            if InsertButton then InsertButton.Text = originalText end
+        end
+    end)
+end
+
+-------------------------------------------------------------------------
+-- INITIALIZATION RUN
+-------------------------------------------------------------------------
+if typeof(SwitchTab) == "function" then
+    SwitchTab("Model")
+end
+
 return LMG2L["ScreenGui_1"], require;
