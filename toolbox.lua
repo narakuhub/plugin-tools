@@ -1446,15 +1446,83 @@ if TemplateFrame then
 end
 
 -------------------------------------------------------------------------
+-- TAHAP VISUAL: TAB & FILTER COLOR STATE SYSTEM
+-------------------------------------------------------------------------
+-- Inisialisasi Objek Visual dari Hirarki LMG2L
+local BackgroundModel = LMG2L and LMG2L["BackgroundModel_11"]
+local BackgroundDecal = LMG2L and LMG2L["BackgroundDecal_1e"]
+local BackgroundAudio = LMG2L and LMG2L["BackgroundAudio_a"]
+local BackgroundPlugin = LMG2L and LMG2L["BackgroundPlugin_18"]
+
+local IconModel = LMG2L and LMG2L["IconModel_15"]
+local IconDecal = LMG2L and LMG2L["IconDecal_1f"]
+local IconAudio = LMG2L and LMG2L["IconAudio_f"]
+local IconPlugin = LMG2L and LMG2L["IconPlugin_1d"]
+
+-- Skema Warna Spesifik
+local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)       -- Background Active State
+local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)         -- Background Inactive State
+
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(0, 0, 0)         -- Text & Icon Active State (Hitam)
+local COLOR_TEXT_INACTIVE = Color3.fromRGB(223, 230, 237)   -- Text & Icon Inactive State (Normal)
+
+-- Tabel Pemetaan Elemen Visual
+local TabVisualMap = {
+    ["Model"] = { Background = BackgroundModel, Button = ModelButton, Icon = IconModel },
+    ["Decal"] = { Background = BackgroundDecal, Button = DecalButton, Icon = IconDecal },
+    ["Audio"] = { Background = BackgroundAudio, Button = AudioButton, Icon = IconAudio },
+    ["Plugin"] = { Background = BackgroundPlugin, Button = PluginButton, Icon = IconPlugin }
+}
+
+-- Fungsi Utility untuk Mengubah Warna Visual Tab
+local function UpdateTabVisualState(category, isActive)
+    local visualData = TabVisualMap[category]
+    if not visualData then return end
+
+    local bgCol = isActive and COLOR_ACTIVE or COLOR_INACTIVE
+    local contentCol = isActive and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
+
+    if visualData.Background then
+        visualData.Background.BackgroundColor3 = bgCol
+    end
+    
+    if visualData.Button then
+        if visualData.Button:IsA("TextButton") or visualData.Button:IsA("TextLabel") then
+            visualData.Button.TextColor3 = contentCol
+        end
+    end
+    
+    if visualData.Icon and visualData.Icon:IsA("ImageLabel") then
+        visualData.Icon.ImageColor3 = contentCol
+    end
+end
+
+-- Fungsi Utility Khusus Visual CardSaved Filter Toggle
+local function UpdateSavedFilterVisualState(isSavedOnly)
+    local bgCol = isSavedOnly and COLOR_ACTIVE or COLOR_INACTIVE
+    local contentCol = isSavedOnly and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
+
+    if CardSaved then
+        CardSaved.BackgroundColor3 = bgCol
+    end
+    
+    if SavedButton then
+        if SavedButton:IsA("TextButton") or SavedButton:IsA("TextLabel") then
+            SavedButton.TextColor3 = contentCol
+        end
+    end
+    
+    if SavedIconIndicator and SavedIconIndicator:IsA("ImageLabel") then
+        SavedIconIndicator.ImageColor3 = contentCol
+    end
+end
+
+-------------------------------------------------------------------------
 -- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (DUAL DATABASE)
 -------------------------------------------------------------------------
 local CurrentCategory = "Model" 
 local CurrentSessionId = 0
 local IsShowingSavedOnly = false -- Status Toggle Filter (False = MasterAssets, True = SavedAssets)
-
--- Skema Warna Visual UI Baru
-local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)    -- Active State
-local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)      -- Normal/Inactive State
 
 -- Dual Database System
 local MasterAssets = {    -- Katalog Utama dari Remote Assets.json
@@ -1474,7 +1542,7 @@ local SavedAssets = {    -- Database Lokal User dari delta/toolbox_assets.json
 -- 1. Memuat Master Database (HANYA 1 KALI FETCH/LOAD REMOTE)
 local function FetchMasterAssets()
     local success, response = pcall(function()
-        return game:HttpGet("https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/Assets.json")
+        return game:HttpGet("https://raw.githubusercontent.com/narakuhub/vertrou/refs/heads/main/Assets.json")
     end)
     
     if success and response and #response > 0 then
