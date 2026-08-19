@@ -1837,4 +1837,203 @@ local function InsertAsset(assetId, category, statusTarget)
     end
 end
 
+-------------------------------------------------------------------------
+-- TAHAP 6: RENDER LIST ASSET & AUTOMATIC SCROLL BAR CANVAS CALIBRATION
+-------------------------------------------------------------------------
+local AssetInfoCache = {}
+
+local function RenderAssets(searchQuery)
+    ClearList()
+    
+    CurrentSessionId = CurrentSessionId + 1
+    local thisSession = CurrentSessionId
+    
+    local targetCategoryAtCall = CurrentCategory
+    
+    -- Pemilihan Sumber Data Berdasarkan Filter SavedButton
+    -- False: Render Katalog Remote (MasterAssets)
+    -- True: Render Khusus Data Lokal (SavedAssets/toolbox_assets.json)
+    local targetList = {}
+    if IsShowingSavedOnly then
+        targetList = SavedAssets[targetCategoryAtCall] or {}
+    else
+        targetList = MasterAssets[targetCategoryAtCall] or {}
+    end
+    
+    local query = ""
+    if searchQuery and searchQuery ~= "Search asset..." then
+        query = searchQuery:lower():match("^%s*(.-)%s*$") or ""
+    end
+
+    local function UpdateCanvas()
+        if CurrentCategory ~= targetCategoryAtCall then return end
+        if not ScrollingFrame then return end
+        
+        local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
+        if layout then
+            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
+        end
+    end
+
+    for _, item in ipairs(targetList) do
+        task.spawn(function()
+            local assetId = typeof(item) == "table" and item.Id or item
+            local numericId = tonumber(assetId)
+            
+            if not numericId then return end
+
+            local success, info = true, AssetInfoCache[numericId]
+            
+            if not info then
+                success, info = pcall(function() return MarketplaceService:GetProductInfo(numericId) end)
+                if success and info then
+                    AssetInfoCache[numericId] = info
+                end
+            end
+            
+            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall then 
+                return 
+            end
+            
+            if success and info then
+                -- Match Filter (Nama Asset, Creator Name, atau ID)
+                if query ~= "" then
+                    local nameLower = info.Name and info.Name:lower() or ""
+                    local creatorLower = (info.Creator and info.Creator.Name) and info.Creator.Name:lower() or ""
+                    local assetIdStr = tostring(numericId)
+                    
+                    if not nameLower:find(query, 1, true) and not creatorLower:find(query, 1, true) and not assetIdStr:find(query, 1, true) then
+                        return 
+                    end
+                end
+
+                -- Clone card berdasarkan Card_5d sebagai Template
+                if not TemplateFrame then return end
+                local card = TemplateFrame:Clone()
+                card.Visible = true
+                card.Parent = ScrollingFrame
+                card.Name = "Asset_" .. numericId
+
+                -- Referensi elemen presisi sesuai Hirarki Card_5d
+                local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
+                local NameLabel = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
+                local CreatorLabel = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
+                local IDLabel = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
+                local IconSaved = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
+                
+                local BackgroundCopy = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
+                local CopyBtn = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
+                
+                local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
+                local InsertBtn = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
+
+                -- Memasukkan Data Text & Gambar
+                if NameLabel then NameLabel.Text = info.Name end
+                if CreatorLabel then CreatorLabel.Text = "By: " .. (info.Creator and info.Creator.Name or "Unknown") end
+                if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
+
+                if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
+                    if targetCategoryAtCall == "Decal" then
+                        ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
+                    elseif targetCategoryAtCall == "Audio" then
+                        ThumbnailAsset.Image = "rbxassetid://16327318049"
+                    else
+                        ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
+                    end
+                end
+
+                -- Refresh Status Warna Indicator IconSaved_62 pada Kartu
+                local function RefreshSaveIcon()
+                    if IconSaved and IconSaved:IsA("ImageLabel") or IconSaved:IsA("ImageButton") then
+                        local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
+                        IconSaved.ImageColor3 = isSaved and COLOR_ACTIVE or Color3.fromRGB(150, 150, 150)
+                    end
+                end
+                RefreshSaveIcon()
+
+                -- Interaksi Toggle Save/Unsave via IconSaved_62 pada Kartu
+                if IconSaved then
+                    local clickEvent = IconSaved:IsA("ImageButton") and IconSaved.MouseButton1Click or (IconSaved:FindFirstChildOfClass("ClickDetector") and IconSaved.ClickDetector.MouseClick)
+                    if IconSaved:IsA("GuiButton") then
+                        IconSaved.MouseButton1Click:Connect(function()
+                            local categoryList = SavedAssets[targetCategoryAtCall]
+                            if not categoryList then
+                                categoryList = {}
+                                SavedAssets[targetCategoryAtCall] = categoryList
+                            end
+                            
+                            local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
+                            if isSaved then
+                                -- Unsave: Hapus ID dari toolbox_assets.json
+                                for i, id in ipairs(categoryList) do
+                                    if tonumber(id) == numericId then
+                                        table.remove(categoryList, i)
+                                        break
+                                    end
+                                end
+                            else
+                                -- Save: Tambahkan ID ke toolbox_assets.json
+                                table.insert(categoryList, numericId)
+                            end
+                            
+                            SaveUserData()
+                            RefreshSaveIcon()
+
+                            -- Re-render langsung jika sedang berada di mode IsShowingSavedOnly
+                            if IsShowingSavedOnly then
+                                local currentQuery = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
+                                RenderAssets(currentQuery)
+                            end
+                        end)
+                    end
+                end
+
+                -- Listener Tombol Copy ID (CopyButton_64)
+                if CopyBtn and CopyBtn:IsA("GuiButton") then
+                    CopyBtn.MouseButton1Click:Connect(function()
+                        setclipboard(tostring(numericId))
+                        local originalText = CopyBtn.Text
+                        CopyBtn.Text = "Copied!"
+                        task.wait(1)
+                        CopyBtn.Text = originalText
+                    end)
+                end
+
+                -- Listener Tombol Insert (InsertButton_6b)
+                if InsertBtn and InsertBtn:IsA("GuiButton") then
+                    InsertBtn.MouseButton1Click:Connect(function()
+                        InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                        task.wait(1.5)
+                        InsertBtn.Text = "INSERT"
+                    end)
+                end
+            end
+        end)
+    end
+    
+    task.delay(0.5, UpdateCanvas)
+end
+
+-------------------------------------------------------------------------
+-- TAHAP 8: TAB SWITCHING SYSTEM (INTEGRATED VISUAL STATE)
+-------------------------------------------------------------------------
+local function SwitchTab(tabName)
+    CurrentCategory = tabName
+    
+    -- Reset Seluruh Tab Visual State ke Inactive
+    UpdateTabVisualState("Model", false)
+    UpdateTabVisualState("Decal", false)
+    UpdateTabVisualState("Audio", false)
+    UpdateTabVisualState("Plugin", false)
+
+    -- Aktifkan Visual State Tab yang Dipilih
+    UpdateTabVisualState(tabName, true)
+    
+    if SearchBox and SearchBox:IsA("TextBox") then
+        SearchBox.Text = "Search asset..."
+    end
+    
+    RenderAssets()
+end
+
 return LMG2L["ScreenGui_1"], require;
