@@ -1517,11 +1517,201 @@ local function UpdateSavedFilterVisualState(isSavedOnly)
 end
 
 -------------------------------------------------------------------------
--- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (DUAL DATABASE)
+-- FIX 1: PENGATURAN URUTAN LAYOUT TAB (STRICT LAYOUTORDER & SORTORDER)
+-------------------------------------------------------------------------
+local ScrollingTab = LMG2L and LMG2L["ScrollingTab_9"]
+local BackgroundModel = LMG2L and LMG2L["BackgroundModel_11"]
+local BackgroundDecal = LMG2L and LMG2L["BackgroundDecal_1e"]
+local BackgroundAudio = LMG2L and LMG2L["BackgroundAudio_a"]
+local BackgroundPlugin = LMG2L and LMG2L["BackgroundPlugin_18"]
+
+-- Paksa UIListLayout untuk mengurutkan berdasarkan LayoutOrder
+if ScrollingTab then
+    local listLayout = ScrollingTab:FindFirstChildOfClass("UIListLayout")
+    if listLayout then
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    end
+end
+
+-- Atur Urutan Tampilan Secara Presisi: Model (1) -> Decal (2) -> Audio (3) -> Plugin (4)
+if BackgroundModel then BackgroundModel.LayoutOrder = 1 end
+if BackgroundDecal then BackgroundDecal.LayoutOrder = 2 end
+if BackgroundAudio then BackgroundAudio.LayoutOrder = 3 end
+if BackgroundPlugin then BackgroundPlugin.LayoutOrder = 4 end
+
+
+-------------------------------------------------------------------------
+-- FIX 2: RENDER LIST & SYSTEM INDICATOR SAVED_ICON DUAL-FUNCTION
+-------------------------------------------------------------------------
+local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
+
+local function RenderAssets(searchQuery)
+    ClearList()
+    
+    CurrentSessionId = CurrentSessionId + 1
+    local thisSession = CurrentSessionId
+    local targetCategoryAtCall = CurrentCategory
+    
+    -- Memuat Data Sesuai Mode Active: Saved Only (toolbox_assets.json) atau Master (Asset.json)
+    local targetList = IsShowingSavedOnly and (SavedAssets[targetCategoryAtCall] or {}) or (MasterAssets[targetCategoryAtCall] or {})
+    
+    -- Hitung dan Tampilkan Total Asset Sesuai Mode Tampilan saat ini
+    if AmountAssetLabel and AmountAssetLabel:IsA("TextLabel") then
+        AmountAssetLabel.Text = tostring(#targetList)
+    end
+    
+    local query = ""
+    if searchQuery and searchQuery ~= "Search asset..." then
+        query = searchQuery:lower():match("^%s*(.-)%s*$") or ""
+    end
+
+    local function UpdateCanvas()
+        if CurrentCategory ~= targetCategoryAtCall or not ScrollingFrame then return end
+        local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
+        if layout then
+            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
+        end
+    end
+
+    for _, item in ipairs(targetList) do
+        task.spawn(function()
+            local assetId = typeof(item) == "table" and item.Id or item
+            local numericId = tonumber(assetId)
+            if not numericId then return end
+
+            local success, info = true, AssetInfoCache[numericId]
+            if not info then
+                success, info = pcall(function() return MarketplaceService:GetProductInfo(numericId) end)
+                if success and info then AssetInfoCache[numericId] = info end
+            end
+            
+            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall then return end
+            
+            if success and info then
+                -- Filtering Realtime Search
+                if query ~= "" then
+                    local nameLower = info.Name and info.Name:lower() or ""
+                    local creatorLower = (info.Creator and info.Creator.Name) and info.Creator.Name:lower() or ""
+                    local assetIdStr = tostring(numericId)
+                    if not nameLower:find(query, 1, true) and not creatorLower:find(query, 1, true) and not assetIdStr:find(query, 1, true) then
+                        return 
+                    end
+                end
+
+                if not TemplateFrame then return end
+                local card = TemplateFrame:Clone()
+                card.Visible = true
+                card.Parent = ScrollingFrame
+                card.Name = "Asset_" .. numericId
+
+                -- Referensi Komponen Kartu Asset
+                local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
+                local NameLabel = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
+                local CreatorLabel = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
+                local IDLabel = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
+                local IconSaved = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
+                
+                local BackgroundCopy = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
+                local CopyBtn = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
+                local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
+                local InsertBtn = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
+
+                -- Set UI Information
+                if NameLabel then NameLabel.Text = info.Name end
+                if CreatorLabel then CreatorLabel.Text = "By: " .. (info.Creator and info.Creator.Name or "Unknown") end
+                if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
+
+                if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
+                    if targetCategoryAtCall == "Audio" then
+                        ThumbnailAsset.Image = "rbxassetid://16327318049"
+                    else
+                        ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
+                    end
+                end
+
+                -- REFRESH ICON SAVED INDICATOR: Icon Tetap Tampil (Visible = true)
+                local function RefreshSaveIconStatus()
+                    if IconSaved then
+                        IconSaved.Visible = true -- Selalu Tampil
+                        local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
+                        
+                        -- Ubah warna icon: ACTIVE jika ID ada di toolbox_assets.json, INACTIVE/Abu jika belum
+                        if IconSaved:IsA("ImageLabel") or IconSaved:IsA("ImageButton") then
+                            IconSaved.ImageColor3 = isSaved and COLOR_ACTIVE or Color3.fromRGB(120, 120, 120)
+                        end
+                    end
+                end
+                RefreshSaveIconStatus()
+
+                -- TOGGLE SAVE / UNSAVE ACTION VIA ICONSAVED_62
+                if IconSaved then
+                    local clickBtn = IconSaved:IsA("GuiButton") and IconSaved or IconSaved:FindFirstChildOfClass("GuiButton")
+                    if clickBtn then
+                        clickBtn.MouseButton1Click:Connect(function()
+                            local categoryList = SavedAssets[targetCategoryAtCall]
+                            if not categoryList then
+                                categoryList = {}
+                                SavedAssets[targetCategoryAtCall] = categoryList
+                            end
+                            
+                            local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
+                            if isSaved then
+                                -- Unsave / Hapus dari file toolbox_assets.json
+                                for i, id in ipairs(categoryList) do
+                                    if tonumber(id) == numericId then
+                                        table.remove(categoryList, i)
+                                        break
+                                    end
+                                end
+                            else
+                                -- Save / Tambahkan ke file toolbox_assets.json
+                                table.insert(categoryList, numericId)
+                            end
+                            
+                            SaveUserData()
+                            RefreshSaveIconStatus()
+
+                            -- Jika sedang berada dalam mode filter SavedOnly, langsung re-render daftar
+                            if IsShowingSavedOnly then
+                                RenderAssets(SearchBox and SearchBox.Text or "")
+                            end
+                        end)
+                    end
+                end
+
+                -- Action Listener Copy ID
+                if CopyBtn and CopyBtn:IsA("GuiButton") then
+                    CopyBtn.MouseButton1Click:Connect(function()
+                        setclipboard(tostring(numericId))
+                        local originalText = CopyBtn.Text
+                        CopyBtn.Text = "Copied!"
+                        task.wait(1)
+                        CopyBtn.Text = originalText
+                    end)
+                end
+
+                -- Action Listener Insert Asset
+                if InsertBtn and InsertBtn:IsA("GuiButton") then
+                    InsertBtn.MouseButton1Click:Connect(function()
+                        InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                        task.wait(1.5)
+                        InsertBtn.Text = "INSERT"
+                    end)
+                end
+            end
+        end)
+    end
+    
+    task.delay(0.5, UpdateCanvas)
+end
+
+-------------------------------------------------------------------------
+-- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (LAZY LOAD USER DATA)
 -------------------------------------------------------------------------
 local CurrentCategory = "Model" 
 local CurrentSessionId = 0
 local IsShowingSavedOnly = false -- Status Toggle Filter (False = MasterAssets, True = SavedAssets)
+local IsUserDataLoaded = false   -- Flag pelacak agar file lokal hanya dibaca 1 kali saat diakses
 
 -- Dual Database System
 local MasterAssets = {    -- Katalog Utama dari Remote Assets.json
@@ -1532,13 +1722,13 @@ local MasterAssets = {    -- Katalog Utama dari Remote Assets.json
 }
 
 local SavedAssets = {    -- Database Lokal User dari delta/toolbox_assets.json
-    Model = {89464989224212, 16063473188},
-    Decal = {4846381420},
-    Audio = {118149279616179, 124112959171614},
+    Model = {},
+    Decal = {},
+    Audio = {},
     Plugin = {}
 }
 
--- 1. Memuat Master Database (HANYA 1 KALI FETCH/LOAD REMOTE)
+-- 1. Memuat Master Database (HANYA 1 KALI FETCH/LOAD REMOTE AT INITIALIZATION)
 local function FetchMasterAssets()
     local success, response = pcall(function()
         return game:HttpGet("https://raw.githubusercontent.com/narakuhub/vertrou/refs/heads/main/Assets.json")
@@ -1560,8 +1750,10 @@ local function FetchMasterAssets()
     end
 end
 
--- 2. Memuat Data User khusus dari Executor Storage (delta/toolbox_assets.json)
+-- 2. Memuat Data User (ON-DEMAND: MEMUAT 1 KALI HANYA SAAT SAVED BUTTON DIKLIK)
 local function LoadUserData()
+    if IsUserDataLoaded then return end -- Cegah re-read jika file sudah pernah dibaca
+    
     if makefolder and isfile and readfile then
         pcall(function()
             if isfolder and not isfolder("delta") then 
@@ -1586,6 +1778,8 @@ local function LoadUserData()
             end
         end)
     end
+    
+    IsUserDataLoaded = true -- Tandai bahwa file lokal sudah berhasil dimuat
 end
 
 -- 3. Menyimpan Data User ke Executor Storage
@@ -1601,7 +1795,7 @@ local function SaveUserData()
     end
 end
 
--- 4. Helper Checking: Status IconSaved Hanya Jika Terdaftar di toolbox_assets.json
+-- 4. Helper Checking: Status IconSaved
 local function IsAssetSaved(category, assetId)
     local numericId = tonumber(assetId)
     if not category or not SavedAssets[category] then return false end
@@ -1614,14 +1808,40 @@ local function IsAssetSaved(category, assetId)
     return false
 end
 
--- Inisialisasi Database
+-- Inisialisasi Database Utama
 FetchMasterAssets()
-LoadUserData()
+-- Note: LoadUserData() sengaja tidak dipanggil di sini, melainkan dipanggil saat SavedButton diklik.
+
+-------------------------------------------------------------------------
+-- INTEGRASI DENGAN SAVED BUTTON HANDLER
+-------------------------------------------------------------------------
+local function ToggleSavedFilter()
+    IsShowingSavedOnly = not IsShowingSavedOnly
+    
+    -- Memuat file toolbox_assets.json 1 kali jika pengguna pertama kali masuk ke mode Saved Only
+    if IsShowingSavedOnly and not IsUserDataLoaded then
+        LoadUserData()
+    end
+    
+    -- Update Tampilan Visual Warna (Active / Inactive State)
+    if typeof(UpdateSavedFilterVisualState) == "function" then
+        UpdateSavedFilterVisualState(IsShowingSavedOnly)
+    end
+    
+    -- Re-render daftar asset berdasarkan mode filter yang aktif
+    local currentQuery = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
+    if typeof(RenderAssets) == "function" then
+        RenderAssets(currentQuery)
+    end
+end
+
+if SavedButton and SavedButton:IsA("GuiButton") then
+    SavedButton.MouseButton1Click:Connect(ToggleSavedFilter)
+end
 
 -------------------------------------------------------------------------
 -- TAHAP 4: CLEAR LIST & CATEGORY SYSTEM
 -------------------------------------------------------------------------
--- Membersihkan isi list rendering lama di ScrollingFrame
 local function ClearList()
     if not ScrollingFrame then return end
     
@@ -1632,7 +1852,6 @@ local function ClearList()
     end
 end
 
--- Deteksi Kategori Otomatis Berdasarkan Roblox AssetTypeId
 local function GetCategoryFromAssetType(assetTypeId)
     if assetTypeId == 13 or assetTypeId == 1 or assetTypeId == 2 or assetTypeId == 14 then
         return "Decal"
@@ -2033,160 +2252,6 @@ local function SwitchTab(tabName)
     end
     
     RenderAssets()
-end
-
--------------------------------------------------------------------------
--- PENYESUAIAN 1: PENGATURAN URUTAN LAYOUT TAB (MODEL -> DECAL -> AUDIO -> PLUGIN)
--------------------------------------------------------------------------
-local BackgroundModel = LMG2L and LMG2L["BackgroundModel_11"]
-local BackgroundDecal = LMG2L and LMG2L["BackgroundDecal_1e"]
-local BackgroundAudio = LMG2L and LMG2L["BackgroundAudio_a"]
-local BackgroundPlugin = LMG2L and LMG2L["BackgroundPlugin_18"]
-
--- Mengatur LayoutOrder agar UIListLayout_17 menyusun secara otomatis
-if BackgroundModel then BackgroundModel.LayoutOrder = 1 end
-if BackgroundDecal then BackgroundDecal.LayoutOrder = 2 end
-if BackgroundAudio then BackgroundAudio.LayoutOrder = 3 end
-if BackgroundPlugin then BackgroundPlugin.LayoutOrder = 4 end
-
-
--------------------------------------------------------------------------
--- PENYESUAIAN 2 & 3: RENDER LIST, INDICATOR VISIBILITY, & TOTAL AMOUNT
--------------------------------------------------------------------------
-local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
-
--- Integrasi Fungsi RenderAssets Baru
-local function RenderAssets(searchQuery)
-    ClearList()
-    
-    CurrentSessionId = CurrentSessionId + 1
-    local thisSession = CurrentSessionId
-    local targetCategoryAtCall = CurrentCategory
-    
-    -- Switch Sumber Data
-    local targetList = IsShowingSavedOnly and (SavedAssets[targetCategoryAtCall] or {}) or (MasterAssets[targetCategoryAtCall] or {})
-    
-    -- Update Total Jumlah Asset di AmountAsset_4a
-    if AmountAssetLabel and AmountAssetLabel:IsA("TextLabel") then
-        AmountAssetLabel.Text = tostring(#targetList)
-    end
-    
-    local query = ""
-    if searchQuery and searchQuery ~= "Search asset..." then
-        query = searchQuery:lower():match("^%s*(.-)%s*$") or ""
-    end
-
-    local function UpdateCanvas()
-        if CurrentCategory ~= targetCategoryAtCall or not ScrollingFrame then return end
-        local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
-        if layout then
-            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
-        end
-    end
-
-    for _, item in ipairs(targetList) do
-        task.spawn(function()
-            local assetId = typeof(item) == "table" and item.Id or item
-            local numericId = tonumber(assetId)
-            if not numericId then return end
-
-            local success, info = true, AssetInfoCache[numericId]
-            if not info then
-                success, info = pcall(function() return MarketplaceService:GetProductInfo(numericId) end)
-                if success and info then AssetInfoCache[numericId] = info end
-            end
-            
-            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall then return end
-            
-            if success and info then
-                -- Match Filter (Nama, Creator, ID)
-                if query ~= "" then
-                    local nameLower = info.Name and info.Name:lower() or ""
-                    local creatorLower = (info.Creator and info.Creator.Name) and info.Creator.Name:lower() or ""
-                    local assetIdStr = tostring(numericId)
-                    if not nameLower:find(query, 1, true) and not creatorLower:find(query, 1, true) and not assetIdStr:find(query, 1, true) then
-                        return 
-                    end
-                end
-
-                if not TemplateFrame then return end
-                local card = TemplateFrame:Clone()
-                card.Visible = true
-                card.Parent = ScrollingFrame
-                card.Name = "Asset_" .. numericId
-
-                -- Reference Elemen Card
-                local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
-                local NameLabel = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
-                local CreatorLabel = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
-                local IDLabel = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
-                local IconSaved = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
-                
-                local BackgroundCopy = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
-                local CopyBtn = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
-                local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
-                local InsertBtn = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
-
-                -- Set Text & Media Information
-                if NameLabel then NameLabel.Text = info.Name end
-                if CreatorLabel then CreatorLabel.Text = "By: " .. (info.Creator and info.Creator.Name or "Unknown") end
-                if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
-
-                if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
-                    if targetCategoryAtCall == "Audio" then
-                        ThumbnailAsset.Image = "rbxassetid://16327318049"
-                    else
-                        ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
-                    end
-                end
-
-                -- VISIBILITY ICON SAVED RULE:
-                -- Hanya Muncul (Visible = true) saat dalam Mode Saved Only (toolbox_assets.json).
-                -- Sembunyikan (Visible = false) jika memuat dari Katalog Utama (Asset.json).
-                if IconSaved then
-                    IconSaved.Visible = IsShowingSavedOnly
-                end
-
-                -- Toggle Unsave / Remove Asset khusus Mode Saved Only
-                if IconSaved and IconSaved:IsA("GuiButton") then
-                    IconSaved.MouseButton1Click:Connect(function()
-                        local categoryList = SavedAssets[targetCategoryAtCall]
-                        if categoryList then
-                            for i, id in ipairs(categoryList) do
-                                if tonumber(id) == numericId then
-                                    table.remove(categoryList, i)
-                                    break
-                                end
-                            end
-                            SaveUserData()
-                            RenderAssets(SearchBox and SearchBox.Text or "")
-                        end
-                    end)
-                end
-
-                -- Button Listeners
-                if CopyBtn and CopyBtn:IsA("GuiButton") then
-                    CopyBtn.MouseButton1Click:Connect(function()
-                        setclipboard(tostring(numericId))
-                        local originalText = CopyBtn.Text
-                        CopyBtn.Text = "Copied!"
-                        task.wait(1)
-                        CopyBtn.Text = originalText
-                    end)
-                end
-
-                if InsertBtn and InsertBtn:IsA("GuiButton") then
-                    InsertBtn.MouseButton1Click:Connect(function()
-                        InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
-                        task.wait(1.5)
-                        InsertBtn.Text = "INSERT"
-                    end)
-                end
-            end
-        end)
-    end
-    
-    task.delay(0.5, UpdateCanvas)
 end
 
 -------------------------------------------------------------------------
