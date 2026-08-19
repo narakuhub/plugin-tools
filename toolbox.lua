@@ -2036,4 +2036,45 @@ local function SwitchTab(tabName)
     RenderAssets()
 end
 
+-------------------------------------------------------------------------
+-- HELPER: EFEK FOKUS & TRANSPARANSI INPUT BOX
+-------------------------------------------------------------------------
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
+
+local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
+    -- Saat kotak di-klik / mulai diketik
+    textBox.Focused:Connect(function()
+        textBox.TextTransparency = 0
+        textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        if textBox.Text == defaultPlaceholder then
+            textBox.Text = ""
+        end
+    end)
+
+    -- Saat fokus dilepas dari kotak
+    textBox.FocusLost:Connect(function()
+        if textBox.Text == "" or textBox.Text == defaultPlaceholder then
+            textBox.Text = defaultPlaceholder
+            textBox.TextTransparency = 0.5
+        else
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+    end)
+
+    -- Deteksi perubahan teks (Pembersihan Teks Manual / Auto Clean ID)
+    textBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local currentText = textBox.Text
+        if currentText ~= "" and currentText ~= defaultPlaceholder then
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+    end)
+end
+
+-- Menerapkan Efek Visual ke Seluruh Input Box
+SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
+SetupInputBoxBehavior(SearchBox, "Search asset...")
+SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
+
 return LMG2L["ScreenGui_1"], require;
