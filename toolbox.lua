@@ -2178,58 +2178,46 @@ if InsertButton and InsertButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- FIX: LOGIC SEARCH & SAVE SYSTEM (SINKRONISASI STRUKTUR SCREENGUI BARU)
+-- FIX: LOGIC SEARCH & SAVE SYSTEM (EXPLICIT SEARCH & STRICT DUPLICATE CHECK)
 -------------------------------------------------------------------------
 
--- Referensi Tombol & Input Utama (Dengan Proteksi Anti Index Nil)
+-- Referensi Tombol & Input Utama
 local SearchButton = LMG2L and LMG2L["SearchButton_75"]
 local SaveButton = LMG2L and LMG2L["SaveButton_56"]
 local InsertButton = LMG2L and LMG2L["InsertButton_34"]
 
--- 1. FUNGSIONALITAS SEARCH BUTTON & REALTIME FILTERING
+-- 1. FUNGSIONALITAS SEARCH BUTTON (MEMPROSES SEARCH HANYA SAAT DIKLIK)
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
-        if not SearchBox or not SearchBox:IsA("TextBox") then return end
-        local inputText = SearchBox.Text
+        local inputText = ""
+        if SearchBox and SearchBox:IsA("TextBox") then
+            inputText = SearchBox.Text
+        end
+        
+        local originalText = SearchButton.Text
+        SearchButton.Text = "..."
         
         if inputText == "" or inputText:lower() == "search asset..." then
             RenderAssets("")
         else
-            local originalText = SearchButton.Text
-            SearchButton.Text = "..."
             RenderAssets(inputText)
-            task.wait(0.5)
-            if SearchButton then SearchButton.Text = originalText end
-        end
-    end)
-end
-
--- Deteksi Ketikan Dinamis dengan Debounce Protection
-if SearchBox and SearchBox:IsA("TextBox") then
-    local searchDebounceThread = nil
-    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        if searchDebounceThread then
-            task.cancel(searchDebounceThread)
         end
         
-        searchDebounceThread = task.delay(0.25, function()
-            local currentText = SearchBox.Text
-            if currentText == "" or currentText:lower() == "search asset..." then
-                RenderAssets("")
-            else
-                RenderAssets(currentText)
-            end
-        end)
+        task.wait(0.3)
+        if SearchButton then 
+            SearchButton.Text = originalText 
+        end
     end)
 end
 
--- 2. FUNGSIONALITAS SAVE BUTTON (Validasi Duplikasi & Auto-Switch Tab)
+-- 2. FUNGSIONALITAS SAVE BUTTON (VALIDASI ID DUPLIKAT & AUTO-SWITCH TAB)
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
         if not SaveIDBox or not SaveIDBox:IsA("TextBox") then return end
         local rawText = SaveIDBox.Text
         local cleanId = tonumber(rawText:match("%d+"))
 
+        -- Validasi Input Harus Angka
         if not cleanId then
             SaveIDBox.Text = "Harus ID Angka!"
             SaveIDBox.TextTransparency = 0
@@ -2241,7 +2229,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             return
         end
 
-        -- Format Teks Box
+        -- Format UI Text Box
         SaveIDBox.Text = tostring(cleanId)
         SaveIDBox.TextTransparency = 0
         if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
@@ -2249,8 +2237,8 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         end
 
         SaveButton.Text = "..."
-        
-        -- Pengecekan Duplikasi ID di Seluruh Kategori
+
+        -- CEGAH SIMPAN: Pengecekan Duplikasi ID di Seluruh Kategori saved_assets.json
         local isDuplicate = false
         for _, assetList in pairs(SavedAssets or {}) do
             if typeof(assetList) == "table" then
@@ -2264,6 +2252,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             if isDuplicate then break end
         end
 
+        -- Jika ID Sudah Ada di Database Lokal, Batalkan Proses Save
         if isDuplicate then
             SaveIDBox.Text = "Sudah Ada!"
             task.wait(1.5)
@@ -2285,12 +2274,14 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 SavedAssets[cat] = {}
             end
             
+            -- Simpan ke Database
             table.insert(SavedAssets[cat], cleanId)
             
             if typeof(SaveUserData) == "function" then
                 SaveUserData()
             end
             
+            -- Pindah Tab Otomatis ke Kategori Asset yang Disimpan
             if typeof(SwitchTab) == "function" then
                 SwitchTab(cat)
             end
