@@ -1446,35 +1446,40 @@ if TemplateFrame then
 end
 
 -------------------------------------------------------------------------
--- TAHAP VISUAL: TAB & FILTER COLOR STATE SYSTEM
+-- TAHAP VISUAL: TAB & FILTER COLOR STATE SYSTEM (FIXED TARGET BUTTON)
 -------------------------------------------------------------------------
--- Inisialisasi Objek Visual dari Hirarki LMG2L
-local BackgroundModel = LMG2L and LMG2L["BackgroundModel_11"]
-local BackgroundDecal = LMG2L and LMG2L["BackgroundDecal_1e"]
-local BackgroundAudio = LMG2L and LMG2L["BackgroundAudio_a"]
-local BackgroundPlugin = LMG2L and LMG2L["BackgroundPlugin_18"]
+-- Inisialisasi Elemen Tombol dan Ikon berdasarkan Hirarki UI LMG2L
+local ModelButton = LMG2L and LMG2L["ModelButton_12"]
+local DecalButton = LMG2L and LMG2L["DecalButton_21"]
+local AudioButton = LMG2L and LMG2L["AudioButton_b"]
+local PluginButton = LMG2L and LMG2L["PluginButton_19"]
 
 local IconModel = LMG2L and LMG2L["IconModel_15"]
 local IconDecal = LMG2L and LMG2L["IconDecal_1f"]
 local IconAudio = LMG2L and LMG2L["IconAudio_f"]
 local IconPlugin = LMG2L and LMG2L["IconPlugin_1d"]
 
+-- Inisialisasi Elemen CardSaved Filter
+local CardSaved = LMG2L and LMG2L["CardSaved_2a"]
+local SavedButton = LMG2L and LMG2L["SavedButton_2c"]
+local IconSaved = LMG2L and LMG2L["IconSaved_2e"]
+
 -- Skema Warna Spesifik
-local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)       -- Background Active State
-local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)         -- Background Inactive State
+local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)          -- Background Button Active State
+local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)            -- Background Button Inactive State
 
-local COLOR_TEXT_ACTIVE = Color3.fromRGB(0, 0, 0)         -- Text & Icon Active State (Hitam)
-local COLOR_TEXT_INACTIVE = Color3.fromRGB(223, 230, 237)   -- Text & Icon Inactive State (Normal)
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(0, 0, 0)            -- Text & Icon Active State (Hitam)
+local COLOR_TEXT_INACTIVE = Color3.fromRGB(223, 230, 237)      -- Text & Icon Inactive State (Terang)
 
--- Tabel Pemetaan Elemen Visual
+-- Tabel Pemetaan Elemen Visual Tab
 local TabVisualMap = {
-    ["Model"] = { Background = BackgroundModel, Button = ModelButton, Icon = IconModel },
-    ["Decal"] = { Background = BackgroundDecal, Button = DecalButton, Icon = IconDecal },
-    ["Audio"] = { Background = BackgroundAudio, Button = AudioButton, Icon = IconAudio },
-    ["Plugin"] = { Background = BackgroundPlugin, Button = PluginButton, Icon = IconPlugin }
+    ["Model"] = { Button = ModelButton, Icon = IconModel },
+    ["Decal"] = { Button = DecalButton, Icon = IconDecal },
+    ["Audio"] = { Button = AudioButton, Icon = IconAudio },
+    ["Plugin"] = { Button = PluginButton, Icon = IconPlugin }
 }
 
--- Fungsi Utility untuk Mengubah Warna Visual Tab
+-- Fungsi Utility untuk Mengubah Warna Visual Tab (Button Background + Text + Icon)
 local function UpdateTabVisualState(category, isActive)
     local visualData = TabVisualMap[category]
     if not visualData then return end
@@ -1482,38 +1487,32 @@ local function UpdateTabVisualState(category, isActive)
     local bgCol = isActive and COLOR_ACTIVE or COLOR_INACTIVE
     local contentCol = isActive and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
 
-    if visualData.Background then
-        visualData.Background.BackgroundColor3 = bgCol
+    -- Mengubah Warna Background & Text pada TextButton langsung
+    if visualData.Button and visualData.Button:IsA("TextButton") then
+        visualData.Button.BackgroundColor3 = bgCol
+        visualData.Button.TextColor3 = contentCol
     end
     
-    if visualData.Button then
-        if visualData.Button:IsA("TextButton") or visualData.Button:IsA("TextLabel") then
-            visualData.Button.TextColor3 = contentCol
-        end
-    end
-    
-    if visualData.Icon and visualData.Icon:IsA("ImageLabel") then
+    -- Mengubah Warna Image Icon
+    if visualData.Icon and (visualData.Icon:IsA("ImageLabel") or visualData.Icon:IsA("ImageButton")) then
         visualData.Icon.ImageColor3 = contentCol
     end
 end
 
--- Fungsi Utility Khusus Visual CardSaved Filter Toggle
+-- Fungsi Utility Khusus Visual CardSaved Filter Toggle (SavedButton_2c & IconSaved_2e)
 local function UpdateSavedFilterVisualState(isSavedOnly)
     local bgCol = isSavedOnly and COLOR_ACTIVE or COLOR_INACTIVE
     local contentCol = isSavedOnly and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
 
-    if CardSaved then
-        CardSaved.BackgroundColor3 = bgCol
+    -- Ubah Background & Text pada SavedButton_2c
+    if SavedButton and SavedButton:IsA("TextButton") then
+        SavedButton.BackgroundColor3 = bgCol
+        SavedButton.TextColor3 = contentCol
     end
     
-    if SavedButton then
-        if SavedButton:IsA("TextButton") or SavedButton:IsA("TextLabel") then
-            SavedButton.TextColor3 = contentCol
-        end
-    end
-    
-    if SavedIconIndicator and SavedIconIndicator:IsA("ImageLabel") then
-        SavedIconIndicator.ImageColor3 = contentCol
+    -- Ubah Warna IconSaved_2e
+    if IconSaved and (IconSaved:IsA("ImageLabel") or IconSaved:IsA("ImageButton")) then
+        IconSaved.ImageColor3 = contentCol
     end
 end
 
