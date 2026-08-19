@@ -1378,4 +1378,71 @@ end
 UpdatePanelLayout(ORIGINAL_HEIGHT)
 UpdateOpenButtonIcon()
 
+-------------------------------------------------------------------------
+-- TAHAP 1: SERVICES & STUDIO LITE BINDINGS
+-------------------------------------------------------------------------
+local TweenService = game:GetService("TweenService")	
+local MarketplaceService = game:GetService("MarketplaceService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local StudioLiteFolder = game:GetService("ReplicatedStorage"):WaitForChild("StudioLiteFolder", 3)
+local LoadAssetRemote = StudioLiteFolder and StudioLiteFolder:WaitForChild("LoadAssetModelToPlayerGuiServerFunction", 3)
+local ClearAssetRemote = StudioLiteFolder and StudioLiteFolder:WaitForChild("ClearAssetModelToPlayerGuiServerFunction", 3)
+
+local StudioGui = PlayerGui:WaitForChild("StudioGui", 3)
+local ExplorerPanel = StudioGui and StudioGui:WaitForChild("ExplorerPanel", 3)
+local GetSelection = ExplorerPanel and ExplorerPanel:WaitForChild("GetSelection", 3)
+local SetSelection = ExplorerPanel and ExplorerPanel:WaitForChild("SetSelection", 3)
+
+-- Safety File I/O Bindings (mencegah nil value pada executor)
+local writefile = writefile or (io and io.writefile)
+local readfile = readfile or (io and io.readfile)
+local isfile = isfile or (io and io.isfile)
+local isfolder = isfolder or (io and io.isfolder)
+local makefolder = makefolder or (io and io.makefolder)
+local setclipboard = setclipboard or toclipboard or print
+
+-------------------------------------------------------------------------
+-- TAHAP 2: UI MAPPING (REFERENSI HIRARKI LMG2L BARU)
+-------------------------------------------------------------------------
+-- Memastikan tabel LMG2L ada sebelum di-index
+local Gui = LMG2L and LMG2L["ScreenGui_1"]
+local MainPanel = LMG2L and LMG2L["Panel_3"]
+
+-- Tab Filter Buttons (Di dalam ScrollingTab_9)
+local AudioButton = LMG2L and LMG2L["AudioButton_b"]
+local ModelButton = LMG2L and LMG2L["ModelButton_12"]
+local PluginButton = LMG2L and LMG2L["PluginButton_19"]
+local DecalButton = LMG2L and LMG2L["DecalButton_21"]
+
+-- Toggle Filter Saved Assets Button
+local CardSaved = LMG2L and LMG2L["CardSaved_2a"]
+local SavedButton = LMG2L and LMG2L["SavedButton_2c"]
+local SavedIconIndicator = LMG2L["IconSaved_2e"]
+
+-- Bagian Atas Panel (Fungsi INSERT ID ke Workspace)
+local InsertIDBox = LMG2L and LMG2L["InsertBox_38"]
+local InsertButton = LMG2L and LMG2L["InsertButton_34"]
+
+-- Bagian Atas Panel (Fungsi SEARCH)
+local SearchBox = LMG2L and LMG2L["SearchBox_4"]
+local SearchButton = LMG2L and LMG2L["SearchButton_75"]
+
+-- Bagian Bawah Panel (Fungsi SAVE)
+local SaveIDBox = LMG2L and LMG2L["SaveBox_24"]
+local SaveIDButton = LMG2L and LMG2L["SaveButton_56"]
+
+-- List Kontainer dan Item Template
+local ScrollingFrame = LMG2L and LMG2L["ScrollingFrame_5a"]
+local TemplateFrame = LMG2L and LMG2L["Card_5d"]
+
+-- Safe Isolation Template Card (mencegah attempt to index nil)
+if TemplateFrame then
+    TemplateFrame.Visible = false
+    TemplateFrame.Parent = nil
+end
+
 return LMG2L["ScreenGui_1"], require;
