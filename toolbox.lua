@@ -2495,4 +2495,166 @@ if typeof(SwitchTab) == "function" then
     SwitchTab("Model")
 end
 
+-------------------------------------------------------------------------
+-- MENU SYSTEM LOGIC (TOGGLE, DYNAMIC CLONING & RAW LINK EXECUTOR)
+-------------------------------------------------------------------------
+
+-- Asset Asset ID untuk Icon Toggle Menu
+local ICON_MENU_CLOSED = "rbxassetid://76007989326576"
+local ICON_MENU_OPEN   = "rbxassetid://75539660682193"
+
+-- Referensi Elemen UI LMG2L
+local MenuButton     = LMG2L and (LMG2L["MenuButton_54"] or LMG2L["MenuButton"])
+local CardMenu       = LMG2L and (LMG2L["CardMenu_3d"] or LMG2L["CardMenu"])
+local ScrollingMenu  = CardMenu and (CardMenu:FindFirstChild("ScrollingButton_3f") or CardMenu:FindFirstChild("ScrollingButton"))
+
+-- Template Button Frame (Diambil dari BackgroundButton_42)
+local TemplateMenuBtn = ScrollingMenu and ScrollingMenu:FindFirstChild("BackgroundButton_42")
+
+-- Sembunyikan Template Awal agar tidak terlihat kosong
+if TemplateMenuBtn then
+    TemplateMenuBtn.Visible = false
+end
+
+-------------------------------------------------------------------------
+-- 1. DATABASE LIST MENU BUTTON (TAMBAHKAN FITUR / RAW LINK DI SINI)
+-------------------------------------------------------------------------
+local MenuDatabase = {
+    {
+        Name = "Infinite Yield",
+        Icon = "rbxassetid://10723415903", -- Ganti ID Icon sesuai keinginan
+        RawLink = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
+    },
+    {
+        Name = "Dex Explorer",
+        Icon = "rbxassetid://10723346959",
+        RawLink = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"
+    },
+    {
+        Name = "Remote Spy",
+        Icon = "rbxassetid://10723356511",
+        RawLink = "https://raw.githubusercontent.com/ex-ser/SimpleSpy/main/SimpleSpy.lua"
+    }
+}
+
+-------------------------------------------------------------------------
+-- 2. TOGGLE VISIBILITY & ICON SWITCHER (MenuButton_54)
+-------------------------------------------------------------------------
+if MenuButton and CardMenu then
+    -- Inisialisasi awal UI
+    CardMenu.Visible = false
+    
+    local menuIconLabel = MenuButton:IsA("ImageButton") and MenuButton 
+        or MenuButton:FindFirstChildOfClass("ImageLabel") 
+        or MenuButton:FindFirstChild("IconMenu")
+
+    if menuIconLabel and menuIconLabel:IsA("ImageLabel") or menuIconLabel:IsA("ImageButton") then
+        menuIconLabel.Image = ICON_MENU_CLOSED
+    end
+
+    MenuButton.MouseButton1Click:Connect(function()
+        -- Toggle Status Visible
+        CardMenu.Visible = not CardMenu.Visible
+
+        -- Switch Asset Icon Tombol
+        if menuIconLabel then
+            if CardMenu.Visible then
+                menuIconLabel.Image = ICON_MENU_OPEN
+            else
+                menuIconLabel.Image = ICON_MENU_CLOSED
+            end
+        end
+    end)
+end
+
+-------------------------------------------------------------------------
+-- 3. FUNCTION CLONE BUTTON & EXECUTE RAW LINK
+-------------------------------------------------------------------------
+local function CreateMenuButton(name, iconId, rawLink)
+    if not TemplateMenuBtn or not ScrollingMenu then return end
+
+    -- Clone BackgroundButton_42
+    local newBtnFrame = TemplateMenuBtn:Clone()
+    newBtnFrame.Name = "Menu_" .. tostring(name)
+    newBtnFrame.Visible = true
+    newBtnFrame.Parent = ScrollingMenu
+
+    -- Referensi Elemen di Dalam Clone
+    local iconLabel = newBtnFrame:FindFirstChild("IconButton_43", true)
+    local actionBtn = newBtnFrame:FindFirstChild("Button_45", true) or newBtnFrame:FindFirstChildOfClass("TextButton")
+
+    -- Assign Icon
+    if iconLabel and (iconLabel:IsA("ImageLabel") or iconLabel:IsA("ImageButton")) then
+        if iconId and iconId ~= "" then
+            iconLabel.Image = iconId
+        end
+    end
+
+    -- Assign Teks & Listener Execute RAW LINK
+    if actionBtn and actionBtn:IsA("GuiButton") then
+        actionBtn.Text = tostring(name)
+
+        actionBtn.MouseButton1Click:Connect(function()
+            local originalText = actionBtn.Text
+            actionBtn.Text = "EXECUTING..."
+
+            task.spawn(function()
+                if rawLink and rawLink ~= "" then
+                    local success, err = pcall(function()
+                        local scriptContent = game:HttpGet(rawLink)
+                        local execFunc = loadstring(scriptContent)
+                        if execFunc then
+                            execFunc()
+                        end
+                    end)
+
+                    if success then
+                        actionBtn.Text = "SUCCESS!"
+                    else
+                        warn("[MENU EXECUTE ERROR]:", err)
+                        actionBtn.Text = "FAILED!"
+                    end
+                else
+                    actionBtn.Text = "NO LINK!"
+                end
+
+                task.wait(1.2)
+                if actionBtn then
+                    actionBtn.Text = originalText
+                end
+            end)
+        end)
+    end
+end
+
+-------------------------------------------------------------------------
+-- 4. BUILD LIST MENU DARIKAN DATABASE
+-------------------------------------------------------------------------
+local function PopulateMenuList()
+    if not ScrollingMenu then return end
+
+    -- Clear elemen hasil clone sebelumnya (kecuali Template)
+    for _, child in ipairs(ScrollingMenu:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("GuiObject") then
+            if child ~= TemplateMenuBtn then
+                child:Destroy()
+            end
+        end
+    end
+
+    -- Render Ulang dari Database Menu
+    for _, menuData in ipairs(MenuDatabase) do
+        CreateMenuButton(menuData.Name, menuData.Icon, menuData.RawLink)
+    end
+
+    -- Dynamic CanvasSize Auto Calibration untuk ScrollingButton_3f
+    local listLayout = ScrollingMenu:FindFirstChildOfClass("UIListLayout")
+    if listLayout then
+        ScrollingMenu.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 15)
+    end
+end
+
+-- Jalankan pendaftaran menu
+PopulateMenuList()
+
 return LMG2L["ScreenGui_1"], require;
