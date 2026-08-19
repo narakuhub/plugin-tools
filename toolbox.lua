@@ -2077,4 +2077,45 @@ SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
 SetupInputBoxBehavior(SearchBox, "Search asset...")
 SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
 
+-------------------------------------------------------------------------
+-- ACTION LISTENERS & EVENT HANDLERS
+-------------------------------------------------------------------------
+ModelButton.MouseButton1Click:Connect(function() SwitchTab("Model") end)
+DecalButton.MouseButton1Click:Connect(function() SwitchTab("Decal") end)
+AudioButton.MouseButton1Click:Connect(function() SwitchTab("Audio") end)
+if PluginButton then
+    PluginButton.MouseButton1Click:Connect(function() SwitchTab("Plugin") end)
+end
+
+-- FUNGSIONALITAS 1: INSERT BUTTON
+InsertButton.MouseButton1Click:Connect(function()
+    local rawText = InsertIDBox.Text
+    
+    -- Mengekstrak khusus deretan angka ID saja dari teks input
+    local cleanId = tonumber(rawText:match("%d+"))
+
+    if cleanId then
+        -- Mengubah teks box hanya menyisakan angka ID-nya saja
+        InsertIDBox.Text = tostring(cleanId)
+        InsertIDBox.TextTransparency = 0
+        InsertIDBox.TextColor3 = COLOR_TEXT_ACTIVE
+
+        InsertButton.Text = "WORKING"
+        InsertAsset(cleanId, nil, InsertButton)
+        task.wait(1.5)
+        InsertButton.Text = "INSERT"
+        -- Teks ID di InsertIDBox TIDAK DIHAPUS OTOMATIS (Sama seperti SearchBox & SaveBox)
+    else
+        InsertIDBox.Text = "Harus ID Angka!"
+        InsertIDBox.TextTransparency = 0
+        task.wait(1.5)
+        
+        -- Jika gagal validasi, kembalikan ke Placeholder default
+        if InsertIDBox.Text == "Harus ID Angka!" then
+            InsertIDBox.Text = "Masukan Id asset..."
+            InsertIDBox.TextTransparency = 0.5
+        end
+    end
+end)
+
 return LMG2L["ScreenGui_1"], require;
