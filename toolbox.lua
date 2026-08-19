@@ -1445,4 +1445,137 @@ if TemplateFrame then
     TemplateFrame.Parent = nil
 end
 
+-------------------------------------------------------------------------
+-- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (DUAL DATABASE)
+-------------------------------------------------------------------------
+local CurrentCategory = "Model" 
+local CurrentSessionId = 0
+local IsShowingSavedOnly = false -- Status Toggle Filter (False = MasterAssets, True = SavedAssets)
+
+-- Skema Warna Visual UI Baru
+local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)    -- Active State
+local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)      -- Normal/Inactive State
+
+-- Dual Database System
+local MasterAssets = {    -- Katalog Utama dari Remote Assets.json
+    Model = {},
+    Decal = {},
+    Audio = {},
+    Plugin = {}
+}
+
+local SavedAssets = {    -- Database Lokal User dari delta/toolbox_assets.json
+    Model = {89464989224212, 16063473188},
+    Decal = {4846381420},
+    Audio = {118149279616179, 124112959171614},
+    Plugin = {}
+}
+
+-- 1. Memuat Master Database (HANYA 1 KALI FETCH/LOAD REMOTE)
+local function FetchMasterAssets()
+    local success, response = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/Assets.json")
+    end)
+    
+    if success and response and #response > 0 then
+        local decodeSuccess, decoded = pcall(function()
+            return HttpService:JSONDecode(response)
+        end)
+        
+        if decodeSuccess and type(decoded) == "table" then
+            MasterAssets = decoded
+            -- Menjamin ketersediaan struktur tabel
+            MasterAssets.Model = MasterAssets.Model or {}
+            MasterAssets.Decal = MasterAssets.Decal or {}
+            MasterAssets.Audio = MasterAssets.Audio or {}
+            MasterAssets.Plugin = MasterAssets.Plugin or {}
+        end
+    end
+end
+
+-- 2. Memuat Data User khusus dari Executor Storage (delta/toolbox_assets.json)
+local function LoadUserData()
+    if makefolder and isfile and readfile then
+        pcall(function()
+            if isfolder and not isfolder("delta") then 
+                makefolder("delta") 
+            end
+            
+            if isfile("delta/toolbox_assets.json") then
+                local data = readfile("delta/toolbox_assets.json")
+                if data and #data > 0 then
+                    local decodeSuccess, decoded = pcall(function()
+                        return HttpService:JSONDecode(data)
+                    end)
+                    
+                    if decodeSuccess and type(decoded) == "table" then 
+                        SavedAssets = decoded 
+                        SavedAssets.Model = SavedAssets.Model or {}
+                        SavedAssets.Decal = SavedAssets.Decal or {}
+                        SavedAssets.Audio = SavedAssets.Audio or {}
+                        SavedAssets.Plugin = SavedAssets.Plugin or {}
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- 3. Menyimpan Data User ke Executor Storage
+local function SaveUserData()
+    if writefile then
+        pcall(function()
+            if isfolder and not isfolder("delta") then 
+                makefolder("delta") 
+            end
+            local encodedData = HttpService:JSONEncode(SavedAssets)
+            writefile("delta/toolbox_assets.json", encodedData)
+        end)
+    end
+end
+
+-- 4. Helper Checking: Status IconSaved Hanya Jika Terdaftar di toolbox_assets.json
+local function IsAssetSaved(category, assetId)
+    local numericId = tonumber(assetId)
+    if not category or not SavedAssets[category] then return false end
+    
+    for _, id in ipairs(SavedAssets[category]) do
+        if tonumber(id) == numericId then
+            return true
+        end
+    end
+    return false
+end
+
+-- Inisialisasi Database
+FetchMasterAssets()
+LoadUserData()
+
+-------------------------------------------------------------------------
+-- TAHAP 4: CLEAR LIST & CATEGORY SYSTEM
+-------------------------------------------------------------------------
+-- Membersihkan isi list rendering lama di ScrollingFrame
+local function ClearList()
+    if not ScrollingFrame then return end
+    
+    for _, item in ipairs(ScrollingFrame:GetChildren()) do
+        if item:IsA("Frame") and item ~= TemplateFrame then
+            item:Destroy()
+        end
+    end
+end
+
+-- Deteksi Kategori Otomatis Berdasarkan Roblox AssetTypeId
+local function GetCategoryFromAssetType(assetTypeId)
+    if assetTypeId == 13 or assetTypeId == 1 or assetTypeId == 2 or assetTypeId == 14 then
+        return "Decal"
+    elseif assetTypeId == 3 or assetTypeId == 34 then
+        return "Audio"
+    elseif assetTypeId == 38 then
+        return "Plugin"
+    else
+        return "Model"
+    end
+end
+
 return LMG2L["ScreenGui_1"], require;
