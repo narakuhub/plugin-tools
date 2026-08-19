@@ -2496,13 +2496,12 @@ if typeof(SwitchTab) == "function" then
 end
 
 -------------------------------------------------------------------------
--- TAHAP 7: DYNAMIC MENU SYSTEM & RAW LINK EXECUTOR (FIXED)
+-- TAHAP 7: DYNAMIC MENU SYSTEM & RAW LINK EXECUTOR (FIXED FINAL)
 -------------------------------------------------------------------------
 
 -- Referensi UI LMG2L
 local MenuButton = LMG2L and (LMG2L["MenuButton_54"] or LMG2L["MenuButton"])
 local CardMenu   = LMG2L and (LMG2L["CardMenu_3d"] or LMG2L["CardMenu"])
-local MenuIcon   = MenuButton and (MenuButton:FindFirstChildOfClass("ImageLabel") or MenuButton)
 
 local ScrollingButton  = CardMenu and (CardMenu:FindFirstChild("ScrollingButton_3f") or CardMenu:FindFirstChild("ScrollingButton"))
 local TemplateBgButton = ScrollingButton and (ScrollingButton:FindFirstChild("BackgroundButton_42") or ScrollingButton:FindFirstChild("BackgroundButton"))
@@ -2511,7 +2510,7 @@ local TemplateBgButton = ScrollingButton and (ScrollingButton:FindFirstChild("Ba
 local ICON_CLOSED = "rbxassetid://76007989326576"
 local ICON_OPENED = "rbxassetid://75539660682193"
 
--- State Menu
+-- State Menu Tracker
 local IsMenuOpen = false
 
 -------------------------------------------------------------------------
@@ -2519,19 +2518,19 @@ local IsMenuOpen = false
 -------------------------------------------------------------------------
 local MenuFeatureList = {
     {
-        Name = "Dex Explorer",
+        Name = "ARCHIMEDES",
         Icon = "rbxassetid://10734882126",
-        RawLink = "https://raw.githubusercontent.com/inforyou/roblox/main/dex.lua"
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/Archimedes.lua"
     },
     {
-        Name = "Remote Spy",
+        Name = "TERRAIN",
         Icon = "rbxassetid://10734950309",
-        RawLink = "https://raw.githubusercontent.com/inforyou/roblox/main/remotespy.lua"
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/terrain.lua"
     },
     {
-        Name = "Infinite Yield",
+        Name = "FLY GUI",
         Icon = "rbxassetid://10734975692",
-        RawLink = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
+        RawLink = "https://raw.githubusercontent.com/narakuhub/narakuhub/refs/heads/main/FlyV3.lua"
     }
 }
 
@@ -2565,7 +2564,7 @@ local function BuildMenuItems()
 
         -- Assign Custom Icon ImageLabel
         if IconButton and IconButton:IsA("ImageLabel") then
-            IconButton.Image = featureData.Icon or "rbxassetid://76007989326576"
+            IconButton.Image = featureData.Icon or ICON_CLOSED
         end
 
         -- Assign Text & Execute Event pada Button_45
@@ -2617,7 +2616,7 @@ local function BuildMenuItems()
 end
 
 -------------------------------------------------------------------------
--- 3. TOGGLE VISIBILITY & ICON SWAP LISTENER
+-- 3. TOGGLE VISIBILITY & DIRECT IMAGEBUTTON ICON SWAP LISTENER
 -------------------------------------------------------------------------
 if MenuButton then
     MenuButton.MouseButton1Click:Connect(function()
@@ -2628,9 +2627,15 @@ if MenuButton then
             CardMenu.Visible = IsMenuOpen
         end
 
-        -- Swap Icon Status Open / Close
-        if MenuIcon and MenuIcon:IsA("ImageLabel") then
-            MenuIcon.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
+        -- TEPAT: SWAP ICON LANGSUNG KEPADA MenuButton_54 (ImageButton / ImageLabel Fallback)
+        if MenuButton:IsA("ImageButton") or MenuButton:IsA("ImageLabel") then
+            MenuButton.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
+        else
+            -- Fallback jika ada child ImageLabel di dalamnya
+            local childIcon = MenuButton:FindFirstChildOfClass("ImageLabel")
+            if childIcon then
+                childIcon.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
+            end
         end
 
         -- Render/Build Tombol Menu saat Pertama Kali Dibuka
@@ -2640,8 +2645,20 @@ if MenuButton then
     end)
 end
 
--- Set Inisialisasi Tampilan Awal Menu (Hidden)
-if CardMenu then CardMenu.Visible = false end
-if MenuIcon and MenuIcon:IsA("ImageLabel") then MenuIcon.Image = ICON_CLOSED end
+-------------------------------------------------------------------------
+-- INITIAL STATE SETUP
+-------------------------------------------------------------------------
+if CardMenu then 
+    CardMenu.Visible = false 
+end
+
+if MenuButton then
+    if MenuButton:IsA("ImageButton") or MenuButton:IsA("ImageLabel") then
+        MenuButton.Image = ICON_CLOSED
+    else
+        local childIcon = MenuButton:FindFirstChildOfClass("ImageLabel")
+        if childIcon then childIcon.Image = ICON_CLOSED end
+    end
+end
 
 return LMG2L["ScreenGui_1"], require;
