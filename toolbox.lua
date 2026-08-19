@@ -2519,17 +2519,17 @@ local IsMenuOpen = false
 local MenuFeatureList = {
     {
         Name = "ARCHIMEDES",
-        Icon = "rbxassetid://10734882126",
+        Icon = "rbxassetid://87188567501065",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/Archimedes.lua"
     },
     {
         Name = "TERRAIN",
-        Icon = "rbxassetid://10734950309",
+        Icon = "rbxassetid://129361331543944",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/terrain.lua"
     },
     {
         Name = "FLY GUI",
-        Icon = "rbxassetid://10734975692",
+        Icon = "rbxassetid://126428723702595",
         RawLink = "https://raw.githubusercontent.com/narakuhub/narakuhub/refs/heads/main/FlyV3.lua"
     }
 }
