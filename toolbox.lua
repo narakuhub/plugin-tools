@@ -2379,7 +2379,7 @@ if SearchButton and SearchButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 2. FUNGSIONALITAS SAVE BUTTON (ASYNC VALIDATION, DUPLICATE CHECK & SAFE TAB SWITCH)
+-- 2. FUNGSIONALITAS SAVE BUTTON (METADATA PERSISTENCE & FLAT ARRAY FIX)
 -------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
@@ -2403,25 +2403,29 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         -- Pertahankan Teks Angka yang Valid di Box
         SaveIDBox.Text = tostring(cleanId)
         SaveIDBox.TextTransparency = 0
-        SaveIDBox.TextColor3 = COLOR_TEXT_ACTIVE
+        if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
+            SaveIDBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
 
         local originalBtnText = SaveButton.Text
         SaveButton.Text = "..."
 
         -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
-            -- CEGAH SIMPAN: Pengecekan Duplikasi ID di Seluruh Kategori SavedAssets
+            -- 1. CEGAH DUPLIKASI ID DI FLAT ARRAY SAVEDASSETS
             local isDuplicate = false
-            for _, assetList in pairs(SavedAssets or {}) do
-                if typeof(assetList) == "table" then
-                    for _, id in ipairs(assetList) do
-                        if tonumber(id) == cleanId then
-                            isDuplicate = true
-                            break
-                        end
+            if typeof(IsAssetSaved) == "function" then
+                isDuplicate = IsAssetSaved(cleanId)
+            else
+                for _, entry in ipairs(SavedAssets or {}) do
+                    if typeof(entry) == "table" and tonumber(entry.ID) == cleanId then
+                        isDuplicate = true
+                        break
+                    elseif typeof(entry) == "number" and entry == cleanId then
+                        isDuplicate = true
+                        break
                     end
                 end
-                if isDuplicate then break end
             end
 
             -- Jika ID Sudah Ada di Database Lokal
@@ -2436,40 +2440,53 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 return
             end
 
-            -- Validasi Keberadaan Asset via MarketplaceService
+            -- 2. VALIDASI KEBERADAAN ASSET & FETCH METADATA VIA MARKETPLACESERVICE
             local success, info = pcall(function() 
                 return MarketplaceService:GetProductInfo(cleanId) 
             end)
 
-            if success and info then
+            if success and info and info.Name then
                 -- Simpan Metadata ke Cache Lokal
                 if AssetInfoCache then
                     AssetInfoCache[cleanId] = info
                 end
 
-                -- Ambil Kategori Terdeteksi atau Fallback ke CurrentCategory
-                local detectedCategory = nil
-                if typeof(GetCategoryFromAssetType) == "function" and info.AssetTypeId then
-                    detectedCategory = GetCategoryFromAssetType(info.AssetTypeId)
+                -- Ekstrak Metadata Secara Presisi
+                local assetName = tostring(info.Name)
+                local creatorName = "Unknown"
+
+                if type(info.Creator) == "table" and info.Creator.Name then
+                    creatorName = tostring(info.Creator.Name)
+                elseif type(info.Creator) == "string" then
+                    creatorName = info.Creator
+                elseif info.CreatorName then
+                    creatorName = tostring(info.CreatorName)
                 end
+
+                -- Bentuk Object Saved Asset Baru (Exact Keys: Name, Creator, ID)
+                local newSavedAsset = {
+                    Name = assetName,
+                    Creator = creatorName,
+                    ID = cleanId
+                }
+
+                -- Simpan ke Memory (Flat Array)
+                SavedAssets = SavedAssets or {}
+                table.insert(SavedAssets, newSavedAsset)
                 
-                local cat = detectedCategory or CurrentCategory or "Model"
-                
-                if not SavedAssets[cat] then
-                    SavedAssets[cat] = {}
-                end
-                
-                -- Simpan ke Database Lokal
-                table.insert(SavedAssets[cat], cleanId)
-                
-                -- Simpan Permanen ke Storage User
+                -- Simpan Permanen ke Storage User (saved_assets.json)
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
                 
                 SaveButton.Text = "SAVED!"
                 
-                -- Pindah Tab Otomatis & Render Ulang
+                -- Deteksi Kategori untuk Pindah Tab Otomatis
+                local cat = CurrentCategory or "Model"
+                if typeof(GetCategoryFromAssetType) == "function" and info.AssetTypeId then
+                    cat = GetCategoryFromAssetType(info.AssetTypeId) or cat
+                end
+                
                 if typeof(SwitchTab) == "function" then
                     SwitchTab(cat)
                 elseif typeof(RenderAssets) == "function" then
