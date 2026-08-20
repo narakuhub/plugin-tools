@@ -621,44 +621,21 @@ LMG2L["Logo_46"]["Name"] = [[Logo]];
 LMG2L["Logo_46"]["Position"] = UDim2.new(0, 5, 0, 5);
 
 -- ================================================================================
--- NARAKU • IMPORT FILE (FIXED PARSER FOR EXECUTOR / STUDIO LITE)
+-- NARAKU • IMPORT FILE (RAW LINK RBXM/RBXL INSERT LOGIC V2 - HYBRID DESERIALIZER)
 -- ================================================================================
 
 local Workspace = game:GetService("Workspace")
-local InsertService = game:GetService("InsertService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local SerializationService = nil
+local PlayerGui = Players.LocalPlayer and Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Safe Service Resolution for SerializationService
-pcall(function()
-	SerializationService = game:GetService("SerializationService")
-end)
-
--- Service Mapping Target Parent
-local SERVICES = {
-	["Workspace"] = Workspace,
-	["ServerStorage"] = game:GetService("ServerStorage"),
-	["ServerScriptService"] = game:GetService("ServerScriptService"),
-	["ReplicatedStorage"] = game:GetService("ReplicatedStorage"),
-	["StarterGui"] = game:GetService("StarterGui"),
-	["StarterPack"] = game:GetService("StarterPack"),
-	["StarterPlayer"] = game:GetService("StarterPlayer"),
-	["Lighting"] = game:GetService("Lighting"),
-	["SoundService"] = game:GetService("SoundService"),
-	["Teams"] = game:GetService("Teams"),
-	["MaterialService"] = game:GetService("MaterialService"),
-}
-
--- Multi-executor HTTP Request Resolver
+-- Multi-executor HTTP Request Resolver (Byte/Binary Safe)
 local HTTP_GET_FN = (syn and syn.request) or (http and http.request) or (http_request) or (fluxus and fluxus.request) or request
 
--- Anti Double Insert Flag
 local isInserting = false
 
 -- --------------------------------------------------------------------------------
--- 1. SAFE UI RESOLVER (UNTOUCHED UI HIERARCHY)
+-- 1. SAFE UI RESOLVER (Preserved - DO NOT MODIFY GUI)
 -- --------------------------------------------------------------------------------
 local function ResolveTargetUI()
 	local screenGui = nil
@@ -672,13 +649,8 @@ local function ResolveTargetUI()
 	end
 
 	if not screenGui then
-		local localPlayer = Players.LocalPlayer
 		local searchContainers = {}
-		
-		if localPlayer then
-			local pg = localPlayer:FindFirstChildOfClass("PlayerGui")
-			if pg then table.insert(searchContainers, pg) end
-		end
+		if PlayerGui then table.insert(searchContainers, PlayerGui) end
 		
 		local successCore, coreGui = pcall(function() return game:GetService("CoreGui") end)
 		if successCore and coreGui then table.insert(searchContainers, coreGui) end
@@ -712,32 +684,141 @@ end
 local ScreenGui, MainRawBox, MainInsertButton = ResolveTargetUI()
 
 -- --------------------------------------------------------------------------------
--- 2. HELPER VALIDASI URL & BINARY HEADER
+-- 2. SAFE POSITIONING & PHYSICS POLICY
 -- --------------------------------------------------------------------------------
-local function ValidateRawUrl(url)
-	if not url or type(url) ~= "string" then return nil end
-	local cleanUrl = url:match("^%s*(.-)%s*$")
-	if cleanUrl == "" then return nil end
-	if not (cleanUrl:find("^http://") or cleanUrl:find("^https://")) then return nil end
-	return cleanUrl
+local function PositionWorkspaceObject(obj)
+	if not obj then return end
+	
+	-- Hanya ubah transform jika object merupakan Model atau BasePart
+	if obj:IsA("Model") then
+		local camera = workspace.CurrentCamera
+		if not camera then return end
+		
+		local currentCFrame, boundingSize = obj:GetBoundingBox()
+		local lowestYOffset = not obj.PrimaryPart and 0 or (obj.PrimaryPart.Position.Y - boundingSize.Y / 2)
+		local camCFrame = camera.CFrame
+		
+		local posX = math.floor((camCFrame.X + camCFrame.LookVector.X * 30) * 2) / 2
+		local posY = boundingSize.Y / 2 + lowestYOffset
+		local posZ = math.floor((camCFrame.Z + camCFrame.LookVector.Z * 30) * 2) / 2
+		
+		local calculatedPos = Vector3.new(posX, posY, posZ)
+		local raycastOrigin = Vector3.new(calculatedPos.X, camCFrame.Y, calculatedPos.Z)
+		local raycastResult = workspace:Raycast(raycastOrigin, Vector3.new(0, -camCFrame.Y, 0))
+		
+		if raycastResult then
+			local newY = raycastResult.Instance.Position.Y + raycastResult.Instance.Size.Y / 2 + boundingSize.Y / 2 + lowestYOffset
+			calculatedPos = Vector3.new(calculatedPos.X, newY, calculatedPos.Z)
+		end
+
+		obj:PivotTo(CFrame.new(calculatedPos) * currentCFrame.Rotation)
+		obj.Parent = workspace
+		obj:MakeJoints()
+	elseif obj:IsA("BasePart") then
+		local camera = workspace.CurrentCamera
+		if camera then
+			obj.CFrame = camera.CFrame * CFrame.new(0, 0, -10)
+		end
+		obj.Parent = workspace
+	else
+		-- Folder / Non-physical Instance
+		obj.Parent = workspace
+	end
 end
 
-local function ValidateBinaryHeader(data, rawUrl)
-	if type(data) ~= "string" or #data < 8 then
+-- --------------------------------------------------------------------------------
+-- 3. HIERARCHY DISTRIBUTION (CLIENT-SAFE & SERVICE MAPPING)
+-- --------------------------------------------------------------------------------
+local function InsertLoadedHierarchy(container, isServerAvailable)
+	local children = container:GetChildren()
+	local hasServerScript = false
+	
+	for _, obj in ipairs(children) do
+		-- Deteksi Server Script
+		if obj:IsA("Script") then
+			hasServerScript = true
+		end
+
+		-- Mapping Folder Service
+		local targetServiceName = nil
+		if obj:IsA("Folder") then
+			local knownServices = {
+				"Workspace", "Lighting", "MaterialService", "ReplicatedStorage", 
+				"ServerStorage", "ServerScriptService", "StarterGui", "StarterPack", 
+				"Teams", "SoundService", "StarterPlayer", "TextChatService"
+			}
+			for _, serviceName in ipairs(knownServices) do
+				if obj.Name == serviceName then
+					targetServiceName = serviceName
+					break
+				end
+			end
+		end
+
+		if targetServiceName then
+			if targetServiceName == "ServerStorage" or targetServiceName == "ServerScriptService" then
+				if isServerAvailable then
+					for _, item in pairs(obj:GetChildren()) do item.Parent = game:GetService(targetServiceName) end
+				else
+					-- Client Fallback: Simpan di ReplicatedStorage agar tidak hilang, namun tandai
+					local fallbackFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Naraku_Client_ServerContent")
+					if not fallbackFolder then
+						fallbackFolder = Instance.new("Folder")
+						fallbackFolder.Name = "Naraku_Client_ServerContent"
+						fallbackFolder.Parent = game:GetService("ReplicatedStorage")
+					end
+					for _, item in pairs(obj:GetChildren()) do item.Parent = fallbackFolder end
+				end
+			elseif targetServiceName == "StarterPlayer" then
+				for _, inner in pairs(obj:GetChildren()) do
+					if inner.Name == "StarterPlayerScripts" or inner.Name == "StarterCharacterScripts" then
+						for _, scr in pairs(inner:GetChildren()) do
+							if not game.StarterPlayer[inner.Name]:FindFirstChild(scr.Name) then
+								scr.Parent = game.StarterPlayer[inner.Name]
+							end
+						end
+					else
+						inner.Parent = game.StarterPlayer
+					end
+				end
+			else
+				for _, item in pairs(obj:GetChildren()) do 
+					local targetService = game:GetService(targetServiceName)
+					if targetService then item.Parent = targetService end
+				end
+			end
+		elseif obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") then
+			obj.Parent = game:GetService("Lighting")
+		else
+			PositionWorkspaceObject(obj)
+		end
+	end
+
+	return hasServerScript
+end
+
+-- --------------------------------------------------------------------------------
+-- 4. BINARY VALIDATION & FORMAT DETECTION
+-- --------------------------------------------------------------------------------
+local function ValidateAndDetectBinary(rawData, rawUrl)
+	if type(rawData) ~= "string" or #rawData < 8 then
 		return false, nil, "Empty Response"
 	end
 
-	local header = data:sub(1, 8)
-	local isBinary = header:find("^<roblox!") ~= nil
-	local isXml = header:find("^<%?xml") ~= nil or header:find("^<roblox") ~= nil
+	-- Header Signature Verification
+	local header = rawData:sub(1, 8)
+	local isBinary = (header == "<roblox!") or (header:sub(1, 7) == "<roblox")
+	local isXml = (header:sub(1, 5) == "<?xml") or (header:sub(1, 7) == "<roblox")
 
 	if not (isBinary or isXml) then
-		return false, nil, "Invalid Roblox Binary/XML"
+		return false, nil, "Invalid Roblox Binary"
 	end
 
+	-- Detect Format (RBXM vs RBXL)
 	local cleanUrl = rawUrl:lower():split("?")[1]
 	local fileType = "RBXM"
-	if cleanUrl:sub(-5) == ".rbxl" or (data:find("Workspace") and data:find("Lighting")) then
+	
+	if cleanUrl:sub(-5) == ".rbxl" or (rawData:find("Workspace") and rawData:find("Lighting") and rawData:find("ReplicatedStorage")) then
 		fileType = "RBXL"
 	end
 
@@ -745,192 +826,93 @@ local function ValidateBinaryHeader(data, rawUrl)
 end
 
 -- --------------------------------------------------------------------------------
--- 3. DOWNLOAD RBXM/RBXL
+-- 5. LOAD DESERIALIZATION ADAPTER (PRIORITY: SerializationService)
 -- --------------------------------------------------------------------------------
-local function DownloadRBXM(rawUrl)
-	local responseBody = nil
-
-	if HTTP_GET_FN then
-		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
-		if success and res then
-			if type(res) == "table" and (res.StatusCode == 200 or res.StatusDescription == "OK") then
-				responseBody = res.Body
-			elseif type(res) == "string" then
-				responseBody = res
-			end
-		end
-	elseif game.HttpGet then
-		local success, res = pcall(game.HttpGet, game, rawUrl)
-		if success then responseBody = res end
+local function LoadRBXMFromRaw(rawData, rawUrl)
+	local isValid, fileType, errMsg = ValidateAndDetectBinary(rawData, rawUrl)
+	if not isValid then
+		return nil, fileType, errMsg
 	end
 
-	if not responseBody or #responseBody == 0 then
-		return nil, "HTTP Error / 404"
-	end
+	local tempContainer = Instance.new("Folder")
+	tempContainer.Name = "Naraku_Import_Container"
 
-	return responseBody, nil
-end
+	-- MODE 1: SerializationService (Standard Deserializer)
+	local hasSerializationService, serializationService = pcall(function()
+		return game:GetService("SerializationService")
+	end)
 
--- --------------------------------------------------------------------------------
--- 4. DESERIALIZE ADAPTER (ROBLOX BINARY PARSER)
--- --------------------------------------------------------------------------------
-local function LoadRBXMFromRaw(rawData, rawUrl, fileType)
-	local rootContainer = Instance.new("Folder")
-	rootContainer.Name = "ImportRoot"
-
-	-- Method 1: SerializationService (Official / Engine Supported)
-	if SerializationService and SerializationService.DeserializeInstancesAsync then
-		local successSer, instances = pcall(function()
-			return SerializationService:DeserializeInstancesAsync(rawData)
+	if hasSerializationService and serializationService and serializationService.DeserializeInstancesAsync then
+		local success, instances = pcall(function()
+			return serializationService:DeserializeInstancesAsync(rawData)
 		end)
-		if successSer and type(instances) == "table" and #instances > 0 then
+
+		if success and instances and #instances > 0 then
 			for _, inst in ipairs(instances) do
-				inst.Parent = rootContainer
+				inst.Parent = tempContainer
 			end
-			return rootContainer, nil
+			return tempContainer, fileType, nil
 		end
 	end
 
-	-- Method 2: Custom Executor `deserialize()` Function
+	-- MODE 2: Custom Executor Native Deserializer
 	if deserialize then
-		local successCustom, result = pcall(deserialize, rawData)
-		if successCustom and result then
-			if type(result) == "table" then
-				for _, inst in ipairs(result) do inst.Parent = rootContainer end
-			elseif typeof(result) == "Instance" then
-				result.Parent = rootContainer
+		local success, instances = pcall(deserialize, rawData)
+		if success and instances then
+			if type(instances) == "table" then
+				for _, inst in ipairs(instances) do inst.Parent = tempContainer end
+			elseif typeof(instances) == "Instance" then
+				instances.Parent = tempContainer
 			end
-			return rootContainer, nil
+			return tempContainer, fileType, nil
 		end
 	end
 
-	-- Method 3: File-System Bridge (Fallback for File I/O supported Executors)
-	if writefile and (getcustomasset or (InsertService and InsertService.LoadLocalAsset)) then
-		local ext = (fileType == "RBXL") and ".rbxl" or ".rbxm"
-		local tempFileName = "naraku_temp_" .. HttpService:GenerateGUID(false) .. ext
-		pcall(writefile, tempFileName, rawData)
-
-		if getcustomasset then
-			local successAsset, assetId = pcall(getcustomasset, tempFileName)
-			if successAsset and assetId then
-				local successObjects, objects = pcall(game.GetObjects, game, assetId)
-				if successObjects and type(objects) == "table" and #objects > 0 then
-					for _, obj in ipairs(objects) do
-						obj.Parent = rootContainer
+	-- MODE 3: Temporary File System Loader (Fallback Mode)
+	if writefile and getcustomasset then
+		local tempFileName = "naraku_temp_" .. HttpService:GenerateGUID(false) .. ((fileType == "RBXL") and ".rbxl" or ".rbxm")
+		local writeSuccess = pcall(writefile, tempFileName, rawData)
+		
+		if writeSuccess then
+			local assetSuccess, customAsset = pcall(getcustomasset, tempFileName)
+			if assetSuccess and customAsset then
+				local loadSuccess, loadedObjs = pcall(game.GetObjects, game, customAsset)
+				if loadSuccess and type(loadedObjs) == "table" and #loadedObjs > 0 then
+					for _, item in ipairs(loadedObjs) do
+						item.Parent = tempContainer
 					end
-					if delfile then pcall(delfile, tempFileName) end
-					return rootContainer, nil
+					pcall(delfile, tempFileName)
+					return tempContainer, fileType, nil
 				end
 			end
-		end
-
-		if InsertService and InsertService.LoadLocalAsset then
-			local successLoad, result = pcall(function()
-				return InsertService:LoadLocalAsset(tempFileName)
-			end)
-			if successLoad and result then
-				if delfile then pcall(delfile, tempFileName) end
-				return result, nil
-			end
-		end
-
-		if delfile then pcall(delfile, tempFileName) end
-	end
-
-	-- Final Failure State
-	rootContainer:Destroy()
-	return nil, "Deserializer Unavailable"
-end
-
--- --------------------------------------------------------------------------------
--- 5. WORKSPACE POSITIONING
--- --------------------------------------------------------------------------------
-local function PositionWorkspaceObject(instance)
-	local camera = Workspace.CurrentCamera
-	local targetCFrame = camera and (camera.CFrame * CFrame.new(0, 0, -20)) or CFrame.new(0, 5, 0)
-
-	if instance:IsA("Model") then
-		if instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart", true) then
-			instance:PivotTo(targetCFrame)
-		end
-	elseif instance:IsA("BasePart") then
-		instance.CFrame = targetCFrame
-	end
-end
-
--- --------------------------------------------------------------------------------
--- 6. HIERARCHY DISTRIBUTION & CLIENT/SERVER SAFETY
--- --------------------------------------------------------------------------------
-local function InsertLoadedHierarchy(rootContainer)
-	local children = rootContainer:GetChildren()
-	local containsServerContent = false
-	local isClientContext = RunService:IsClient()
-
-	for _, child in ipairs(children) do
-		local name = child.Name
-
-		-- Flag Server-side Script instances
-		if child:IsA("Script") and not child:IsA("LocalScript") and not child:IsA("ModuleScript") then
-			containsServerContent = true
-		end
-
-		if SERVICES[name] then
-			local targetService = SERVICES[name]
-			if name == "ServerScriptService" or name == "ServerStorage" then
-				containsServerContent = true
-			end
-
-			for _, subChild in ipairs(child:GetChildren()) do
-				subChild.Parent = targetService
-			end
-			child:Destroy()
-		elseif name == "StarterPlayer" then
-			local spScripts = child:FindFirstChild("StarterPlayerScripts")
-			local scScripts = child:FindFirstChild("StarterCharacterScripts")
-			local starterPlayer = game:GetService("StarterPlayer")
-
-			if spScripts then
-				for _, item in ipairs(spScripts:GetChildren()) do
-					item.Parent = starterPlayer:FindFirstChildOfClass("StarterPlayerScripts") or starterPlayer
-				end
-			end
-			if scScripts then
-				for _, item in ipairs(scScripts:GetChildren()) do
-					item.Parent = starterPlayer:FindFirstChildOfClass("StarterCharacterScripts") or starterPlayer
-				end
-			end
-			child:Destroy()
-		else
-			if child:IsA("Model") or child:IsA("BasePart") then
-				PositionWorkspaceObject(child)
-			end
-			child.Parent = Workspace
+			pcall(delfile, tempFileName)
 		end
 	end
 
-	rootContainer:Destroy()
-	return isClientContext and containsServerContent
+	-- Cleanup jika tidak ada deserializer yang bekerja
+	tempContainer:Destroy()
+	return nil, fileType, "Deserializer Unavailable"
 end
 
 -- --------------------------------------------------------------------------------
--- 7. FUNCTION UTAMA: InsertFileFromRaw
+-- 6. MAIN CONTROLLER: InsertFileFromRaw
 -- --------------------------------------------------------------------------------
-local function InsertFileFromRaw(rawUrl, statusTargetBtn)
+local function InsertFileFromRaw(rawUrl, statusTarget)
 	if isInserting then return end
 	isInserting = true
 
-	local btnTextObj = statusTargetBtn and (statusTargetBtn:FindFirstChildOfClass("TextLabel") or statusTargetBtn)
-	local originalText = (btnTextObj and (btnTextObj:IsA("TextLabel") or btnTextObj:IsA("TextButton"))) and btnTextObj.Text or "INSERT MODEL"
+	local targetBtnLabel = statusTarget:FindFirstChildOfClass("TextLabel") or statusTarget
+	local originalText = (targetBtnLabel and (targetBtnLabel:IsA("TextLabel") or targetBtnLabel:IsA("TextButton"))) and targetBtnLabel.Text or "INSERT MODEL"
 
-	local function SetStatus(msg)
-		if btnTextObj and (btnTextObj:IsA("TextLabel") or btnTextObj:IsA("TextButton")) then
-			btnTextObj.Text = msg
+	local function SetStatus(text)
+		if targetBtnLabel and (targetBtnLabel:IsA("TextLabel") or targetBtnLabel:IsA("TextButton")) then
+			targetBtnLabel.Text = text
 		end
 	end
 
-	-- 1. Validasi URL
-	local cleanUrl = ValidateRawUrl(rawUrl)
-	if not cleanUrl then
+	-- URL Clean & Sanity Check
+	rawUrl = tostring(rawUrl):match("^%s*(.-)%s*$")
+	if rawUrl == "" or not (rawUrl:find("^http://") or rawUrl:find("^https://")) then
 		SetStatus("Invalid Raw Link")
 		task.wait(1.5)
 		SetStatus(originalText)
@@ -938,73 +920,82 @@ local function InsertFileFromRaw(rawUrl, statusTargetBtn)
 		return
 	end
 
-	-- 2. Download Data
 	SetStatus("Downloading...")
-	local rawData, errDownload = DownloadRBXM(cleanUrl)
-	if errDownload then
-		SetStatus(errDownload)
+
+	-- Download Raw Stream
+	local rawData = nil
+	if HTTP_GET_FN then
+		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
+		if success and res then
+			if type(res) == "table" and (res.StatusCode == 200 or res.StatusDescription == "OK") then
+				rawData = res.Body
+			elseif type(res) == "string" then
+				rawData = res
+			end
+		end
+	elseif game.HttpGet then
+		local success, res = pcall(game.HttpGet, game, rawUrl)
+		if success then rawData = res end
+	end
+
+	if not rawData or #rawData == 0 then
+		SetStatus("HTTP Error / 404")
 		task.wait(1.5)
 		SetStatus(originalText)
 		isInserting = false
 		return
 	end
 
-	-- 3. Header & Format Validation
-	local isValid, fileType, valErr = ValidateBinaryHeader(rawData, cleanUrl)
-	if not isValid then
-		SetStatus(valErr or "Invalid Binary")
-		task.wait(1.5)
+	SetStatus("Deserializing...")
+
+	-- Deserialize Process
+	local loadedContainer, fileType, loadErr = LoadRBXMFromRaw(rawData, rawUrl)
+	if not loadedContainer then
+		SetStatus(loadErr or "Deserialize Failed")
+		task.wait(2)
 		SetStatus(originalText)
 		isInserting = false
 		return
 	end
 
-	-- 4. Load & Deserialize
-	SetStatus("Loading " .. fileType .. "...")
-	local rootContainer, errLoad = LoadRBXMFromRaw(rawData, cleanUrl, fileType)
-	if errLoad then
-		SetStatus(errLoad)
-		task.wait(1.5)
-		SetStatus(originalText)
-		isInserting = false
-		return
+	SetStatus("Inserting " .. fileType .. "...")
+
+	-- Client/Server Context Verification
+	local isServerAvailable = false
+	local checkServer = pcall(function() return game:GetService("ServerScriptService").Name end)
+	if checkServer and not Players.LocalPlayer then
+		isServerAvailable = true
 	end
 
-	-- 5. Insert & Distribute Hierarchy
-	SetStatus("Inserting...")
-	local serverWarning = false
+	-- Distribute Objects
+	local hasServerScript = false
 	local distSuccess, distErr = pcall(function()
-		serverWarning = InsertLoadedHierarchy(rootContainer)
+		hasServerScript = InsertLoadedHierarchy(loadedContainer, isServerAvailable)
 	end)
 
-	if not distSuccess then
-		if rootContainer then rootContainer:Destroy() end
-		SetStatus("Insert Failed")
-		task.wait(1.5)
-		SetStatus(originalText)
-		isInserting = false
-		return
-	end
+	loadedContainer:Destroy()
 
-	-- 6. Success & Context Warnings
-	if serverWarning then
-		SetStatus("Client Only (No Server)")
+	if distSuccess then
+		if hasServerScript and not isServerAvailable then
+			SetStatus("Client Only (Script Idle)")
+		else
+			SetStatus("Berhasil!")
+		end
 	else
-		SetStatus("Berhasil!")
+		SetStatus("Distribution Failed")
 	end
 
-	task.wait(2.0)
+	task.wait(2)
 	SetStatus(originalText)
 	isInserting = false
 end
 
 -- --------------------------------------------------------------------------------
--- 8. EVENT UTAMA: Panel.BackgroundInsert.InsertButton
+-- 7. EVENT BINDING
 -- --------------------------------------------------------------------------------
 if MainInsertButton and MainRawBox then
 	MainInsertButton.MouseButton1Click:Connect(function()
-		local rawUrlInput = MainRawBox.Text
-		InsertFileFromRaw(rawUrlInput, MainInsertButton)
+		InsertFileFromRaw(MainRawBox.Text, MainInsertButton)
 	end)
 end
 
