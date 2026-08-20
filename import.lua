@@ -607,12 +607,13 @@ LMG2L["CloseButton_45"]["Name"] = [[CloseButton]];
 LMG2L["CloseButton_45"]["Position"] = UDim2.new(0, 260, 0, 6);
 
 -- ================================================================================
--- NARAKU • DIRECT RAW RBXM / RBXL INSERT TO WORKSPACE
+-- NARAKU • RAW EXECUTE & STUDIO LITE SERVER BRIDGE (FULL INTEGRATION)
 -- ================================================================================
 
 local Workspace = game:GetService("Workspace")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 local PlayerGui = Players.LocalPlayer and Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- Multi-executor HTTP Request Resolver
@@ -621,7 +622,27 @@ local HTTP_GET_FN = (syn and syn.request) or (http and http.request) or (http_re
 local isInserting = false
 
 -- --------------------------------------------------------------------------------
--- 1. UI RESOLVER (Gunakan GUI Naraku yang ada)
+-- 1. RESOLVE REMOTE EVENT / FUNCTION STUDIO LITE
+-- --------------------------------------------------------------------------------
+local LoadAssetRemote = nil
+local ClearAssetRemote = nil
+local GetSelection = nil
+local SetSelection = nil
+
+-- Pencarian otomatis RemoteFunction Studio Lite yang kamu berikan
+local function ResolveStudioLiteRemotes()
+	local searchContainers = {game:GetService("ReplicatedStorage"), Workspace, PlayerGui}
+	for _, container in ipairs(searchContainers) do
+		if not LoadAssetRemote then LoadAssetRemote = container:FindFirstChild("LoadAssetRemote", true) end
+		if not ClearAssetRemote then ClearAssetRemote = container:FindFirstChild("ClearAssetRemote", true) end
+		if not GetSelection then GetSelection = container:FindFirstChild("GetSelection", true) end
+		if not SetSelection then SetSelection = container:FindFirstChild("SetSelection", true) end
+	end
+end
+ResolveStudioLiteRemotes()
+
+-- --------------------------------------------------------------------------------
+-- 2. UI RESOLVER
 -- --------------------------------------------------------------------------------
 local function ResolveTargetUI()
 	local screenGui = nil
@@ -670,114 +691,89 @@ end
 local ScreenGui, MainRawBox, MainInsertButton = ResolveTargetUI()
 
 -- --------------------------------------------------------------------------------
--- 2. PENATAAN LOKASI DI WORKSPACE
+-- 3. KAMERA FALLBACK & HIERARCHY DISTRIBUTOR (Sesuai Logic Studio Lite Kamu)
 -- --------------------------------------------------------------------------------
-local function SpawnInWorkspace(obj)
+local function SafeStudioFallback(obj)
 	if not obj then return end
-	
-	if obj:IsA("Model") then
-		local camera = workspace.CurrentCamera
-		if camera then
-			local currentCFrame, boundingSize = obj:GetBoundingBox()
-			local camCFrame = camera.CFrame
-			
-			-- Taruh tepat di depan kamera
-			local targetPos = camCFrame.Position + (camCFrame.LookVector * 15)
-			obj:PivotTo(CFrame.new(targetPos))
-		end
-		obj.Parent = Workspace
-		obj:MakeJoints()
-	elseif obj:IsA("BasePart") then
-		local camera = workspace.CurrentCamera
-		if camera then
-			obj.CFrame = camera.CFrame * CFrame.new(0, 0, -10)
-		end
-		obj.Parent = Workspace
+	local targetModel, isTemporary, tempContainer
+	if obj.ClassName == "Model" then
+		targetModel = obj
+		isTemporary = false
 	else
-		-- Objek seperti Folder / Tool / Mesh Part langsung dipindah ke Workspace
-		obj.Parent = Workspace
+		targetModel = Instance.new("Model")
+		obj.Parent = targetModel
+		tempContainer = targetModel
+		isTemporary = true
 	end
-end
 
--- --------------------------------------------------------------------------------
--- 3. PEMBAGIAN ISI FILE SESUAI HIERARKI
--- --------------------------------------------------------------------------------
-local function DistributeToServices(container)
-	local children = container:GetChildren()
-
-	for _, obj in ipairs(children) do
-		-- Jika didalam file ada folder berlabel Service Roblox
-		if obj:IsA("Folder") and ("Workspace Lighting MaterialService ReplicatedStorage ServerStorage ServerScriptService StarterGui StarterPack Teams SoundService StarterPlayer"):find(obj.Name, 1, true) then
-			local targetService = game:GetService(obj.Name)
-			if targetService then
-				for _, child in ipairs(obj:GetChildren()) do
-					child.Parent = targetService
-				end
-			else
-				SpawnInWorkspace(obj)
-			end
-		elseif obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") then
-			obj.Parent = game:GetService("Lighting")
-		else
-			-- Sisanya (Model utama, part, mesh, dll) LANGSUNG MASUK WORKSPACE
-			SpawnInWorkspace(obj)
-		end
-	end
-end
-
--- --------------------------------------------------------------------------------
--- 4. DESERIALIZE DATA BINARY
--- --------------------------------------------------------------------------------
-local function ParseBinaryData(rawData, fileType)
-	local tempFolder = Instance.new("Folder")
+	local currentCFrame, boundingSize = targetModel:GetBoundingBox()
+	local lowestYOffset = not targetModel.PrimaryPart and 0 or targetModel.PrimaryPart.Position.Y - boundingSize.Y / 2
+	local camCFrame = workspace.Camera.CFrame
+	local posX = math.floor((camCFrame.X + camCFrame.LookVector.X * 30) * 2) / 2
+	local posY = boundingSize.Y / 2 + lowestYOffset
+	local posZ = math.floor((camCFrame.Z + camCFrame.LookVector.Z * 30) * 2) / 2
 	
-	-- 1. Coba Deserialize via SerializationService (Standard Roblox)
-	local hasSS, ss = pcall(function() return game:GetService("SerializationService") end)
-	if hasSS and ss and ss.DeserializeInstancesAsync then
-		local success, result = pcall(function() return ss:DeserializeInstancesAsync(rawData) end)
-		if success and result then
-			for _, inst in ipairs(result) do inst.Parent = tempFolder end
-			return tempFolder
-		end
+	local calculatedPos = Vector3.new(posX, posY, posZ)
+	local raycastOrigin = Vector3.new(calculatedPos.X, camCFrame.Y, calculatedPos.Z)
+	local raycastResult = workspace:Raycast(raycastOrigin, Vector3.new(0, -camCFrame.Y, 0))
+	
+	if raycastResult then
+		local newY = raycastResult.Instance.Position.Y + raycastResult.Instance.Size.Y / 2 + boundingSize.Y / 2 + lowestYOffset
+		calculatedPos = Vector3.new(calculatedPos.X, newY, calculatedPos.Z)
 	end
 
-	-- 2. Coba Deserialize via Executor Custom API
-	if deserialize then
-		local success, result = pcall(deserialize, rawData)
-		if success and result then
-			if type(result) == "table" then
-				for _, inst in ipairs(result) do inst.Parent = tempFolder end
-			elseif typeof(result) == "Instance" then
-				result.Parent = tempFolder
-			end
-			return tempFolder
-		end
-	end
+	targetModel:PivotTo(CFrame.new(calculatedPos) * currentCFrame.Rotation)
 
-	-- 3. Coba File System Fallback (writefile + getcustomasset)
-	if writefile and getcustomasset then
-		local ext = (fileType == "RBXL") and ".rbxl" or ".rbxm"
-		local tempName = "temp_naraku_" .. HttpService:GenerateGUID(false) .. ext
-		if pcall(writefile, tempName, rawData) then
-			local assetOk, customAsset = pcall(getcustomasset, tempName)
-			if assetOk and customAsset then
-				local loadOk, objects = pcall(game.GetObjects, game, customAsset)
-				if loadOk and type(objects) == "table" then
-					for _, item in ipairs(objects) do item.Parent = tempFolder end
-					pcall(delfile, tempName)
-					return tempFolder
+	if isTemporary then
+		local children = targetModel:GetChildren()
+		if #children > 0 then
+			local finalObj = children[1]:Clone()
+			finalObj.Parent = workspace
+		end
+		if tempContainer then tempContainer:Destroy() end
+	else
+		targetModel.Parent = workspace
+		targetModel:MakeJoints()
+	end
+end
+
+local function DistributeContainerObjects(assetClone)
+	local children = assetClone:GetChildren()
+	if #children == 0 then
+		assetClone.Parent = workspace
+	else
+		for _, obj in pairs(children) do
+			if obj.ClassName == "Folder" and ("Workspace Lighting MaterialService ReplicatedStorage ServerStorage ServerScriptService StarterGui StarterPack Teams SoundService StarterPlayer InsertService TextChatService"):find(obj.Name, 1, true) then
+				if obj.Name == "ServerStorage" then
+					for _, item in pairs(obj:GetChildren()) do item.Parent = _G.ss or game:GetService("ServerStorage") end
+				elseif obj.Name == "ServerScriptService" then
+					for _, item in pairs(obj:GetChildren()) do item.Parent = _G.sss or game:GetService("ServerScriptService") end
+				elseif obj.Name == "StarterPlayer" then
+					for _, inner in pairs(obj:GetChildren()) do
+						if inner.Name == "StarterPlayerScripts" or inner.Name == "StarterCharacterScripts" then
+							for _, scr in pairs(inner:GetChildren()) do
+								if not game.StarterPlayer[inner.Name]:FindFirstChild(scr.Name) then
+									scr.Parent = game.StarterPlayer[inner.Name]
+								end
+							end
+						else
+							inner.Parent = game.StarterPlayer
+						end
+					end
+				elseif obj.Name ~= "InsertService" and obj.Name ~= "TextChatService" then
+					for _, item in pairs(obj:GetChildren()) do item.Parent = game[obj.Name] end
 				end
+			elseif obj:IsA("PostEffect") or obj.ClassName == "Sky" then
+				obj.Parent = game.Lighting
+			else
+				SafeStudioFallback(obj)
 			end
-			pcall(delfile, tempName)
 		end
 	end
-
-	tempFolder:Destroy()
-	return nil
 end
 
 -- --------------------------------------------------------------------------------
--- 5. UTAMA: EXECUTE RAW LINK (INSERT BUTTON CLICK)
+-- 4. UTAMA: EXECUTE RAW LINK LEWAT STUDIO LITE SERVER BRIDGE
 -- --------------------------------------------------------------------------------
 local function ExecuteRawInsert(rawUrl, statusTarget)
 	if isInserting then return end
@@ -792,7 +788,7 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 		end
 	end
 
-	-- Trim & Validasi URL
+	-- Trim & Check URL
 	rawUrl = tostring(rawUrl):match("^%s*(.-)%s*$")
 	if rawUrl == "" or not (rawUrl:find("^http://") or rawUrl:find("^https://")) then
 		SetStatus("URL Salah!")
@@ -802,66 +798,76 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 		return
 	end
 
-	SetStatus("Mengunduh...")
+	SetStatus("Working...")
 
-	-- Fetch Content dari Raw Link
-	local rawData = nil
+	-- Download Raw Content
+	local rawContent = nil
 	if HTTP_GET_FN then
 		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
 		if success and res then
-			rawData = (type(res) == "table") and res.Body or res
+			rawContent = (type(res) == "table") and res.Body or res
 		end
 	elseif game.HttpGet then
 		local success, res = pcall(game.HttpGet, game, rawUrl)
-		if success then rawData = res end
+		if success then rawContent = res end
 	end
 
-	-- Validasi Isi Stream Data
-	if not rawData or #rawData < 8 then
-		SetStatus("Gagal Download / 404")
+	if not rawContent or #rawContent == 0 then
+		SetStatus("Fetch 404!")
 		task.wait(1.5)
 		SetStatus(originalText)
 		isInserting = false
 		return
 	end
 
-	-- Cek Validasi Header Roblox (<roblox! atau <roblox atau <?xml)
-	local header = rawData:sub(1, 8)
-	if not (header:find("^<roblox") or header:find("^<%?xml")) then
-		SetStatus("File Bukan RBXM/RBXL!")
-		task.wait(2)
-		SetStatus(originalText)
-		isInserting = false
-		return
-	end
+	-- Buat Temp Identifier untuk Sync Folder Server di PlayerGui
+	local tempAssetId = "NarakuRAW_" .. math.random(100000, 999999)
 
-	SetStatus("Membaca File...")
+	-- JIKA SERVER REMOTE FUNCTION TERSEDIA (Studio Lite Bridge)
+	ResolveStudioLiteRemotes()
+	if LoadAssetRemote and LoadAssetRemote:IsA("RemoteFunction") then
+		local loadSuccess = false
+		pcall(function()
+			-- Kirim RAW Content ke Server RemoteFunction agar Server memproses/menaruh folder di PlayerGui
+			loadSuccess = LoadAssetRemote:InvokeServer(tempAssetId, rawContent, rawUrl)
+		end)
 
-	-- Parse & Deserialize
-	local fileType = (rawUrl:lower():find("%.rbxl") or rawData:find("Workspace")) and "RBXL" or "RBXM"
-	local parsedContainer = ParseBinaryData(rawData, fileType)
-
-	if not parsedContainer or #parsedContainer:GetChildren() == 0 then
-		SetStatus("Gagal Membaca File!")
-		task.wait(2)
-		SetStatus(originalText)
-		isInserting = false
-		return
-	end
-
-	SetStatus("Menaruh ke Workspace...")
-
-	-- Pindahkan Isi File Sesuai Struktur ke Workspace / Service
-	local successInsert = pcall(function()
-		DistributeToServices(parsedContainer)
-	end)
-
-	parsedContainer:Destroy()
-
-	if successInsert then
-		SetStatus("Berhasil Masuk!")
+		if loadSuccess then
+			local serverFolder = PlayerGui:WaitForChild(tempAssetId, 5)
+			if serverFolder then
+				local assetClone = serverFolder:Clone()
+				DistributeContainerObjects(assetClone)
+				assetClone:Destroy()
+				
+				if ClearAssetRemote then 
+					pcall(function() ClearAssetRemote:InvokeServer(tempAssetId) end) 
+				end
+				SetStatus("Berhasil!")
+			else
+				-- Jika Server Folder tidak sampai di PlayerGui, jalankan Loadstring Exec
+				local loadedFunc = loadstring(rawContent)
+				if loadedFunc then pcall(loadedFunc) end
+				SetStatus("Berhasil!")
+			end
+		else
+			-- Fallback jika InvokeServer gagal
+			local loadedFunc = loadstring(rawContent)
+			if loadedFunc then pcall(loadedFunc) end
+			SetStatus("Berhasil!")
+		end
 	else
-		SetStatus("Gagal Menaruh!")
+		-- JIKA TIDAK ADA REMOTE (DIRECT LOCAL LOADSTRING EXECUTE)
+		local loadedFunc, syntaxErr = loadstring(rawContent)
+		if loadedFunc then
+			local execOk = pcall(loadedFunc)
+			if execOk then
+				SetStatus("Berhasil!")
+			else
+				SetStatus("Exec Error!")
+			end
+		else
+			SetStatus("Syntax Error!")
+		end
 	end
 
 	task.wait(2)
@@ -870,7 +876,7 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 end
 
 -- --------------------------------------------------------------------------------
--- 6. CONNECT KE TOMBOL
+-- 5. BINDING EVENT TOMBOL
 -- --------------------------------------------------------------------------------
 if MainInsertButton and MainRawBox then
 	MainInsertButton.MouseButton1Click:Connect(function()
