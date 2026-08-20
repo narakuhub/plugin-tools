@@ -1546,6 +1546,14 @@ local CurrentCategory = "Model"
 local CurrentSessionId = 0
 local IsShowingSavedOnly = false -- Status Toggle Filter (False = MasterAssets, True = SavedAssets)
 
+-- Configuration Target Endpoints
+local AssetEndpoints = {
+    Model = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/models.json",
+    Decal = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/decal.json",
+    Audio = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/audio.json",
+    Plugin = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/plugin.json"
+}
+
 -- Dual Database System
 local MasterAssets = {    -- Katalog Utama dari Remote Assets.json
     Model = {},
@@ -1561,23 +1569,21 @@ local SavedAssets = {    -- Database Lokal User dari delta/saved_assets.json
     Plugin = {}
 }
 
--- 1. Memuat Master Database (Fetch Remote Assets.json)
+-- 1. Memuat Master Database (Fetch Per-Category Endpoint)
 local function FetchMasterAssets()
-    local success, response = pcall(function()
-        return game:HttpGet("https://raw.githubusercontent.com/narakuhub/vertrou/refs/heads/main/Assets.json")
-    end)
-    
-    if success and response and #response > 0 then
-        local decodeSuccess, decoded = pcall(function()
-            return HttpService:JSONDecode(response)
+    for category, url in pairs(AssetEndpoints) do
+        local success, response = pcall(function()
+            return game:HttpGet(url)
         end)
         
-        if decodeSuccess and type(decoded) == "table" then
-            MasterAssets = decoded
-            MasterAssets.Model = MasterAssets.Model or {}
-            MasterAssets.Decal = MasterAssets.Decal or {}
-            MasterAssets.Audio = MasterAssets.Audio or {}
-            MasterAssets.Plugin = MasterAssets.Plugin or {}
+        if success and response and #response > 0 then
+            local decodeSuccess, decoded = pcall(function()
+                return HttpService:JSONDecode(response)
+            end)
+            
+            if decodeSuccess and type(decoded) == "table" then
+                MasterAssets[category] = decoded
+            end
         end
     end
 end
@@ -1680,15 +1686,27 @@ local function InsertAsset(assetId, category, statusTarget)
 
     SetStatus("Working")
     local stringId = tostring(assetId)
+    local numericId = tonumber(assetId)
 
+    if not numericId then
+        SetStatus("Gagal")
+        return
+    end
+
+    -- Attempt to verify category via MarketplaceService safely
     local successInfo, info = pcall(function() 
-        return MarketplaceService:GetProductInfo(tonumber(assetId)) 
+        return MarketplaceService:GetProductInfo(numericId) 
     end)
     
-    if successInfo and info then
-        category = GetCategoryFromAssetType(info.AssetTypeId)
-    else
-        if not category then category = "Model" end
+    if successInfo and info and info.AssetTypeId then
+        local detectedCategory = GetCategoryFromAssetType(info.AssetTypeId)
+        if detectedCategory then
+            category = detectedCategory
+        end
+    end
+
+    if not category then 
+        category = "Model" 
     end
 
     -- Handler kalkulasi posisi Kamera Workspace
@@ -1708,7 +1726,7 @@ local function InsertAsset(assetId, category, statusTarget)
 
         local currentCFrame, boundingSize = targetModel:GetBoundingBox()
         local lowestYOffset = not targetModel.PrimaryPart and 0 or targetModel.PrimaryPart.Position.Y - boundingSize.Y / 2
-        local camCFrame = workspace.Camera and workspace.Camera.CFrame or CFrame.new()
+        local camCFrame = (workspace.CurrentCamera and workspace.CurrentCamera.CFrame) or CFrame.new()
         local posX = math.floor((camCFrame.X + camCFrame.LookVector.X * 30) * 2) / 2
         local posY = boundingSize.Y / 2 + lowestYOffset
         local posZ = math.floor((camCFrame.Z + camCFrame.LookVector.Z * 30) * 2) / 2
@@ -1740,7 +1758,7 @@ local function InsertAsset(assetId, category, statusTarget)
     -- JIKA ASSET ADALAH AUDIO
     if category == "Audio" then
         local sound = Instance.new("Sound")
-        sound.Name = (successInfo and info and info.Name) or "SoundAsset_" .. stringId
+        sound.Name = (successInfo and info and info.Name) or ("SoundAsset_" .. stringId)
         sound.SoundId = "rbxassetid://" .. stringId
         sound.Volume = 0.5
         sound.Parent = workspace
@@ -1768,7 +1786,7 @@ local function InsertAsset(assetId, category, statusTarget)
             end
         else
             local decal = Instance.new("Decal")
-            decal.Name = (successInfo and info and info.Name) or "DecalAsset_" .. stringId
+            decal.Name = (successInfo and info and info.Name) or ("DecalAsset_" .. stringId)
             decal.Texture = "rbxassetid://" .. stringId
             decal.Parent = workspace
             SetStatus("Berhasil!")
@@ -1784,12 +1802,12 @@ local function InsertAsset(assetId, category, statusTarget)
         end)
 
         if loadSuccess then
-            local serverFolder = PlayerGui:WaitForChild(stringId, 5)
+            local serverFolder = PlayerGui and PlayerGui:WaitForChild(stringId, 5)
             if serverFolder then
                 local assetClone = serverFolder:Clone()
                 local children = assetClone:GetChildren()
                 if #children == 0 then
-                    local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+                    local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. numericId)[1] end)
                     if clientSuccess and clientObj then
                         SafeStudioFallback(clientObj)
                     else
@@ -1815,10 +1833,13 @@ local function InsertAsset(assetId, category, statusTarget)
                                     end
                                 end
                             elseif obj.Name ~= "InsertService" and obj.Name ~= "TextChatService" then
-                                for _, item in pairs(obj:GetChildren()) do item.Parent = game[obj.Name] end
+                                local targetService = game:FindFirstChild(obj.Name)
+                                if targetService then
+                                    for _, item in pairs(obj:GetChildren()) do item.Parent = targetService end
+                                end
                             end
                         elseif obj:IsA("PostEffect") or obj.ClassName == "Sky" then
-                            obj.Parent = game.Lighting
+                            obj.Parent = game:GetService("Lighting")
                         else
                             SafeStudioFallback(obj)
                         end
@@ -1828,7 +1849,7 @@ local function InsertAsset(assetId, category, statusTarget)
                 if ClearAssetRemote then pcall(function() ClearAssetRemote:InvokeServer(stringId) end) end
                 SetStatus("Berhasil!")
             else
-                local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+                local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. numericId)[1] end)
                 if clientSuccess and clientObj then
                     SafeStudioFallback(clientObj)
                     SetStatus("Berhasil!")
@@ -1837,7 +1858,7 @@ local function InsertAsset(assetId, category, statusTarget)
                 end
             end
         else
-            local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+            local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. numericId)[1] end)
             if clientSuccess and clientObj then
                 SafeStudioFallback(clientObj)
                 SetStatus("Berhasil!")
@@ -1846,7 +1867,7 @@ local function InsertAsset(assetId, category, statusTarget)
             end
         end
     else
-        local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. assetId)[1] end)
+        local clientSuccess, clientObj = pcall(function() return game:GetObjects("rbxassetid://" .. numericId)[1] end)
         if clientSuccess and clientObj then
             SafeStudioFallback(clientObj)
             SetStatus("Berhasil!")
@@ -1857,10 +1878,8 @@ local function InsertAsset(assetId, category, statusTarget)
 end
 
 -------------------------------------------------------------------------
--- TAHAP 6: PRE-FETCH ALL ASSETS ONCE & INSTANT RENDER (FIXED)
+-- TAHAP 6: INSTANT RENDER FROM MASTER ASSET DATA (FIXED)
 -------------------------------------------------------------------------
-local AssetInfoCache = {} -- Tempat menyimpan metadata lengkap (Fetch 1x Saja)
-local IsGlobalPreFetched = false
 local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
 
 -- Format Display Jumlah Asset
@@ -1874,45 +1893,7 @@ local function UpdateAmountAssetDisplay(count, category, isSavedOnly)
     end
 end
 
--- 1. FUNGSI PRE-FETCH (DILAKUKAN HANYA 1 KALI SAAT AWAL)
-local function PreFetchAllAssetsOnce()
-    if IsGlobalPreFetched then return end
-    
-    task.spawn(function()
-        local allCategories = {"Model", "Decal", "Audio", "Plugin"}
-        local totalProcessed = 0
-        
-        for _, cat in ipairs(allCategories) do
-            local masterList = MasterAssets[cat] or {}
-            for _, item in ipairs(masterList) do
-                local numericId = tonumber(typeof(item) == "table" and item.Id or item)
-                
-                if numericId and not AssetInfoCache[numericId] then
-                    local success, info = pcall(function() 
-                        return MarketplaceService:GetProductInfo(numericId) 
-                    end)
-                    
-                    if success and info then
-                        AssetInfoCache[numericId] = info
-                    end
-
-                    totalProcessed = totalProcessed + 1
-                    -- Batching: Kasih jeda CPU tiap 3 asset agar tidak freeze saat loading background
-                    if totalProcessed % 3 == 0 then
-                        task.wait()
-                    end
-                end
-            end
-        end
-        IsGlobalPreFetched = true
-    end)
-end
-
--- Mulaiproses fetch background sekali saja saat script berjalan
-PreFetchAllAssetsOnce()
-
-
--- 2. FUNGSI RENDER (INSTANT TANPA PENGULANGAN FETCH MARKETPLACE)
+-- FUNGSI RENDER (INSTANT CONSUMPTION DARI MASTER/SAVED DATASET)
 local function RenderAssets(searchQuery)
     ClearList()
     
@@ -1921,7 +1902,7 @@ local function RenderAssets(searchQuery)
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
     
-    -- Pilih Sumber List ID
+    -- Pilih Sumber List Data ({ Id, Name, Creator })
     local targetList = isSavedModeAtCall and (SavedAssets[targetCategoryAtCall] or {}) or (MasterAssets[targetCategoryAtCall] or {})
     
     local renderedCount = 0
@@ -1948,138 +1929,96 @@ local function RenderAssets(searchQuery)
                 return 
             end
 
+            -- Parse Asset Object ({ Id, Name, Creator } atau primitive ID fallback)
             local assetId = typeof(item) == "table" and item.Id or item
+            local assetName = typeof(item) == "table" and item.Name or ("Asset_" .. tostring(assetId))
+            local assetCreator = typeof(item) == "table" and item.Creator or "Unknown"
+            
             local numericId = tonumber(assetId)
             
             if numericId then
-                -- Ambil info LANGSUNG dari Cache (Jika belum ter-cache oleh PreFetch, lakukan fallback pcall 1x)
-                local info = AssetInfoCache[numericId]
-                if not info then
-                    local success, fetchedInfo = pcall(function() return MarketplaceService:GetProductInfo(numericId) end)
-                    if success and fetchedInfo then
-                        AssetInfoCache[numericId] = fetchedInfo
-                        info = fetchedInfo
+                -- VALIDASI FILTER SEARCH LOKAL (Match: Name, Creator, atau ID Tepat)
+                local isMatched = true
+                if query ~= "" then
+                    local nameLower = tostring(assetName):lower()
+                    local creatorLower = tostring(assetCreator):lower()
+                    local assetIdStr = tostring(numericId)
+                    
+                    if not nameLower:find(query, 1, true) and 
+                       not creatorLower:find(query, 1, true) and 
+                       not assetIdStr:find(query, 1, true) then
+                        isMatched = false
                     end
                 end
 
-                if info then
-                    -- VALIDASI FILTER SEARCH SANGAT AKURAT (Match: Name, Creator, atau ID Tepat)
-                    local isMatched = true
-                    if query ~= "" then
-                        local nameLower = info.Name and info.Name:lower() or ""
-                        local creatorLower = (info.Creator and info.Creator.Name) and info.Creator.Name:lower() or ""
-                        local assetIdStr = tostring(numericId)
-                        
-                        if not nameLower:find(query, 1, true) and 
-                           not creatorLower:find(query, 1, true) and 
-                           not assetIdStr:find(query, 1, true) then
-                            isMatched = false
+                -- INSTANT CARD CREATION
+                if isMatched and TemplateFrame then
+                    local card = TemplateFrame:Clone()
+                    card.Visible = true
+                    card.Parent = ScrollingFrame
+                    card.Name = "Asset_" .. numericId
+
+                    renderedCount = renderedCount + 1
+                    UpdateAmountAssetDisplay(renderedCount, targetCategoryAtCall, isSavedModeAtCall)
+
+                    -- Element Mapping
+                    local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
+                    local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
+                    local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
+                    local IDLabel        = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
+                    local IconSaved      = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
+                    
+                    local BackgroundCopy   = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
+                    local CopyBtn          = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
+                    local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
+                    local InsertBtn        = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
+
+                    -- Apply Data Teks Langsung dari Object Data
+                    if NameLabel then NameLabel.Text = assetName end
+                    if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(assetCreator) end
+                    if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
+
+                    -- Set Thumbnail Visual
+                    if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
+                        if targetCategoryAtCall == "Audio" then
+                            ThumbnailAsset.Image = "rbxassetid://16327318049"
+                        else
+                            ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
                         end
                     end
 
-                    -- INSTANT CARD CREATION
-                    if isMatched and TemplateFrame then
-                        local card = TemplateFrame:Clone()
-                        card.Visible = true
-                        card.Parent = ScrollingFrame
-                        card.Name = "Asset_" .. numericId
+                    -- STATUS SAVED VISUAL PENANDA (STATUS DISPLAY FILTER SAJA, BUKAN FUNCTION CLICK)
+                    if IconSaved then
+                        IconSaved.Visible = IsAssetSaved(targetCategoryAtCall, numericId)
+                    end
 
-                        renderedCount = renderedCount + 1
-                        UpdateAmountAssetDisplay(renderedCount, targetCategoryAtCall, isSavedModeAtCall)
-
-                        -- Element Mapping
-                        local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
-                        local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
-                        local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
-                        local IDLabel        = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
-                        local IconSaved      = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
-                        
-                        local BackgroundCopy   = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
-                        local CopyBtn          = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
-                        local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
-                        local InsertBtn        = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
-
-                        -- Apply Data Teks
-                        if NameLabel then NameLabel.Text = info.Name end
-                        if CreatorLabel then CreatorLabel.Text = "By: " .. (info.Creator and info.Creator.Name or "Unknown") end
-                        if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
-
-                        if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
-                            if targetCategoryAtCall == "Audio" then
-                                ThumbnailAsset.Image = "rbxassetid://16327318049"
-                            else
-                                ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
-                            end
-                        end
-
-                        -- VALIDASI STATUS SAVED AKURAT PADA ICON
-                        local function RefreshSaveIconVisibility()
-                            if IconSaved then
-                                IconSaved.Visible = IsAssetSaved(targetCategoryAtCall, numericId)
-                            end
-                        end
-                        RefreshSaveIconVisibility()
-
-                        -- CLICK EVENT TOGGLE SAVE/UNSAVE VIA ICON
-                        if IconSaved then
-                            local clickTarget = IconSaved:IsA("GuiButton") and IconSaved or IconSaved:FindFirstChildOfClass("GuiButton")
-                            if clickTarget then
-                                clickTarget.MouseButton1Click:Connect(function()
-                                    local categoryList = SavedAssets[targetCategoryAtCall]
-                                    if not categoryList then
-                                        categoryList = {}
-                                        SavedAssets[targetCategoryAtCall] = categoryList
-                                    end
-                                    
-                                    local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
-                                    if isSaved then
-                                        for i, id in ipairs(categoryList) do
-                                            if tonumber(id) == numericId then
-                                                table.remove(categoryList, i)
-                                                break
-                                            end
-                                        end
-                                    else
-                                        table.insert(categoryList, numericId)
-                                    end
-                                    
-                                    SaveUserData()
-                                    RefreshSaveIconVisibility()
-
-                                    -- Re-render instan jika berada di tab filter SAVED
-                                    if IsShowingSavedOnly then
-                                        RenderAssets(SearchBox and SearchBox.Text or "")
-                                    end
-                                end)
-                            end
-                        end
-
-                        -- Listener Copy ID
-                        if CopyBtn and CopyBtn:IsA("GuiButton") then
-                            CopyBtn.MouseButton1Click:Connect(function()
+                    -- Listener Copy ID
+                    if CopyBtn and CopyBtn:IsA("GuiButton") then
+                        CopyBtn.MouseButton1Click:Connect(function()
+                            if setclipboard then
                                 setclipboard(tostring(numericId))
-                                local originalText = CopyBtn.Text
-                                CopyBtn.Text = "Copied!"
-                                task.wait(1)
-                                CopyBtn.Text = originalText
-                            end)
-                        end
-
-                        -- Listener Insert Asset
-                        if InsertBtn and InsertBtn:IsA("GuiButton") then
-                            InsertBtn.MouseButton1Click:Connect(function()
-                                InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
-                                task.wait(1.5)
-                                InsertBtn.Text = "INSERT"
-                            end)
-                        end
-
-                        UpdateCanvas()
+                            end
+                            local originalText = CopyBtn.Text
+                            CopyBtn.Text = "Copied!"
+                            task.wait(1)
+                            CopyBtn.Text = originalText
+                        end)
                     end
+
+                    -- Listener Insert Asset
+                    if InsertBtn and InsertBtn:IsA("GuiButton") then
+                        InsertBtn.MouseButton1Click:Connect(function()
+                            InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                            task.wait(1.5)
+                            InsertBtn.Text = "INSERT"
+                        end)
+                    end
+
+                    UpdateCanvas()
                 end
             end
 
-            -- Render instan 5 kartu per frame agar UI super responsif & smooth
+            -- Render instan 5 kartu per frame agar UI smooth
             if index % 5 == 0 then
                 task.wait()
             end
@@ -2106,7 +2045,7 @@ local function SwitchTab(tabName)
         SearchBox.Text = "Search asset..."
     end
     
-    RenderAssets()
+    RenderAssets("")
 end
 
 -------------------------------------------------------------------------
@@ -2149,6 +2088,18 @@ end
 SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
 SetupInputBoxBehavior(SearchBox, "Search asset...")
 SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
+
+-------------------------------------------------------------------------
+-- SEARCH SYSTEM: LIVE LOCAL DATASET FILTERING (MEMORY SEARCH)
+-------------------------------------------------------------------------
+if SearchBox and SearchBox:IsA("TextBox") then
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local currentQuery = SearchBox.Text
+        if currentQuery ~= "Search asset..." then
+            RenderAssets(currentQuery)
+        end
+    end)
+end
 
 -------------------------------------------------------------------------
 -- ACTION LISTENERS & EVENT HANDLERS (FIXED & FULLY SYNCED)
@@ -2291,7 +2242,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 4. DIRECT INSERT ACTION BUTTON
+-- 5. DIRECT INSERT ACTION BUTTON
 -------------------------------------------------------------------------
 if InsertButton and InsertButton:IsA("GuiButton") then
     InsertButton.MouseButton1Click:Connect(function()
@@ -2326,30 +2277,99 @@ if InsertButton and InsertButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- FIX: LOGIC SEARCH & SAVE SYSTEM (OPTIMIZED & ASYNC-SAFE)
+-- FIX: LOGIC SEARCH & SAVE SYSTEM (OPTIMIZED, STABLE INPUT & ASYNC-SAFE)
 -------------------------------------------------------------------------
 
--- Referensi Tombol & Input Utama
+-- Color Palette Configuration
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
+
+-------------------------------------------------------------------------
+-- HELPER: STABLE INPUT BOX BEHAVIOR (PREVENT AUTO-DELETE ON RE-CLICK)
+-------------------------------------------------------------------------
+local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
+    if not textBox or not textBox:IsA("TextBox") then return end
+
+    -- Saat kotak di-klik / fokus
+    textBox.Focused:Connect(function()
+        -- HANYA hapus jika teks saat ini adalah placeholder default
+        if textBox.Text == defaultPlaceholder then
+            textBox.Text = ""
+        end
+        textBox.TextTransparency = 0
+        textBox.TextColor3 = COLOR_TEXT_ACTIVE
+    end)
+
+    -- Saat fokus dilepas dari kotak
+    textBox.FocusLost:Connect(function()
+        local currentText = textBox.Text:match("^%s*(.-)%s*$") -- Trim whitespace
+        if currentText == "" or currentText == defaultPlaceholder then
+            textBox.Text = defaultPlaceholder
+            textBox.TextTransparency = 0.5
+        else
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+    end)
+
+    -- Deteksi perubahan teks (Visual Real-time Update)
+    textBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local currentText = textBox.Text
+        if currentText ~= "" and currentText ~= defaultPlaceholder then
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+    end)
+end
+
+-- Menerapkan Efek Visual & Stabilitas Teks ke Seluruh Input Box
+SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
+SetupInputBoxBehavior(SearchBox, "Search asset...")
+SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
+
+-------------------------------------------------------------------------
+-- REFERENSI TOMBOL & INPUT UTAMA
+-------------------------------------------------------------------------
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"])
 local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"])
 local InsertButton = LMG2L and (LMG2L["InsertButton_34"] or LMG2L["InsertButton"])
 
--- 1. FUNGSIONALITAS SEARCH BUTTON (MEMPROSES SEARCH HANYA SAAT DIKLIK)
+-------------------------------------------------------------------------
+-- 1. FUNGSIONALITAS SEARCH SYSTEM & SEARCH BUTTON
+-------------------------------------------------------------------------
+local function ExecuteSearch()
+    local query = ""
+    if SearchBox and SearchBox:IsA("TextBox") then
+        query = SearchBox.Text:match("^%s*(.-)%s*$")
+    end
+
+    if query == "" or query == "Search asset..." then
+        if typeof(RenderAssets) == "function" then
+            RenderAssets("")
+        end
+    else
+        if typeof(RenderAssets) == "function" then
+            RenderAssets(query)
+        end
+    end
+end
+
+-- Live Search via Typing (Persist User Keyword)
+if SearchBox and SearchBox:IsA("TextBox") then
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local txt = SearchBox.Text
+        if txt ~= "Search asset..." then
+            ExecuteSearch()
+        end
+    end)
+end
+
+-- Manual Trigger via SearchButton
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
-        local inputText = ""
-        if SearchBox and SearchBox:IsA("TextBox") then
-            inputText = SearchBox.Text
-        end
-        
         local originalText = SearchButton.Text
         SearchButton.Text = "..."
         
-        if inputText == "" or inputText:lower() == "search asset..." then
-            if typeof(RenderAssets) == "function" then RenderAssets("") end
-        else
-            if typeof(RenderAssets) == "function" then RenderAssets(inputText) end
-        end
+        ExecuteSearch()
         
         task.wait(0.3)
         if SearchButton then 
@@ -2358,10 +2378,13 @@ if SearchButton and SearchButton:IsA("GuiButton") then
     end)
 end
 
--- 2. FUNGSIONALITAS SAVE BUTTON (ASYNC VALIDATION, DUPLICATE CHECK & SAFE CATEGORY SWITCH)
+-------------------------------------------------------------------------
+-- 2. FUNGSIONALITAS SAVE BUTTON (ASYNC VALIDATION, DUPLICATE CHECK & SAFE TAB SWITCH)
+-------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
         if not SaveIDBox or not SaveIDBox:IsA("TextBox") then return end
+        
         local rawText = SaveIDBox.Text
         local cleanId = tonumber(rawText:match("%d+"))
 
@@ -2377,19 +2400,17 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             return
         end
 
-        -- Format Visual Text Box
+        -- Pertahankan Teks Angka yang Valid di Box
         SaveIDBox.Text = tostring(cleanId)
         SaveIDBox.TextTransparency = 0
-        if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
-            SaveIDBox.TextColor3 = COLOR_TEXT_ACTIVE
-        end
+        SaveIDBox.TextColor3 = COLOR_TEXT_ACTIVE
 
         local originalBtnText = SaveButton.Text
         SaveButton.Text = "..."
 
-        -- Eksekusi Asynchronous agar UI tidak Freezing saat melakukan Pcall Network
+        -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
-            -- CEGAH SIMPAN: Pengecekan Duplikasi ID di Seluruh Kategori saved_assets.json
+            -- CEGAH SIMPAN: Pengecekan Duplikasi ID di Seluruh Kategori SavedAssets
             local isDuplicate = false
             for _, assetList in pairs(SavedAssets or {}) do
                 if typeof(assetList) == "table" then
@@ -2403,23 +2424,29 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 if isDuplicate then break end
             end
 
-            -- Jika ID Sudah Ada di Database Lokal, Batalkan Proses Save
+            -- Jika ID Sudah Ada di Database Lokal
             if isDuplicate then
                 SaveIDBox.Text = "Sudah Ada!"
                 task.wait(1.5)
                 if SaveButton then SaveButton.Text = originalBtnText end
                 if SaveIDBox and SaveIDBox.Text == "Sudah Ada!" then
                     SaveIDBox.Text = tostring(cleanId)
+                    SaveIDBox.TextTransparency = 0
                 end
                 return
             end
 
-            -- Validasi Keberadaan Asset via MarketplaceService (Async Thread)
+            -- Validasi Keberadaan Asset via MarketplaceService
             local success, info = pcall(function() 
                 return MarketplaceService:GetProductInfo(cleanId) 
             end)
 
             if success and info then
+                -- Simpan Metadata ke Cache Lokal
+                if AssetInfoCache then
+                    AssetInfoCache[cleanId] = info
+                end
+
                 -- Ambil Kategori Terdeteksi atau Fallback ke CurrentCategory
                 local detectedCategory = nil
                 if typeof(GetCategoryFromAssetType) == "function" and info.AssetTypeId then
@@ -2432,44 +2459,55 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                     SavedAssets[cat] = {}
                 end
                 
-                -- Simpan ke Database
+                -- Simpan ke Database Lokal
                 table.insert(SavedAssets[cat], cleanId)
                 
+                -- Simpan Permanen ke Storage User
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
                 
                 SaveButton.Text = "SAVED!"
                 
-                -- Pindah Tab Otomatis ke Kategori Asset yang Disimpan
+                -- Pindah Tab Otomatis & Render Ulang
                 if typeof(SwitchTab) == "function" then
                     SwitchTab(cat)
+                elseif typeof(RenderAssets) == "function" then
+                    RenderAssets("")
                 end
             else
                 SaveIDBox.Text = "ID Gagal Validasi!"
                 task.wait(1.5)
                 if SaveIDBox and SaveIDBox.Text == "ID Gagal Validasi!" then
                     SaveIDBox.Text = tostring(cleanId)
+                    SaveIDBox.TextTransparency = 0
                 end
             end
             
-            task.wait(1.5)
+            task.wait(1.2)
             if SaveButton then SaveButton.Text = originalBtnText end
         end)
     end)
 end
 
--- 3. FUNGSIONALITAS DIRECT INSERT BUTTON (InsertButton_34)
+-------------------------------------------------------------------------
+-- 3. FUNGSIONALITAS DIRECT INSERT BUTTON
+-------------------------------------------------------------------------
 if InsertButton and InsertButton:IsA("GuiButton") then
     InsertButton.MouseButton1Click:Connect(function()
-        -- Prioritaskan Input Box khusus Insert jika ada, jika tidak fallback ke SaveIDBox / SearchBox
         local inputTarget = InsertIDBox or SaveIDBox or SearchBox
         if not inputTarget or not inputTarget:IsA("TextBox") then return end
         
-        local cleanId = tonumber(inputTarget.Text:match("%d+"))
+        local rawText = inputTarget.Text
+        local cleanId = tonumber(rawText:match("%d+"))
         local originalText = InsertButton.Text
 
         if cleanId then
+            -- Pertahankan teks ID pada box
+            inputTarget.Text = tostring(cleanId)
+            inputTarget.TextTransparency = 0
+            inputTarget.TextColor3 = COLOR_TEXT_ACTIVE
+
             InsertButton.Text = "WORKING"
             
             task.spawn(function()
