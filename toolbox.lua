@@ -1540,7 +1540,7 @@ if BackgroundAudio then BackgroundAudio.LayoutOrder = 3 end
 if BackgroundPlugin then BackgroundPlugin.LayoutOrder = 4 end
 
 -------------------------------------------------------------------------
--- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (CLEAN DUAL DATABASE)
+-- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (FLAT ARRAY COMPATIBLE)
 -------------------------------------------------------------------------
 local CurrentCategory = "Model" 
 local CurrentSessionId = 0
@@ -1562,80 +1562,117 @@ local MasterAssets = {    -- Katalog Utama dari Remote Assets.json
     Plugin = {}
 }
 
-local SavedAssets = {    -- Database Lokal User dari delta/saved_assets.json
-    Model = {},
-    Decal = {},
-    Audio = {},
-    Plugin = {}
-}
+local SavedAssets = {}    -- Database Lokal User (Flat Array: { {Name = ..., Creator = ..., ID = ...} })
 
 -- 1. Memuat Master Database (Fetch Per-Category Endpoint)
 local function FetchMasterAssets()
     for category, url in pairs(AssetEndpoints) do
-        local success, response = pcall(function()
-            return game:HttpGet(url)
-        end)
-        
-        if success and response and #response > 0 then
-            local decodeSuccess, decoded = pcall(function()
-                return HttpService:JSONDecode(response)
+        task.spawn(function()
+            local success, response = pcall(function()
+                return game:HttpGet(url)
             end)
             
-            if decodeSuccess and type(decoded) == "table" then
-                MasterAssets[category] = decoded
-            end
-        end
-    end
-end
-
--- 2. Memuat Data Saved User (Read File delta/saved_assets.json)
-local function LoadUserData()
-    if makefolder and isfile and readfile then
-        pcall(function()
-            if isfolder and not isfolder("delta") then 
-                makefolder("delta") 
-            end
-            
-            if isfile("delta/saved_assets.json") then
-                local data = readfile("delta/saved_assets.json")
-                if data and #data > 0 then
-                    local decodeSuccess, decoded = pcall(function()
-                        return HttpService:JSONDecode(data)
-                    end)
-                    
-                    if decodeSuccess and type(decoded) == "table" then 
-                        SavedAssets = decoded 
-                        SavedAssets.Model = SavedAssets.Model or {}
-                        SavedAssets.Decal = SavedAssets.Decal or {}
-                        SavedAssets.Audio = SavedAssets.Audio or {}
-                        SavedAssets.Plugin = SavedAssets.Plugin or {}
-                    end
+            if success and response and #response > 0 then
+                local decodeSuccess, decoded = pcall(function()
+                    return HttpService:JSONDecode(response)
+                end)
+                
+                if decodeSuccess and type(decoded) == "table" then
+                    MasterAssets[category] = decoded
                 end
             end
         end)
     end
 end
 
--- 3. Menyimpan Data User ke File delta/saved_assets.json
-local function SaveUserData()
-    if writefile then
-        pcall(function()
-            if isfolder and not isfolder("delta") then 
-                makefolder("delta") 
+-- 2. Memuat Data Saved User (Read File delta/saved_assets.json & Flat Array Conversion)
+local function LoadUserData()
+    if not (readfile and isfile and HttpService) then return end
+    
+    pcall(function()
+        if isfolder and not isfolder("delta") then 
+            makefolder("delta") 
+        end
+        
+        if isfile("delta/saved_assets.json") then
+            local data = readfile("delta/saved_assets.json")
+            if data and #data > 0 then
+                local decodeSuccess, decoded = pcall(function()
+                    return HttpService:JSONDecode(data)
+                end)
+                
+                if decodeSuccess and type(decoded) == "table" then
+                    local flatList = {}
+                    
+                    -- Check Case A: Flat Array
+                    if #decoded > 0 then
+                        for _, item in ipairs(decoded) do
+                            if type(item) == "table" and item.ID then
+                                table.insert(flatList, {
+                                    Name = tostring(item.Name or "Unknown Asset"),
+                                    Creator = tostring(item.Creator or "Unknown"),
+                                    ID = tonumber(item.ID)
+                                })
+                            elseif type(item) == "number" then -- Legacy numeric-only
+                                table.insert(flatList, {
+                                    Name = "Saved Asset " .. tostring(item),
+                                    Creator = "Unknown",
+                                    ID = tonumber(item)
+                                })
+                            end
+                        end
+                    else
+                        -- Check Case B: Legacy Dictionary Format {"Model": [123, 456]}
+                        for _, categoryList in pairs(decoded) do
+                            if type(categoryList) == "table" then
+                                for _, val in ipairs(categoryList) do
+                                    if type(val) == "table" and val.ID then
+                                        table.insert(flatList, {
+                                            Name = tostring(val.Name or "Unknown Asset"),
+                                            Creator = tostring(val.Creator or "Unknown"),
+                                            ID = tonumber(val.ID)
+                                        })
+                                    elseif type(val) == "number" then
+                                        table.insert(flatList, {
+                                            Name = "Saved Asset " .. tostring(val),
+                                            Creator = "Unknown",
+                                            ID = tonumber(val)
+                                        })
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    SavedAssets = flatList
+                end
             end
-            local encodedData = HttpService:JSONEncode(SavedAssets)
-            writefile("delta/saved_assets.json", encodedData)
-        end)
-    end
+        end
+    end)
 end
 
--- 4. Helper Checking: Status Apakah ID Terdaftar di saved_assets.json
-local function IsAssetSaved(category, assetId)
+-- 3. Menyimpan Data User ke File delta/saved_assets.json (Flat Array)
+local function SaveUserData()
+    if not writefile then return false end
+    local success = pcall(function()
+        if isfolder and not isfolder("delta") then 
+            makefolder("delta") 
+        end
+        local encodedData = HttpService:JSONEncode(SavedAssets)
+        writefile("delta/saved_assets.json", encodedData)
+    end)
+    return success
+end
+
+-- 4. Helper Checking: Status Apakah ID Terdaftar di Flat Array SavedAssets
+local function IsAssetSaved(assetId)
     local numericId = tonumber(assetId)
-    if not category or not SavedAssets[category] then return false end
+    if not numericId or type(SavedAssets) ~= "table" then return false end
     
-    for _, id in ipairs(SavedAssets[category]) do
-        if tonumber(id) == numericId then
+    for _, entry in ipairs(SavedAssets) do
+        if type(entry) == "table" and tonumber(entry.ID) == numericId then
+            return true
+        elseif type(entry) == "number" and entry == numericId then
             return true
         end
     end
