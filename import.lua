@@ -621,12 +621,13 @@ LMG2L["Logo_46"]["Name"] = [[Logo]];
 LMG2L["Logo_46"]["Position"] = UDim2.new(0, 5, 0, 5);
 
 -- ================================================================================
--- NARAKU • IMPORT FILE (RAW LINK RBXM/RBXL INSERT LOGIC)
+-- NARAKU • IMPORT FILE (FIXED RAW LINK RBXM/RBXL INSERT LOGIC)
 -- ================================================================================
 
 local Workspace = game:GetService("Workspace")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local InsertService = game:GetService("InsertService")
 local PlayerGui = Players.LocalPlayer and Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- Multi-executor HTTP Request Resolver
@@ -635,7 +636,7 @@ local HTTP_GET_FN = (syn and syn.request) or (http and http.request) or (http_re
 local isInserting = false
 
 -- --------------------------------------------------------------------------------
--- 1. SAFE UI RESOLVER (Mencari Panel.RawBox & Panel.BackgroundInsert.InsertButton)
+-- 1. SAFE UI RESOLVER
 -- --------------------------------------------------------------------------------
 local function ResolveTargetUI()
 	local screenGui = nil
@@ -674,7 +675,6 @@ local function ResolveTargetUI()
 	local panel = narakuPlugin:FindFirstChild("Panel")
 	if not panel then return nil, nil, nil end
 
-	-- Target Runtime Instance Names
 	local mainRawBox = panel:FindFirstChild("RawBox")
 	local bgInsert = panel:FindFirstChild("BackgroundInsert")
 	local mainInsertButton = bgInsert and bgInsert:FindFirstChild("InsertButton") or nil
@@ -685,7 +685,7 @@ end
 local ScreenGui, MainRawBox, MainInsertButton = ResolveTargetUI()
 
 -- --------------------------------------------------------------------------------
--- 2. CAMERA POSITIONING (Logic SafeStudioFallback dari Kode Lama)
+-- 2. CAMERA POSITIONING
 -- --------------------------------------------------------------------------------
 local function SafeStudioFallback(obj)
 	if not obj then return end
@@ -733,13 +733,12 @@ local function SafeStudioFallback(obj)
 end
 
 -- --------------------------------------------------------------------------------
--- 3. HIERARCHY DISTRIBUTION (Logic Distro Service dari Kode Lama)
+-- 3. HIERARCHY DISTRIBUTION
 -- --------------------------------------------------------------------------------
 local function DistributeContainerObjects(container)
 	local children = container:GetChildren()
 	
 	for _, obj in ipairs(children) do
-		-- Pengecekan Service Folder
 		if obj.ClassName == "Folder" and ("Workspace Lighting MaterialService ReplicatedStorage ServerStorage ServerScriptService StarterGui StarterPack Teams SoundService StarterPlayer TextChatService"):find(obj.Name, 1, true) then
 			if obj.Name == "ServerStorage" then
 				for _, item in pairs(obj:GetChildren()) do item.Parent = _G.ss or game:GetService("ServerStorage") end
@@ -769,68 +768,140 @@ local function DistributeContainerObjects(container)
 end
 
 -- --------------------------------------------------------------------------------
--- 4. RAW DOWNLOAD & ENGINE LOAD (Pengganti LoadAssetRemote/rbxassetid)
+-- 4. BINARY VALIDATION & FORMAT DETECTION
 -- --------------------------------------------------------------------------------
-local function FetchAndLoadRaw(rawUrl)
-	-- HTTP Download
-	local rawData = nil
-	if HTTP_GET_FN then
-		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
-		if success and res and (res.StatusCode == 200 or res.StatusDescription == "OK") then
-			rawData = res.Body
-		end
-	elseif game.HttpGet then
-		local success, res = pcall(game.HttpGet, game, rawUrl)
-		if success then rawData = res end
+local function ValidateAndDetectType(binaryData, rawUrl)
+	if type(binaryData) ~= "string" or #binaryData < 8 then
+		return false, nil, "Empty response or invalid length"
 	end
 
-	if not rawData or #rawData == 0 then
-		return nil, "Download Failed"
+	-- Roblox Header Signatures:
+	-- Binary RBXM/RBXL: <roblox! (\x3C\x72\x6F\x62\x6C\x6F\x78\x21)
+	-- XML RBXM/RBXL: <?xml or <roblox
+	local header = binaryData:sub(1, 8)
+	local isBinary = header:find("^<roblox!") ~= nil
+	local isXml = header:find("^<%?xml") ~= nil or header:find("^<roblox") ~= nil
+
+	if not (isBinary or isXml) then
+		return false, nil, "Invalid Roblox binary/xml header"
 	end
 
-	-- Try Engine Direct Load
-	local tempFolder = Instance.new("Folder")
-	
-	-- Mode 1: game:GetObjects dengan Direct RAW URL
-	local successObjects, objects = pcall(game.GetObjects, game, rawUrl)
-	if successObjects and type(objects) == "table" and #objects > 0 then
-		for _, item in ipairs(objects) do
-			item.Parent = tempFolder
-		end
-		return tempFolder, nil
+	local cleanUrl = rawUrl:lower():split("?")[1]
+	local fileType = "RBXM"
+
+	if cleanUrl:sub(-5) == ".rbxl" or binaryData:find("Workspace") and binaryData:find("Lighting") then
+		fileType = "RBXL"
 	end
 
-	-- Mode 2: File Cache (Jika Executor mendukung writefile)
-	if writefile and getcustomasset then
-		local tempFile = "naraku_temp_" .. HttpService:GenerateGUID(false) .. ".rbxm"
-		pcall(writefile, tempFile, rawData)
-		
-		local successCustom, customAsset = pcall(getcustomasset, tempFile)
-		if successCustom and customAsset then
-			local successGet, loadedObjs = pcall(game.GetObjects, game, customAsset)
-			if successGet and type(loadedObjs) == "table" and #loadedObjs > 0 then
-				for _, item in ipairs(loadedObjs) do
-					item.Parent = tempFolder
-				end
-				if delfile then pcall(delfile, tempFile) end
-				return tempFolder, nil
-			end
-		end
-		if delfile then pcall(delfile, tempFile) end
-	end
-
-	return nil, "RBXM Load Failed"
+	return true, fileType, nil
 end
 
 -- --------------------------------------------------------------------------------
--- 5. FUNCTION UTAMA: InsertFileFromRaw
+-- 5. DESERIALIZATION ADAPTER (BINARY -> INSTANCES)
+-- --------------------------------------------------------------------------------
+local function DeserializeRobloxBinary(binaryData, fileType)
+	local tempFolder = Instance.new("Folder")
+	tempFolder.Name = "Naraku_Import_Container"
+
+	-- Strategy A: Native Executor API Parser
+	if deserialize then
+		local success, result = pcall(deserialize, binaryData)
+		if success and result then
+			if type(result) == "table" then
+				for _, inst in ipairs(result) do inst.Parent = tempFolder end
+			elseif typeof(result) == "Instance" then
+				result.Parent = tempFolder
+			end
+			return tempFolder, nil
+		end
+	end
+
+	-- Strategy B: Custom Assets / File-System Loader
+	if writefile and getcustomasset then
+		local ext = (fileType == "RBXL") and ".rbxl" or ".rbxm"
+		local tempFileName = "naraku_temp_" .. HttpService:GenerateGUID(false) .. ext
+		
+		local writeSuccess = pcall(writefile, tempFileName, binaryData)
+		if writeSuccess then
+			local assetSuccess, assetId = pcall(getcustomasset, tempFileName)
+			
+			if assetSuccess and assetId then
+				local loadSuccess, loadedObjs = pcall(game.GetObjects, game, assetId)
+				if loadSuccess and type(loadedObjs) == "table" and #loadedObjs > 0 then
+					for _, item in ipairs(loadedObjs) do
+						item.Parent = tempFolder
+					end
+					if delfile then pcall(delfile, tempFileName) end
+					return tempFolder, nil
+				end
+			end
+			if delfile then pcall(delfile, tempFileName) end
+		end
+	end
+
+	-- Strategy C: Environment Deserializer Unavailable
+	tempFolder:Destroy()
+	return nil, "Deserializer unavailable in this environment"
+end
+
+-- --------------------------------------------------------------------------------
+-- 6. RAW DOWNLOAD & PIPELINE
+-- --------------------------------------------------------------------------------
+local function FetchAndLoadRaw(rawUrl, updateStatus)
+	-- Trim
+	rawUrl = tostring(rawUrl):match("^%s*(.-)%s*$")
+	if rawUrl == "" or not (rawUrl:find("^http://") or rawUrl:find("^https://")) then
+		return nil, "Invalid URL!"
+	end
+
+	updateStatus("Downloading...")
+
+	-- HTTP Fetch
+	local binaryData = nil
+	if HTTP_GET_FN then
+		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
+		if success and res then
+			if type(res) == "table" and (res.StatusCode == 200 or res.StatusDescription == "OK") then
+				binaryData = res.Body
+			elseif type(res) == "string" then
+				binaryData = res
+			end
+		end
+	elseif game.HttpGet then
+		local success, res = pcall(game.HttpGet, game, rawUrl)
+		if success then binaryData = res end
+	end
+
+	if not binaryData or #binaryData == 0 then
+		return nil, "Download Failed / 404"
+	end
+
+	-- Validate Binary Signature & Detect Type
+	local isValid, fileType, valErr = ValidateAndDetectType(binaryData, rawUrl)
+	if not isValid then
+		return nil, valErr or "Invalid File Format"
+	end
+
+	updateStatus("Loading " .. fileType .. "...")
+
+	-- Deserialize Binary Data
+	local container, deserializeErr = DeserializeRobloxBinary(binaryData, fileType)
+	if not container then
+		return nil, deserializeErr or "Deserialize Failed"
+	end
+
+	return container, nil
+end
+
+-- --------------------------------------------------------------------------------
+-- 7. FUNCTION UTAMA: InsertFileFromRaw
 -- --------------------------------------------------------------------------------
 local function InsertFileFromRaw(rawUrl, statusTarget)
 	if isInserting then return end
 	isInserting = true
 
 	local targetBtnLabel = statusTarget:FindFirstChildOfClass("TextLabel") or statusTarget
-	local originalText = (targetBtnLabel and targetBtnLabel:IsA("TextLabel")) and targetBtnLabel.Text or "INSERT MODEL"
+	local originalText = (targetBtnLabel and (targetBtnLabel:IsA("TextLabel") or targetBtnLabel:IsA("TextButton"))) and targetBtnLabel.Text or "INSERT MODEL"
 
 	local function SetStatus(text)
 		if targetBtnLabel and (targetBtnLabel:IsA("TextLabel") or targetBtnLabel:IsA("TextButton")) then
@@ -838,40 +909,33 @@ local function InsertFileFromRaw(rawUrl, statusTarget)
 		end
 	end
 
-	-- Clean Link
-	rawUrl = tostring(rawUrl):match("^%s*(.-)%s*$")
-	if rawUrl == "" or not (rawUrl:find("^http://") or rawUrl:find("^https://")) then
-		SetStatus("Invalid URL!")
-		task.wait(1.5)
-		SetStatus(originalText)
-		isInserting = false
-		return
-	end
-
-	SetStatus("Working")
-
-	-- Fetch & Load Data
-	local loadedContainer, loadErr = FetchAndLoadRaw(rawUrl)
+	-- Execute Pipeline
+	local loadedContainer, loadErr = FetchAndLoadRaw(rawUrl, SetStatus)
 	
 	if not loadedContainer then
 		SetStatus(loadErr or "Gagal")
-		task.wait(1.5)
+		task.wait(2)
 		SetStatus(originalText)
 		isInserting = false
 		return
 	end
 
-	-- Distribute Objects
+	SetStatus("Distributing...")
+
+	-- Distribute Objects to Workspace / Services
 	local distSuccess, distErr = pcall(function()
 		DistributeContainerObjects(loadedContainer)
 	end)
 
-	loadedContainer:Destroy()
+	-- Mandatory Container Cleanup
+	if loadedContainer then
+		loadedContainer:Destroy()
+	end
 
 	if distSuccess then
 		SetStatus("Berhasil!")
 	else
-		SetStatus("Insert Failed")
+		SetStatus("Distro Failed")
 	end
 
 	task.wait(1.5)
@@ -880,7 +944,7 @@ local function InsertFileFromRaw(rawUrl, statusTarget)
 end
 
 -- --------------------------------------------------------------------------------
--- 6. EVENT BINDING: Panel.BackgroundInsert.InsertButton
+-- 8. EVENT BINDING
 -- --------------------------------------------------------------------------------
 if MainInsertButton and MainRawBox then
 	MainInsertButton.MouseButton1Click:Connect(function()
