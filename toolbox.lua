@@ -2530,7 +2530,7 @@ local MenuFeatureList = {
 	{
         Name = "IMPORT FILE",
         Icon = "rbxassetid://126926348062230",
-        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/terrain.lua"
+        RawLink = "https://raw.githubusercontent.com/narakuhub/vertrou/refs/heads/main/import.lua"
     },
     {
         Name = "FLY GUI",
