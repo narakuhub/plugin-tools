@@ -620,5 +620,322 @@ LMG2L["Logo_46"]["BackgroundTransparency"] = 1;
 LMG2L["Logo_46"]["Name"] = [[Logo]];
 LMG2L["Logo_46"]["Position"] = UDim2.new(0, 5, 0, 5);
 
+-- ================================================================================
+-- NARAKU • IMPORT FILE (FIXED INSERT LOGIC & BUTTON HANDLER ONLY)
+-- ================================================================================
+
+local Workspace = game:GetService("Workspace")
+local InsertService = game:GetService("InsertService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+-- Service Mapping Target Parent
+local SERVICES = {
+	["Workspace"] = Workspace,
+	["ServerStorage"] = game:GetService("ServerStorage"),
+	["ServerScriptService"] = game:GetService("ServerScriptService"),
+	["ReplicatedStorage"] = game:GetService("ReplicatedStorage"),
+	["StarterGui"] = game:GetService("StarterGui"),
+	["StarterPack"] = game:GetService("StarterPack"),
+	["StarterPlayer"] = game:GetService("StarterPlayer"),
+	["Lighting"] = game:GetService("Lighting"),
+	["SoundService"] = game:GetService("SoundService"),
+	["Teams"] = game:GetService("Teams"),
+	["MaterialService"] = game:GetService("MaterialService"),
+}
+
+-- Target HTTP GET Function
+local HTTP_GET_FN = (syn and syn.request) or (http and http.request) or (http_request) or (fluxus and fluxus.request) or request
+
+-- Anti Double Insert Flag
+local isInserting = false
+
+-- --------------------------------------------------------------------------------
+-- 1. SAFE UI RESOLVER (Fix 'attempt to index nil with WaitForChild')
+-- --------------------------------------------------------------------------------
+local function ResolveTargetUI()
+	local screenGui = nil
+
+	-- Attempt 1: Via script.Parent
+	if script and script.Parent then
+		if script.Parent:IsA("ScreenGui") then
+			screenGui = script.Parent
+		elseif script.Parent.Parent and script.Parent.Parent:IsA("ScreenGui") then
+			screenGui = script.Parent.Parent
+		end
+	end
+
+	-- Attempt 2: Cari di PlayerGui / CoreGui / RobloxGui jika script.Parent tidak menunjuk ke ScreenGui
+	if not screenGui then
+		local localPlayer = Players.LocalPlayer
+		local searchContainers = {}
+		
+		if localPlayer then
+			local pg = localPlayer:FindFirstChildOfClass("PlayerGui")
+			if pg then table.insert(searchContainers, pg) end
+		end
+		
+		local successCore, coreGui = pcall(function() return game:GetService("CoreGui") end)
+		if successCore and coreGui then table.insert(searchContainers, coreGui) end
+
+		for _, container in ipairs(searchContainers) do
+			for _, child in ipairs(container:GetChildren()) do
+				if child:IsA("ScreenGui") and child:FindFirstChild("NarakuPlugin") then
+					screenGui = child
+					break
+				end
+			end
+			if screenGui then break end
+		end
+	end
+
+	if not screenGui then return nil, nil, nil end
+
+	-- Validate Hierarchy dasar tanpa crash
+	local narakuPlugin = screenGui:FindFirstChild("NarakuPlugin")
+	if not narakuPlugin then return nil, nil, nil end
+
+	local panel = narakuPlugin:FindFirstChild("Panel")
+	if not panel then return nil, nil, nil end
+
+	-- Mencari Target Mutlak Utama: RawBox_35 dan InsertButton_32 berdasarkan Runtime Instance Name "RawBox" & "InsertButton"
+	local mainRawBox = panel:FindFirstChild("RawBox")
+	local bgInsert = panel:FindFirstChild("BackgroundInsert")
+	local mainInsertButton = bgInsert and bgInsert:FindFirstChild("InsertButton") or nil
+
+	return screenGui, mainRawBox, mainInsertButton
+end
+
+-- Resolve UI pada Execution
+local ScreenGui, MainRawBox, MainInsertButton = ResolveTargetUI()
+
+-- --------------------------------------------------------------------------------
+-- 2. HELPER VALIDASI URL
+-- --------------------------------------------------------------------------------
+local function ValidateRawUrl(url)
+	if not url or type(url) ~= "string" then return nil end
+	local cleanUrl = url:match("^%s*(.-)%s*$")
+	if cleanUrl == "" then return nil end
+	if not (cleanUrl:find("^http://") or cleanUrl:find("^https://")) then return nil end
+	return cleanUrl
+end
+
+-- --------------------------------------------------------------------------------
+-- 3. DOWNLOAD RBXM/RBXL (NO LUA STRING EXECUTION)
+-- --------------------------------------------------------------------------------
+local function DownloadRBXM(rawUrl)
+	local responseBody = nil
+
+	if HTTP_GET_FN then
+		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
+		if success and res and (res.StatusCode == 200 or res.StatusDescription == "OK") then
+			responseBody = res.Body
+		end
+	elseif game.HttpGet then
+		local success, res = pcall(game.HttpGet, game, rawUrl)
+		if success then responseBody = res end
+	end
+
+	if not responseBody or #responseBody == 0 then
+		return nil, "Download Failed"
+	end
+
+	return responseBody, nil
+end
+
+-- --------------------------------------------------------------------------------
+-- 4. STRICT LOAD RBXM/RBXL (NO FAKE PARSER)
+-- --------------------------------------------------------------------------------
+local function LoadRBXMFromRaw(rawData, rawUrl)
+	-- Identifikasi format file header (Binary / XML / Extension)
+	local isBinary = rawData:sub(1, 8) == "<roblox!"
+	local isXml = rawData:sub(1, 5) == "<robl" or rawData:find("<roblox")
+	local isExtensionValid = rawUrl:match("%.rbxm$") or rawUrl:match("%.rbxl$") or rawUrl:match("/raw")
+
+	if not (isBinary or isXml or isExtensionValid) then
+		return nil, "Invalid RBXM/RBXL File"
+	end
+
+	local tempFileName = "naraku_temp_" .. HttpService:GenerateGUID(false) .. ".rbxm"
+	if writefile then pcall(writefile, tempFileName, rawData) end
+
+	local rootContainer = nil
+
+	-- Check Capability 1: getcustomasset + game:GetObjects
+	if getcustomasset and writefile then
+		local successAsset, assetId = pcall(getcustomasset, tempFileName)
+		if successAsset and assetId then
+			local successObjects, objects = pcall(game.GetObjects, game, assetId)
+			if successObjects and type(objects) == "table" and #objects > 0 then
+				rootContainer = Instance.new("Folder")
+				rootContainer.Name = "ImportRoot"
+				for _, obj in ipairs(objects) do
+					obj.Parent = rootContainer
+				end
+			end
+		end
+	end
+
+	-- Check Capability 2: InsertService:LoadLocalAsset
+	if not rootContainer and InsertService and InsertService.LoadLocalAsset then
+		local successLoad, result = pcall(function()
+			return InsertService:LoadLocalAsset(tempFileName)
+		end)
+		if successLoad and result then
+			rootContainer = result
+		end
+	end
+
+	-- Cleanup temporary file
+	if delfile and isfile and isfile(tempFileName) then
+		pcall(delfile, tempFileName)
+	end
+
+	-- Jika environment tidak memiliki kemampuan melakukan deserialization RBXM/RBXL nyata
+	if not rootContainer then
+		return nil, "Environment does not support RBXM/RBXL loading"
+	end
+
+	return rootContainer, nil
+end
+
+-- --------------------------------------------------------------------------------
+-- 5. WORKSPACE POSITIONING
+-- --------------------------------------------------------------------------------
+local function PositionWorkspaceObject(instance)
+	local camera = Workspace.CurrentCamera
+	local targetCFrame = camera and (camera.CFrame * CFrame.new(0, 0, -20)) or CFrame.new(0, 5, 0)
+
+	if instance:IsA("Model") then
+		local primary = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart", true)
+		if primary then
+			instance:PivotTo(targetCFrame)
+		end
+	elseif instance:IsA("BasePart") then
+		instance.CFrame = targetCFrame
+	end
+end
+
+-- --------------------------------------------------------------------------------
+-- 6. INSERT HIERARCHY DISTRIBUTION
+-- --------------------------------------------------------------------------------
+local function InsertLoadedHierarchy(rootContainer)
+	local children = rootContainer:GetChildren()
+
+	for _, child in ipairs(children) do
+		local name = child.Name
+
+		if SERVICES[name] then
+			local targetService = SERVICES[name]
+			for _, subChild in ipairs(child:GetChildren()) do
+				subChild.Parent = targetService
+			end
+			child:Destroy()
+		elseif name == "StarterPlayer" then
+			local spScripts = child:FindFirstChild("StarterPlayerScripts")
+			local scScripts = child:FindFirstChild("StarterCharacterScripts")
+			local starterPlayer = game:GetService("StarterPlayer")
+
+			if spScripts then
+				for _, item in ipairs(spScripts:GetChildren()) do
+					item.Parent = starterPlayer:FindFirstChildOfClass("StarterPlayerScripts") or starterPlayer
+				end
+			end
+			if scScripts then
+				for _, item in ipairs(scScripts:GetChildren()) do
+					item.Parent = starterPlayer:FindFirstChildOfClass("StarterCharacterScripts") or starterPlayer
+				end
+			end
+			child:Destroy()
+		else
+			if child:IsA("Model") or child:IsA("BasePart") then
+				PositionWorkspaceObject(child)
+			end
+			child.Parent = Workspace
+		end
+	end
+
+	rootContainer:Destroy()
+end
+
+-- --------------------------------------------------------------------------------
+-- 7. FUNCTION UTAMA: InsertFileFromRaw
+-- --------------------------------------------------------------------------------
+local function InsertFileFromRaw(rawUrl, statusTargetBtn)
+	if isInserting then return end
+	isInserting = true
+
+	local btnTextObj = statusTargetBtn and (statusTargetBtn:FindFirstChildOfClass("TextLabel") or statusTargetBtn)
+	local originalText = (btnTextObj and (btnTextObj:IsA("TextLabel") or btnTextObj:IsA("TextButton"))) and btnTextObj.Text or "INSERT MODEL"
+
+	local function SetStatus(msg)
+		if btnTextObj and (btnTextObj:IsA("TextLabel") or btnTextObj:IsA("TextButton")) then
+			btnTextObj.Text = msg
+		end
+	end
+
+	-- 1. Validasi URL
+	local cleanUrl = ValidateRawUrl(rawUrl)
+	if not cleanUrl then
+		SetStatus("Invalid Raw Link")
+		task.wait(1.5)
+		SetStatus(originalText)
+		isInserting = false
+		return
+	end
+
+	-- 2. Download
+	SetStatus("Downloading...")
+	local rawData, errDownload = DownloadRBXM(cleanUrl)
+	if errDownload then
+		SetStatus(errDownload)
+		task.wait(1.5)
+		SetStatus(originalText)
+		isInserting = false
+		return
+	end
+
+	-- 3. Load RBXM/RBXL
+	SetStatus("Loading...")
+	local rootContainer, errLoad = LoadRBXMFromRaw(rawData, cleanUrl)
+	if errLoad then
+		SetStatus(errLoad)
+		task.wait(1.5)
+		SetStatus(originalText)
+		isInserting = false
+		return
+	end
+
+	-- 4. Insert Hierarchy
+	SetStatus("Inserting...")
+	local distSuccess, distErr = pcall(function()
+		InsertLoadedHierarchy(rootContainer)
+	end)
+
+	if not distSuccess then
+		if rootContainer then rootContainer:Destroy() end
+		SetStatus("Insert Failed")
+		task.wait(1.5)
+		SetStatus(originalText)
+		isInserting = false
+		return
+	end
+
+	-- 5. Success
+	SetStatus("Berhasil!")
+	task.wait(1.5)
+	SetStatus(originalText)
+	isInserting = false
+end
+
+-- --------------------------------------------------------------------------------
+-- 8. EVENT UTAMA: Panel.BackgroundInsert.InsertButton
+-- --------------------------------------------------------------------------------
+if MainInsertButton and MainRawBox then
+	MainInsertButton.MouseButton1Click:Connect(function()
+		local rawUrlInput = MainRawBox.Text
+		InsertFileFromRaw(rawUrlInput, MainInsertButton)
+	end)
+end
 
 return LMG2L["ScreenGui_1"], require;
