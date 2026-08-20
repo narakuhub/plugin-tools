@@ -607,7 +607,7 @@ LMG2L["CloseButton_45"]["Name"] = [[CloseButton]];
 LMG2L["CloseButton_45"]["Position"] = UDim2.new(0, 260, 0, 6);
 
 -- ================================================================================
--- NARAKU • RAW EXECUTE & STUDIO LITE SERVER BRIDGE (FULL INTEGRATION)
+-- NARAKU • RAW EXECUTE & STUDIO LITE SERVER BRIDGE (FULL SERVER-SIDE FIX)
 -- ================================================================================
 
 local Workspace = game:GetService("Workspace")
@@ -629,7 +629,6 @@ local ClearAssetRemote = nil
 local GetSelection = nil
 local SetSelection = nil
 
--- Pencarian otomatis RemoteFunction Studio Lite yang kamu berikan
 local function ResolveStudioLiteRemotes()
 	local searchContainers = {game:GetService("ReplicatedStorage"), Workspace, PlayerGui}
 	for _, container in ipairs(searchContainers) do
@@ -691,7 +690,7 @@ end
 local ScreenGui, MainRawBox, MainInsertButton = ResolveTargetUI()
 
 -- --------------------------------------------------------------------------------
--- 3. KAMERA FALLBACK & HIERARCHY DISTRIBUTOR (Sesuai Logic Studio Lite Kamu)
+-- 3. KAMERA FALLBACK & HIERARCHY DISTRIBUTOR (DISTRIBUSI STRUKTUR FOLDER)
 -- --------------------------------------------------------------------------------
 local function SafeStudioFallback(obj)
 	if not obj then return end
@@ -737,10 +736,10 @@ local function SafeStudioFallback(obj)
 	end
 end
 
-local function DistributeContainerObjects(assetClone)
-	local children = assetClone:GetChildren()
+local function DistributeContainerObjects(assetContainer)
+	local children = assetContainer:GetChildren()
 	if #children == 0 then
-		assetClone.Parent = workspace
+		assetContainer.Parent = workspace
 	else
 		for _, obj in pairs(children) do
 			if obj.ClassName == "Folder" and ("Workspace Lighting MaterialService ReplicatedStorage ServerStorage ServerScriptService StarterGui StarterPack Teams SoundService StarterPlayer InsertService TextChatService"):find(obj.Name, 1, true) then
@@ -748,6 +747,8 @@ local function DistributeContainerObjects(assetClone)
 					for _, item in pairs(obj:GetChildren()) do item.Parent = _G.ss or game:GetService("ServerStorage") end
 				elseif obj.Name == "ServerScriptService" then
 					for _, item in pairs(obj:GetChildren()) do item.Parent = _G.sss or game:GetService("ServerScriptService") end
+				elseif obj.Name == "ReplicatedStorage" then
+					for _, item in pairs(obj:GetChildren()) do item.Parent = game:GetService("ReplicatedStorage") end
 				elseif obj.Name == "StarterPlayer" then
 					for _, inner in pairs(obj:GetChildren()) do
 						if inner.Name == "StarterPlayerScripts" or inner.Name == "StarterCharacterScripts" then
@@ -773,7 +774,7 @@ local function DistributeContainerObjects(assetClone)
 end
 
 -- --------------------------------------------------------------------------------
--- 4. UTAMA: EXECUTE RAW LINK LEWAT STUDIO LITE SERVER BRIDGE
+-- 4. UTAMA: EXECUTE RAW LINK & SERVER REMOTE HANDLER
 -- --------------------------------------------------------------------------------
 local function ExecuteRawInsert(rawUrl, statusTarget)
 	if isInserting then return end
@@ -788,7 +789,7 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 		end
 	end
 
-	-- Trim & Check URL
+	-- Format URL
 	rawUrl = tostring(rawUrl):match("^%s*(.-)%s*$")
 	if rawUrl == "" or not (rawUrl:find("^http://") or rawUrl:find("^https://")) then
 		SetStatus("URL Salah!")
@@ -800,7 +801,7 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 
 	SetStatus("Working...")
 
-	-- Download Raw Content
+	-- Download RAW Script
 	local rawContent = nil
 	if HTTP_GET_FN then
 		local success, res = pcall(HTTP_GET_FN, { Url = rawUrl, Method = "GET" })
@@ -820,48 +821,63 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 		return
 	end
 
-	-- Buat Temp Identifier untuk Sync Folder Server di PlayerGui
 	local tempAssetId = "NarakuRAW_" .. math.random(100000, 999999)
 
-	-- JIKA SERVER REMOTE FUNCTION TERSEDIA (Studio Lite Bridge)
 	ResolveStudioLiteRemotes()
-	if LoadAssetRemote and LoadAssetRemote:IsA("RemoteFunction") then
+
+	-- JIKA SERVER REMOTE TERSEDIA: PAKSA SERVER EKSEKUSI & SEBARKAN OBJEK SECARA FULL SERVER-SIDE
+	if LoadAssetRemote then
+		SetStatus("Server Executing...")
+
+		-- Inject Payload Script ke Server agar Server yang membuat dan menaruh Objek di SSS, SS, RS, WS
+		local serverPayload = [[
+			local rawData = ]] .. HttpService:JSONEncode(rawContent) .. [[
+			local func, err = loadstring(rawData)
+			if func then
+				local ok, result = pcall(func)
+				-- Server-side distribution check
+				if ok and typeof(result) == "Instance" then
+					result.Parent = workspace
+				end
+			else
+				warn("[SERVER EXEC ERROR]:", err)
+			end
+		]]
+
 		local loadSuccess = false
 		pcall(function()
-			-- Kirim RAW Content ke Server RemoteFunction agar Server memproses/menaruh folder di PlayerGui
-			loadSuccess = LoadAssetRemote:InvokeServer(tempAssetId, rawContent, rawUrl)
+			if LoadAssetRemote:IsA("RemoteFunction") then
+				loadSuccess = LoadAssetRemote:InvokeServer(tempAssetId, serverPayload, rawUrl)
+			elseif LoadAssetRemote:IsA("RemoteEvent") then
+				LoadAssetRemote:FireServer(tempAssetId, serverPayload, rawUrl)
+				loadSuccess = true
+			end
 		end)
 
-		if loadSuccess then
-			local serverFolder = PlayerGui:WaitForChild(tempAssetId, 5)
-			if serverFolder then
-				local assetClone = serverFolder:Clone()
-				DistributeContainerObjects(assetClone)
-				assetClone:Destroy()
-				
-				if ClearAssetRemote then 
-					pcall(function() ClearAssetRemote:InvokeServer(tempAssetId) end) 
-				end
-				SetStatus("Berhasil!")
-			else
-				-- Jika Server Folder tidak sampai di PlayerGui, jalankan Loadstring Exec
-				local loadedFunc = loadstring(rawContent)
-				if loadedFunc then pcall(loadedFunc) end
-				SetStatus("Berhasil!")
-			end
+		-- Cek respon Folder Server
+		task.wait(0.5)
+		local serverFolder = PlayerGui:FindFirstChild(tempAssetId) or PlayerGui:WaitForChild(tempAssetId, 3)
+
+		if serverFolder then
+			-- Pindahkan isi folder server langsung dari sisi server (atau kloningan ter-sync)
+			DistributeContainerObjects(serverFolder)
+			if ClearAssetRemote then pcall(function() ClearAssetRemote:InvokeServer(tempAssetId) end) end
+			SetStatus("Berhasil (Server)!")
 		else
-			-- Fallback jika InvokeServer gagal
-			local loadedFunc = loadstring(rawContent)
-			if loadedFunc then pcall(loadedFunc) end
-			SetStatus("Berhasil!")
+			-- Jika Server Remote memproses secara langsung di Server tanpa membuat folder
+			SetStatus("Berhasil (Server)!")
 		end
 	else
-		-- JIKA TIDAK ADA REMOTE (DIRECT LOCAL LOADSTRING EXECUTE)
+		-- FALLBACK KETIKA SERVER REMOTE TIDAK DITEMUKAN (LOCAL EXECUTE)
+		SetStatus("Client Fallback...")
 		local loadedFunc, syntaxErr = loadstring(rawContent)
 		if loadedFunc then
-			local execOk = pcall(loadedFunc)
+			local execOk, result = pcall(loadedFunc)
 			if execOk then
-				SetStatus("Berhasil!")
+				if typeof(result) == "Instance" then
+					DistributeContainerObjects(result)
+				end
+				SetStatus("Berhasil (Client)!")
 			else
 				SetStatus("Exec Error!")
 			end
@@ -876,7 +892,7 @@ local function ExecuteRawInsert(rawUrl, statusTarget)
 end
 
 -- --------------------------------------------------------------------------------
--- 5. BINDING EVENT TOMBOL
+-- 5. BINDING EVENT
 -- --------------------------------------------------------------------------------
 if MainInsertButton and MainRawBox then
 	MainInsertButton.MouseButton1Click:Connect(function()
