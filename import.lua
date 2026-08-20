@@ -621,7 +621,7 @@ LMG2L["Logo_46"]["Name"] = [[Logo]];
 LMG2L["Logo_46"]["Position"] = UDim2.new(0, 5, 0, 5);
 
 -- ================================================================================
--- NARAKU • IMPORT FILE (ONLY INSERT LOGIC & BUTTON HANDLER)
+-- NARAKU • IMPORT FILE (FIXED LOGIC & BUTTON HANDLER)
 -- ================================================================================
 
 local Workspace = game:GetService("Workspace")
@@ -643,20 +643,21 @@ local SERVICES = {
 	["MaterialService"] = game:GetService("MaterialService"),
 }
 
--- Target HTTP GET Function (kompatibel dengan berbagai Environment Studio Lite / Executor)
+-- Target HTTP GET Function
 local HTTP_GET_FN = (syn and syn.request) or (http and http.request) or (http_request) or (fluxus and fluxus.request) or request
 
 -- --------------------------------------------------------------------------------
--- 1. UI REFERENCE (Sesuai Hierarchy Final)
+-- 1. UI REFERENCE FIX (Mengatasi Error Attempt to index nil)
 -- --------------------------------------------------------------------------------
-local ScreenGui = script.Parent -- Sesuaikan dengan lokasi script Anda
+local ScreenGui = script.Parent -- Atau game:GetService("CoreGui"):WaitForChild("ScreenGui") jika dipanggil dari luar
 local NarakuPlugin = ScreenGui:WaitForChild("NarakuPlugin")
 local Panel = NarakuPlugin:WaitForChild("Panel")
 
--- Presisi Reference (Memcegah bentrok dengan Panel/Card lain)
-local MainRawBox = Panel:WaitForChild("RawBox")
+-- Mendukung penamaan dari UI Converter (Prioritas RawBox_35 & InsertButton_32)
+local MainRawBox = Panel:FindFirstChild("RawBox_35") or Panel:WaitForChild("RawBox")
+
 local MainBackgroundInsert = Panel:WaitForChild("BackgroundInsert")
-local MainInsertButton = MainBackgroundInsert:WaitForChild("InsertButton")
+local MainInsertButton = MainBackgroundInsert:FindFirstChild("InsertButton_32") or MainBackgroundInsert:WaitForChild("InsertButton")
 
 -- Flag State Anti Double Insert
 local isInserting = false
@@ -666,7 +667,7 @@ local isInserting = false
 -- --------------------------------------------------------------------------------
 local function ValidateRawUrl(url)
 	if not url or type(url) ~= "string" then return nil end
-	local cleanUrl = url:match("^%s*(.-)%s*$") -- Trim whitespace
+	local cleanUrl = url:match("^%s*(.-)%s*$")
 	if cleanUrl == "" then return nil end
 	if not (cleanUrl:find("^http://") or cleanUrl:find("^https://")) then return nil end
 	return cleanUrl
@@ -699,7 +700,6 @@ end
 -- 4. DESERIALIZER / LOAD FILE ADAPTER
 -- --------------------------------------------------------------------------------
 local function LoadRBXMFromRaw(rawData, rawUrl)
-	-- Identifikasi file header
 	local isBinary = rawData:sub(1, 8) == "<roblox!"
 	local isXml = rawData:sub(1, 5) == "<robl" or rawData:find("<roblox")
 	local isExtensionValid = rawUrl:match("%.rbxm$") or rawUrl:match("%.rbxl$")
@@ -713,7 +713,7 @@ local function LoadRBXMFromRaw(rawData, rawUrl)
 
 	local rootContainer = nil
 
-	-- Adapter 1: Environment dengan API getcustomasset / GetObjects
+	-- Adapter 1: Environment getcustomasset / GetObjects
 	if getcustomasset and writefile then
 		local successAsset, assetId = pcall(getcustomasset, tempFileName)
 		if successAsset and assetId then
@@ -728,7 +728,7 @@ local function LoadRBXMFromRaw(rawData, rawUrl)
 		end
 	end
 
-	-- Adapter 2: Fallback dengan InsertService (Jika supported oleh environment Studio Lite)
+	-- Adapter 2: Fallback InsertService
 	if not rootContainer and InsertService then
 		local successLoad, result = pcall(function()
 			return InsertService:LoadLocalAsset(tempFileName)
@@ -744,10 +744,6 @@ local function LoadRBXMFromRaw(rawData, rawUrl)
 	end
 
 	if not rootContainer then
-		-- CATATAN TEKNIS ADAPTER:
-		-- Jika environment Studio Lite Anda tidak memiliki API C-Level untuk melakukan 
-		-- deserialization RBXM/RBXL binary dari string (misal: writefile/getcustomasset/LoadLocalAsset),
-		-- di titik inilah fungsi butuh diintegrasikan dengan binary parser spesifik environment tersebut.
 		return nil, "Loading Failed"
 	end
 
@@ -781,14 +777,12 @@ local function InsertLoadedHierarchy(rootContainer)
 		local name = child.Name
 
 		if SERVICES[name] then
-			-- Pindahkan isi container service ke Service Roblox asli
 			local targetService = SERVICES[name]
 			for _, subChild in ipairs(child:GetChildren()) do
 				subChild.Parent = targetService
 			end
 			child:Destroy()
 		elseif name == "StarterPlayer" then
-			-- Handling khusus StarterPlayer
 			local spScripts = child:FindFirstChild("StarterPlayerScripts")
 			local scScripts = child:FindFirstChild("StarterCharacterScripts")
 			local starterPlayer = game:GetService("StarterPlayer")
@@ -805,7 +799,6 @@ local function InsertLoadedHierarchy(rootContainer)
 			end
 			child:Destroy()
 		else
-			-- Object/Model biasa -> Workspace (dengan positioning)
 			if child:IsA("Model") or child:IsA("BasePart") then
 				PositionWorkspaceObject(child)
 			end
