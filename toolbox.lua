@@ -2051,45 +2051,24 @@ local function RenderAssets(searchQuery)
                             end
                         end
 
-                        -- Save Icon Visibility Binding
-                        local function RefreshSaveIconVisibility()
-                            if IconSaved then
-                                IconSaved.Visible = IsAssetSaved(targetCategoryAtCall, numericId)
-                            end
-                        end
-                        RefreshSaveIconVisibility()
-
-                        -- Saved State Toggle Event
+                        -- SAVE ICON VISIBILITY BINDING (MURNI PENANDA VISUAL)
                         if IconSaved then
-                            local clickTarget = IconSaved:IsA("GuiButton") and IconSaved or IconSaved:FindFirstChildOfClass("GuiButton") or IconSaved
-                            if clickTarget and clickTarget.MouseButton1Click then
-                                clickTarget.MouseButton1Click:Connect(function()
-                                    local categoryList = SavedAssets[targetCategoryAtCall]
-                                    if not categoryList then
-                                        categoryList = {}
-                                        SavedAssets[targetCategoryAtCall] = categoryList
-                                    end
-                                    
-                                    local isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
-                                    if isSaved then
-                                        for i, id in ipairs(categoryList) do
-                                            if tonumber(id) == numericId then
-                                                table.remove(categoryList, i)
-                                                break
-                                            end
+                            local isSaved = false
+                            if typeof(IsAssetSaved) == "function" then
+                                isSaved = IsAssetSaved(targetCategoryAtCall, numericId)
+                            else
+                                -- Fallback manual check
+                                local categoryList = SavedAssets and SavedAssets[targetCategoryAtCall]
+                                if categoryList then
+                                    for _, id in ipairs(categoryList) do
+                                        if tonumber(id) == numericId then
+                                            isSaved = true
+                                            break
                                         end
-                                    else
-                                        table.insert(categoryList, numericId)
                                     end
-                                    
-                                    SaveUserData()
-                                    RefreshSaveIconVisibility()
-
-                                    if IsShowingSavedOnly then
-                                        RenderAssets(SearchBox and SearchBox.Text or "")
-                                    end
-                                end)
+                                end
                             end
+                            IconSaved.Visible = isSaved
                         end
 
                         -- Copy ID Event Connection
