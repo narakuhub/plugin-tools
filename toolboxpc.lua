@@ -2665,7 +2665,7 @@ end
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
         local originalText = SearchButton.Text
-        SearchButton.Text = "..."
+        SearchButton.Text = "SEARCH"
         
         -- Eksekusi pencarian & pembersihan list
         ExecuteSearch()
@@ -2716,7 +2716,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         end
 
         local originalBtnText = SaveButton.Text
-        SaveButton.Text = "..."
+        SaveButton.Text = "SAVE"
 
         -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
