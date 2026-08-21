@@ -2657,7 +2657,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         end
 
         local originalBtnText = SaveButton.Text
-        SaveButton.Text = "..."
+        SaveButton.Text = "SAVE"
 
         -- Eksekusi Asynchronous
         task.spawn(function()
