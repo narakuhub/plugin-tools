@@ -3,8 +3,8 @@ import requests
 url = "https://apis.roblox.com/toolbox-service/v2/assets:search"
 
 params = {
-    "searchCategoryType": "Decal",
-    "query": "KenDmugiwara01"
+    "searchCategoryType": "Model",
+    "query": "Pohon"
 }
 
 response = requests.get(url, params=params, timeout=15)
