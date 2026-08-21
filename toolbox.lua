@@ -1539,4 +1539,38 @@ if BackgroundDecal then BackgroundDecal.LayoutOrder = 2 end
 if BackgroundAudio then BackgroundAudio.LayoutOrder = 3 end
 if BackgroundPlugin then BackgroundPlugin.LayoutOrder = 4 end
 
+-------------------------------------------------------------------------
+-- TAHAP 8: TAB SWITCHING SYSTEM (INTEGRATED VISUAL STATE)
+-------------------------------------------------------------------------
+local function SwitchTab(tabName)
+    CurrentCategory = tabName
+    
+    -- Reset Seluruh Tab Visual State ke Inactive
+    UpdateTabVisualState("Model", false)
+    UpdateTabVisualState("Decal", false)
+    UpdateTabVisualState("Audio", false)
+    UpdateTabVisualState("Plugin", false)
+
+    -- Aktifkan Visual State Tab yang Dipilih
+    UpdateTabVisualState(tabName, true)
+
+-------------------------------------------------------------------------
+-- 2. TAB NAVIGATION LISTENERS
+-------------------------------------------------------------------------
+if ModelButton and ModelButton:IsA("GuiButton") then
+    ModelButton.MouseButton1Click:Connect(function() SwitchTab("Model") end)
+end
+
+if DecalButton and DecalButton:IsA("GuiButton") then
+    DecalButton.MouseButton1Click:Connect(function() SwitchTab("Decal") end)
+end
+
+if AudioButton and AudioButton:IsA("GuiButton") then
+    AudioButton.MouseButton1Click:Connect(function() SwitchTab("Audio") end)
+end
+
+if PluginButton and PluginButton:IsA("GuiButton") then
+    PluginButton.MouseButton1Click:Connect(function() SwitchTab("Plugin") end)
+	end
+	
 return LMG2L["ScreenGui_1"], require;
