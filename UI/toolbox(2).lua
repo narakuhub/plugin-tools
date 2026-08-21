@@ -1378,4 +1378,165 @@ end
 UpdatePanelLayout(ORIGINAL_HEIGHT)
 UpdateOpenButtonIcon()
 
+-------------------------------------------------------------------------
+-- TAHAP 1: SERVICES & STUDIO LITE BINDINGS
+-------------------------------------------------------------------------
+local TweenService = game:GetService("TweenService")	
+local MarketplaceService = game:GetService("MarketplaceService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local StudioLiteFolder = game:GetService("ReplicatedStorage"):WaitForChild("StudioLiteFolder", 3)
+local LoadAssetRemote = StudioLiteFolder and StudioLiteFolder:WaitForChild("LoadAssetModelToPlayerGuiServerFunction", 3)
+local ClearAssetRemote = StudioLiteFolder and StudioLiteFolder:WaitForChild("ClearAssetModelToPlayerGuiServerFunction", 3)
+
+local StudioGui = PlayerGui:WaitForChild("StudioGui", 3)
+local ExplorerPanel = StudioGui and StudioGui:WaitForChild("ExplorerPanel", 3)
+local GetSelection = ExplorerPanel and ExplorerPanel:WaitForChild("GetSelection", 3)
+local SetSelection = ExplorerPanel and ExplorerPanel:WaitForChild("SetSelection", 3)
+
+-- Safety File I/O Bindings (mencegah nil value pada executor)
+local writefile = writefile or (io and io.writefile)
+local readfile = readfile or (io and io.readfile)
+local isfile = isfile or (io and io.isfile)
+local isfolder = isfolder or (io and io.isfolder)
+local makefolder = makefolder or (io and io.makefolder)
+local setclipboard = setclipboard or toclipboard or print
+
+-------------------------------------------------------------------------
+-- TAHAP 2: UI MAPPING (REFERENSI HIRARKI LMG2L BARU)
+-------------------------------------------------------------------------
+-- Memastikan tabel LMG2L ada sebelum di-index
+local Gui = LMG2L and LMG2L["ScreenGui_1"]
+local MainPanel = LMG2L and LMG2L["Panel_3"]
+
+-- Tab Filter Buttons (Di dalam ScrollingTab_9)
+local AudioButton = LMG2L and LMG2L["AudioButton_b"]
+local ModelButton = LMG2L and LMG2L["ModelButton_12"]
+local PluginButton = LMG2L and LMG2L["PluginButton_19"]
+local DecalButton = LMG2L and LMG2L["DecalButton_21"]
+
+-- Toggle Filter Saved Assets Button
+local CardSaved = LMG2L and LMG2L["CardSaved_2a"]
+local SavedButton = LMG2L and LMG2L["SavedButton_2c"]
+local SavedIconIndicator = LMG2L["IconSaved_2e"]
+
+-- Bagian Atas Panel (Fungsi INSERT ID ke Workspace)
+local InsertIDBox = LMG2L and LMG2L["InsertBox_38"]
+local InsertButton = LMG2L and LMG2L["InsertButton_34"]
+
+-- Bagian Atas Panel (Fungsi SEARCH)
+local SearchBox = LMG2L and LMG2L["SearchBox_4"]
+local SearchButton = LMG2L and LMG2L["SearchButton_75"]
+
+-- Bagian Bawah Panel (Fungsi SAVE)
+local SaveIDBox = LMG2L and LMG2L["SaveBox_24"]
+local SaveIDButton = LMG2L and LMG2L["SaveButton_56"]
+
+-- List Kontainer dan Item Template
+local ScrollingFrame = LMG2L and LMG2L["ScrollingFrame_5a"]
+local TemplateFrame = LMG2L and LMG2L["Card_5d"]
+
+-- Safe Isolation Template Card (mencegah attempt to index nil)
+if TemplateFrame then
+    TemplateFrame.Visible = false
+    TemplateFrame.Parent = nil
+end
+
+-------------------------------------------------------------------------
+-- TAHAP VISUAL: TAB & FILTER COLOR STATE SYSTEM (FIXED TARGET BUTTON)
+-------------------------------------------------------------------------
+-- Inisialisasi Elemen Tombol dan Ikon berdasarkan Hirarki UI LMG2L
+local ModelButton = LMG2L and LMG2L["ModelButton_12"]
+local DecalButton = LMG2L and LMG2L["DecalButton_21"]
+local AudioButton = LMG2L and LMG2L["AudioButton_b"]
+local PluginButton = LMG2L and LMG2L["PluginButton_19"]
+
+local IconModel = LMG2L and LMG2L["IconModel_15"]
+local IconDecal = LMG2L and LMG2L["IconDecal_1f"]
+local IconAudio = LMG2L and LMG2L["IconAudio_f"]
+local IconPlugin = LMG2L and LMG2L["IconPlugin_1d"]
+
+-- Inisialisasi Elemen CardSaved Filter
+local CardSaved = LMG2L and LMG2L["CardSaved_2a"]
+local SavedButton = LMG2L and LMG2L["SavedButton_2c"]
+local IconSaved = LMG2L and LMG2L["IconSaved_2e"]
+
+-- Skema Warna Spesifik
+local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)          -- Background Button Active State
+local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)            -- Background Button Inactive State
+
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(0, 0, 0)            -- Text & Icon Active State (Hitam)
+local COLOR_TEXT_INACTIVE = Color3.fromRGB(223, 230, 237)      -- Text & Icon Inactive State (Terang)
+
+-- Tabel Pemetaan Elemen Visual Tab
+local TabVisualMap = {
+    ["Model"] = { Button = ModelButton, Icon = IconModel },
+    ["Decal"] = { Button = DecalButton, Icon = IconDecal },
+    ["Audio"] = { Button = AudioButton, Icon = IconAudio },
+    ["Plugin"] = { Button = PluginButton, Icon = IconPlugin }
+}
+
+-- Fungsi Utility untuk Mengubah Warna Visual Tab (Button Background + Text + Icon)
+local function UpdateTabVisualState(category, isActive)
+    local visualData = TabVisualMap[category]
+    if not visualData then return end
+
+    local bgCol = isActive and COLOR_ACTIVE or COLOR_INACTIVE
+    local contentCol = isActive and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
+
+    -- Mengubah Warna Background & Text pada TextButton langsung
+    if visualData.Button and visualData.Button:IsA("TextButton") then
+        visualData.Button.BackgroundColor3 = bgCol
+        visualData.Button.TextColor3 = contentCol
+    end
+    
+    -- Mengubah Warna Image Icon
+    if visualData.Icon and (visualData.Icon:IsA("ImageLabel") or visualData.Icon:IsA("ImageButton")) then
+        visualData.Icon.ImageColor3 = contentCol
+    end
+end
+
+-- Fungsi Utility Khusus Visual CardSaved Filter Toggle (SavedButton_2c & IconSaved_2e)
+local function UpdateSavedFilterVisualState(isSavedOnly)
+    local bgCol = isSavedOnly and COLOR_ACTIVE or COLOR_INACTIVE
+    local contentCol = isSavedOnly and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
+
+    -- Ubah Background & Text pada SavedButton_2c
+    if SavedButton and SavedButton:IsA("TextButton") then
+        SavedButton.BackgroundColor3 = bgCol
+        SavedButton.TextColor3 = contentCol
+    end
+    
+    -- Ubah Warna IconSaved_2e
+    if IconSaved and (IconSaved:IsA("ImageLabel") or IconSaved:IsA("ImageButton")) then
+        IconSaved.ImageColor3 = contentCol
+    end
+end
+
+-------------------------------------------------------------------------
+-- FIX 1: PENGATURAN URUTAN LAYOUT TAB (STRICT LAYOUTORDER & SORTORDER)
+-------------------------------------------------------------------------
+local ScrollingTab = LMG2L and LMG2L["ScrollingTab_9"]
+local BackgroundModel = LMG2L and LMG2L["BackgroundModel_11"]
+local BackgroundDecal = LMG2L and LMG2L["BackgroundDecal_1e"]
+local BackgroundAudio = LMG2L and LMG2L["BackgroundAudio_a"]
+local BackgroundPlugin = LMG2L and LMG2L["BackgroundPlugin_18"]
+
+-- Paksa UIListLayout untuk mengurutkan berdasarkan LayoutOrder
+if ScrollingTab then
+    local listLayout = ScrollingTab:FindFirstChildOfClass("UIListLayout")
+    if listLayout then
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    end
+end
+
+-- Atur Urutan Tampilan Secara Presisi: Model (1) -> Decal (2) -> Audio (3) -> Plugin (4)
+if BackgroundModel then BackgroundModel.LayoutOrder = 1 end
+if BackgroundDecal then BackgroundDecal.LayoutOrder = 2 end
+if BackgroundAudio then BackgroundAudio.LayoutOrder = 3 end
+if BackgroundPlugin then BackgroundPlugin.LayoutOrder = 4 end
+
 return LMG2L["ScreenGui_1"], require;
