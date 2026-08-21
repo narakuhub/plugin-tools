@@ -1055,6 +1055,327 @@ LMG2L["OpenButton_78"]["Size"] = UDim2.new(0, 20, 0, 20);
 LMG2L["OpenButton_78"]["Name"] = [[OpenButton]];
 LMG2L["OpenButton_78"]["Position"] = UDim2.new(0, 0, 0, -10);
 
+-- =========================================================
+-- SYSTEM MAIN PANEL
+-- =========================================================
 
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+-- =========================================================
+-- CONSTANTS & CONFIGURATION
+-- =========================================================
+
+local ARROW_RIGHT = "rbxassetid://138472587694798"
+local ARROW_LEFT = "rbxassetid://82611145930357"
+
+local TWEEN_OPEN_CLOSE = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TWEEN_DESTROY = TweenInfo.new(0.20, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+
+local MAX_HEIGHT = 700
+
+-- =========================================================
+-- SCREEN GUI INITIALIZATION
+-- =========================================================
+
+local ScreenGui = LMG2L["ScreenGui_1"]
+local NarakuPlugin = LMG2L["NarakuPlugin_2"]
+
+if not ScreenGui then
+	ScreenGui = CoreGui:FindFirstChild("ScreenGui_1")
+	if not ScreenGui then
+		ScreenGui = Instance.new("ScreenGui")
+		ScreenGui.Name = "ScreenGui_1"
+		ScreenGui.ResetOnSpawn = false
+		ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		ScreenGui.Parent = CoreGui
+	end
+else
+	ScreenGui.Parent = CoreGui
+end
+
+if not NarakuPlugin then
+	NarakuPlugin = ScreenGui:FindFirstChild("NarakuPlugin")
+end
+
+if not NarakuPlugin then
+	warn("NARAKU PLUGIN: NarakuPlugin tidak ditemukan.")
+	return
+end
+
+NarakuPlugin.Parent = ScreenGui
+
+-- =========================================================
+-- UI ELEMENTS
+-- =========================================================
+
+local Panel = LMG2L["Panel_3"]
+local Header = LMG2L["Header_4c"]
+
+local CloseButton = LMG2L["CloseButton_50"]
+local MenuButton = LMG2L["MenuButton_54"]
+local InfoButton = LMG2L["InfoButton_4d"]
+
+local SearchBox = LMG2L["SearchBox_4"]
+local BackgroundSearch = LMG2L["BackgroundSearch_73"]
+local SearchButton = LMG2L["SearchButton_75"]
+
+local ScrollingTab = LMG2L["ScrollingTab_9"]
+
+local SaveBox = LMG2L["SaveBox_24"]
+local BackgroundSave = LMG2L["BackgroundSave_55"]
+
+local CardSaved = LMG2L["CardSaved_2a"]
+local SavedButton = LMG2L["SavedButton_2c"]
+
+local InsertBox = LMG2L["InsertBox_38"]
+local BackgroundInsert = LMG2L["BackgroundInsert_32"]
+
+local CardMenu = LMG2L["CardMenu_3d"]
+
+local AmountAsset = LMG2L["AmountAsset_4a"]
+local ScrollingFrame = LMG2L["ScrollingFrame_5a"]
+local ResizeHandle = LMG2L["ResizeHandleButton_2f"]
+local OpenButton = LMG2L["OpenButton_78"]
+
+-- =========================================================
+-- ORIGINAL VALUES & TRANSFORM CACHE
+-- =========================================================
+
+local ORIGINAL_PANEL_SIZE = Panel.Size
+local ORIGINAL_PANEL_POSITION = Panel.Position
+
+local PANEL_WIDTH = ORIGINAL_PANEL_SIZE.X.Offset
+local ORIGINAL_HEIGHT = ORIGINAL_PANEL_SIZE.Y.Offset
+local MIN_HEIGHT = ORIGINAL_HEIGHT
+
+local ORIGINAL_SCROLL_POSITION = ScrollingFrame.Position
+local ORIGINAL_SCROLL_SIZE = ScrollingFrame.Size
+
+local ORIGINAL_RESIZE_POSITION = ResizeHandle.Position
+local ORIGINAL_AMOUNT_POSITION = AmountAsset.Position
+
+local ORIGINAL_INSERT_POSITION = InsertBox.Position
+local ORIGINAL_BACKGROUND_INSERT_POSITION = BackgroundInsert.Position
+
+local ORIGINAL_SAVE_POSITION = SaveBox.Position
+local ORIGINAL_BACKGROUND_SAVE_POSITION = BackgroundSave.Position
+
+local ORIGINAL_SEARCH_POSITION = SearchBox.Position
+local ORIGINAL_BACKGROUND_SEARCH_POSITION = BackgroundSearch.Position
+
+local ORIGINAL_CARD_SAVED_POSITION = CardSaved.Position
+local ORIGINAL_CARD_MENU_POSITION = CardMenu.Position
+
+-- =========================================================
+-- PANEL POSITIONS
+-- =========================================================
+
+local OPEN_POSITION = ORIGINAL_PANEL_POSITION
+local CLOSE_POSITION = UDim2.new(
+	ORIGINAL_PANEL_POSITION.X.Scale,
+	ORIGINAL_PANEL_POSITION.X.Offset - PANEL_WIDTH - 10,
+	ORIGINAL_PANEL_POSITION.Y.Scale,
+	ORIGINAL_PANEL_POSITION.Y.Offset
+)
+
+-- =========================================================
+-- STATE MANAGEMENT
+-- =========================================================
+
+local IsOpen = true
+local IsDestroyed = false
+local IsResizing = false
+
+local StartMouseY = 0
+local StartHeight = ORIGINAL_HEIGHT
+
+-- =========================================================
+-- HELPER FUNCTIONS
+-- =========================================================
+
+local function UpdateOpenButtonIcon()
+	if IsDestroyed or not OpenButton then return end
+	OpenButton.Image = IsOpen and ARROW_LEFT or ARROW_RIGHT
+end
+
+local function UpdatePanelLayout(NewHeight)
+	if IsDestroyed then return end
+
+	NewHeight = math.clamp(NewHeight, MIN_HEIGHT, MAX_HEIGHT)
+
+	Panel.Size = UDim2.new(
+		ORIGINAL_PANEL_SIZE.X.Scale,
+		PANEL_WIDTH,
+		ORIGINAL_PANEL_SIZE.Y.Scale,
+		NewHeight
+	)
+
+	local ScrollTop = ORIGINAL_SCROLL_POSITION.Y.Offset
+	local ScrollBottomPadding = 16
+	local ScrollHeight = math.max(50, NewHeight - ScrollTop - ScrollBottomPadding)
+
+	ScrollingFrame.Position = UDim2.new(
+		ORIGINAL_SCROLL_POSITION.X.Scale,
+		ORIGINAL_SCROLL_POSITION.X.Offset,
+		ORIGINAL_SCROLL_POSITION.Y.Scale,
+		ScrollTop
+	)
+
+	ScrollingFrame.Size = UDim2.new(
+		ORIGINAL_SCROLL_SIZE.X.Scale,
+		ORIGINAL_SCROLL_SIZE.X.Offset,
+		0,
+		ScrollHeight
+	)
+
+	ResizeHandle.Position = UDim2.new(
+		ORIGINAL_RESIZE_POSITION.X.Scale,
+		ORIGINAL_RESIZE_POSITION.X.Offset,
+		0,
+		NewHeight + 5
+	)
+
+	AmountAsset.Position = UDim2.new(
+		ORIGINAL_AMOUNT_POSITION.X.Scale,
+		ORIGINAL_AMOUNT_POSITION.X.Offset,
+		1,
+		-13
+	)
+
+	InsertBox.Position = ORIGINAL_INSERT_POSITION
+	BackgroundInsert.Position = ORIGINAL_BACKGROUND_INSERT_POSITION
+
+	SaveBox.Position = ORIGINAL_SAVE_POSITION
+	BackgroundSave.Position = ORIGINAL_BACKGROUND_SAVE_POSITION
+
+	SearchBox.Position = ORIGINAL_SEARCH_POSITION
+	BackgroundSearch.Position = ORIGINAL_BACKGROUND_SEARCH_POSITION
+
+	CardSaved.Position = ORIGINAL_CARD_SAVED_POSITION
+	CardMenu.Position = ORIGINAL_CARD_MENU_POSITION
+end
+
+local function OpenPanel()
+	if IsDestroyed then return end
+	IsOpen = true
+	UpdateOpenButtonIcon()
+
+	TweenService:Create(Panel, TWEEN_OPEN_CLOSE, {
+		Position = OPEN_POSITION
+	}):Play()
+end
+
+local function HidePanel()
+	if IsDestroyed then return end
+	IsOpen = false
+	UpdateOpenButtonIcon()
+
+	TweenService:Create(Panel, TWEEN_OPEN_CLOSE, {
+		Position = CLOSE_POSITION
+	}):Play()
+end
+
+-- =========================================================
+-- INITIALIZATION
+-- =========================================================
+
+Panel.AnchorPoint = Vector2.new(0, 0)
+Panel.Size = ORIGINAL_PANEL_SIZE
+Panel.Position = CLOSE_POSITION
+Panel.Visible = true
+
+UpdatePanelLayout(ORIGINAL_HEIGHT)
+UpdateOpenButtonIcon()
+
+TweenService:Create(Panel, TWEEN_OPEN_CLOSE, {
+	Position = OPEN_POSITION
+}):Play()
+
+-- =========================================================
+-- EVENT CONNECTIONS
+-- =========================================================
+
+OpenButton.MouseButton1Click:Connect(function()
+	if IsDestroyed then return end
+	if IsOpen then
+		HidePanel()
+	else
+		OpenPanel()
+	end
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+	if IsDestroyed then return end
+	IsDestroyed = true
+
+	local DestroyTween = TweenService:Create(Panel, TWEEN_DESTROY, {
+		Size = UDim2.new(0, 0, 0, 0),
+		Position = ORIGINAL_PANEL_POSITION
+	})
+
+	DestroyTween:Play()
+	DestroyTween.Completed:Wait()
+
+	if NarakuPlugin then
+		NarakuPlugin:Destroy()
+	end
+end)
+
+ResizeHandle.InputBegan:Connect(function(Input)
+	if IsDestroyed then return end
+	if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+		IsResizing = true
+		StartMouseY = Input.Position.Y
+		StartHeight = Panel.Size.Y.Offset
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+	if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+		IsResizing = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(Input)
+	if IsDestroyed or not IsResizing then return end
+	if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+
+	local DeltaY = Input.Position.Y - StartMouseY
+	UpdatePanelLayout(StartHeight + DeltaY)
+end)
+
+-- Dynamic Canvas Updates
+local AssetLayout = ScrollingFrame:FindFirstChildOfClass("UIListLayout")
+if AssetLayout then
+	local function UpdateAssetCanvas()
+		if IsDestroyed then return end
+		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, AssetLayout.AbsoluteContentSize.Y + 12)
+	end
+
+	UpdateAssetCanvas()
+	AssetLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateAssetCanvas)
+end
+
+local TabLayout = ScrollingTab:FindFirstChildOfClass("UIListLayout")
+if TabLayout then
+	local function UpdateTabCanvas()
+		if IsDestroyed then return end
+		ScrollingTab.CanvasSize = UDim2.new(0, TabLayout.AbsoluteContentSize.X + 12, 0, 0)
+	end
+
+	UpdateTabCanvas()
+	TabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateTabCanvas)
+end
+
+-- =========================================================
+-- FINALIZE SETUP
+-- =========================================================
+
+UpdatePanelLayout(ORIGINAL_HEIGHT)
+UpdateOpenButtonIcon()
 
 return LMG2L["ScreenGui_1"], require;
