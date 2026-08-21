@@ -2026,7 +2026,7 @@ local function InsertAsset(assetId, category, statusTarget)
 end
 
 -------------------------------------------------------------------------
--- TAHAP 6: INSTANT RENDER FROM MASTER & SAVED DATASET (FIXED INTEGRATION)
+-- TAHAP 6: INSTANT RENDER FROM MASTER & SAVED DATASET (DUPLICATE-FREE FIX)
 -------------------------------------------------------------------------
 local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
 
@@ -2041,7 +2041,7 @@ local function UpdateAmountAssetDisplay(count, category, isSavedOnly)
     end
 end
 
--- FUNGSI RENDER UTAMA (INSTANT CONSUMPTION DARI MASTER/SAVED DATASET)
+-- FUNGSI RENDER UTAMA
 local function RenderAssets(searchQuery)
     ClearList()
     
@@ -2050,18 +2050,40 @@ local function RenderAssets(searchQuery)
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
     
-    -- Pick Dataset Source (System 1: MasterAssets / System 2: SavedAssets[Category])
-    local targetList = {}
+    local rawSourceList = {}
+    
     if isSavedModeAtCall then
-        -- Ambil Array List ID khusus Kategori Aktif dari System 2 (SavedAssets[Category])
+        -- MODES SAVED: HANYA mengambil data dari saved_assets.json (SavedAssets)
         if type(SavedAssets) == "table" and type(SavedAssets[targetCategoryAtCall]) == "table" then
-            targetList = SavedAssets[targetCategoryAtCall]
+            rawSourceList = SavedAssets[targetCategoryAtCall]
         end
     else
-        -- Master Remote Assets Dataset Memory dari System 1
-        targetList = MasterAssets[targetCategoryAtCall] or {}
+        -- MODE NORMAL: GABUNGKAN Data Internal (4 RAW JSON / MasterAssets) + File saved_assets.json
+        local masterList = (type(MasterAssets) == "table" and MasterAssets[targetCategoryAtCall]) or {}
+        local savedList  = (type(SavedAssets) == "table" and SavedAssets[targetCategoryAtCall]) or {}
+        
+        for _, item in ipairs(masterList) do
+            table.insert(rawSourceList, item)
+        end
+        for _, item in ipairs(savedList) do
+            table.insert(rawSourceList, item)
+        end
     end
-    
+
+    -- SANITASI & DE-DUPLIKASI DATASET (Menghapus Duplikat ID & Membersihkan Format Table vs Number)
+    local targetList = {}
+    local processedIds = {}
+
+    for _, item in ipairs(rawSourceList) do
+        local rawId = type(item) == "table" and (item.ID or item.Id) or item
+        local numericId = tonumber(rawId)
+        
+        if numericId and not processedIds[numericId] then
+            processedIds[numericId] = true
+            table.insert(targetList, item)
+        end
+    end
+
     local renderedCount = 0
     UpdateAmountAssetDisplay(0, targetCategoryAtCall, isSavedModeAtCall)
     
@@ -2086,22 +2108,21 @@ local function RenderAssets(searchQuery)
                 return 
             end
 
-            -- Parse Minimal Data
             local rawId = type(item) == "table" and (item.ID or item.Id) or item
             local numericId = tonumber(rawId)
             
             if numericId then
-                -- Ekstrak / Fetch Metadata
+                -- Parsing Metadata
                 local assetName = "Loading..."
                 local assetCreator = "Unknown"
                 local assetTypeId = nil
 
                 if type(item) == "table" and (item.Name or item.Creator) then
-                    assetName = tostring(item.Name or ("Asset_" .. numericId))
+                    assetName = tostring(item.Name or ("Asset " .. numericId))
                     assetCreator = tostring(item.Creator or "Unknown")
                     assetTypeId = item.AssetTypeId
                 else
-                    -- Jika item berupa ID Mentah (Saved Assets Mode), Ambil dari Cache/Fetch Async
+                    -- Jika item berupa ID Mentah, ambil dari Cache jika tersedia
                     local cachedMeta = AssetInfoCache and AssetInfoCache[numericId]
                     if cachedMeta then
                         assetName = cachedMeta.Name
@@ -2153,7 +2174,7 @@ local function RenderAssets(searchQuery)
                     if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(assetCreator) end
                     if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
 
-                    -- Set Thumbnail Visual via Engine Helper
+                    -- Set Thumbnail Visual
                     if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
                         if typeof(GetAssetThumbnail) == "function" then
                             ThumbnailAsset.Image = GetAssetThumbnail(numericId, assetTypeId)
@@ -2162,8 +2183,8 @@ local function RenderAssets(searchQuery)
                         end
                     end
 
-                    -- Async Metadata Enricher untuk Kartu Saved yang belum di-cache
-                    if isSavedModeAtCall and assetName == ("Asset " .. numericId) then
+                    -- Async Metadata Fetcher untuk ID mentah
+                    if assetName == ("Asset " .. numericId) then
                         task.spawn(function()
                             if typeof(FetchAssetMetadata) == "function" then
                                 local meta = FetchAssetMetadata(numericId)
@@ -2178,7 +2199,7 @@ local function RenderAssets(searchQuery)
                         end)
                     end
 
-                    -- STATUS SAVED VISUAL PENANDA
+                    -- STATUS SAVED VISUAL PENANDA (Bintang Highlight)
                     if IconSaved then
                         if typeof(IsAssetSaved) == "function" then
                             IconSaved.Visible = IsAssetSaved(numericId, targetCategoryAtCall)
@@ -2215,7 +2236,7 @@ local function RenderAssets(searchQuery)
                 end
             end
 
-            -- Render 5 kartu per frame agar UI tetap responsive
+            -- Responsive rendering per frame
             if index % 5 == 0 then
                 task.wait()
             end
@@ -2224,10 +2245,9 @@ local function RenderAssets(searchQuery)
 end
 
 -------------------------------------------------------------------------
--- FIX: AUTOMATIC INITIAL RENDER TRIGGER (INIT BOOTSTRAP)
+-- AUTOMATIC INITIAL RENDER TRIGGER (INIT BOOTSTRAP)
 -------------------------------------------------------------------------
 task.spawn(function()
-    -- Tunggu hingga MasterAssets atau kategori default terisi/tersedia
     local maxRetries = 5000
     local retryCount = 0
     
@@ -2239,7 +2259,6 @@ task.spawn(function()
         task.wait(0.1)
     end
 
-    -- Pemicu Render Otomatis Saat UI Pertama Kali Dibuka
     if typeof(RenderAssets) == "function" then
         RenderAssets()
     end
@@ -2608,7 +2627,7 @@ if SearchButton and SearchButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 2. FUNGSIONALITAS SAVE BUTTON (STRUCTURED PER-CATEGORY FIX)
+-- 2. FUNGSIONALITAS SAVE BUTTON (STRICT OBJECT TABLE & DUPLICATE-PROOF)
 -------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
@@ -2638,11 +2657,11 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         end
 
         local originalBtnText = SaveButton.Text
-        SaveButton.Text = "SAVE"
+        SaveButton.Text = "..."
 
-        -- Eksekusi Asynchronous (Mencegah UI Freezing)
+        -- Eksekusi Asynchronous
         task.spawn(function()
-            -- Fetch Metadata Real dari Marketplace/Helper
+            -- 1. FETCH METADATA DAHULU UNTUK MENENTUKAN KATEGORI TARGET
             local meta = nil
             if typeof(FetchAssetMetadata) == "function" then
                 meta = FetchAssetMetadata(cleanId)
@@ -2677,17 +2696,21 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 
             local targetCat = (meta and meta.Category) or CurrentCategory or "Model"
 
-            -- Ensurance Struktur Data SavedAssets
+            -- Ensurance Structure SavedAssets
             if type(SavedAssets) ~= "table" then
                 SavedAssets = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
             end
             SavedAssets[targetCat] = SavedAssets[targetCat] or {}
 
-            -- 1. CEK DUPLIKASI PADA KATEGORI TARGET
+            -- 2. PENGECEKAN DUPLIKASI KETAT (PERIKSA SEMENTARA SELURUH TIPE DATA DALAM KATEGORI)
             local isDuplicate = false
+            
             if typeof(IsAssetSaved) == "function" then
                 isDuplicate = IsAssetSaved(cleanId, targetCat)
-            else
+            end
+
+            -- Fallback Check (Memeriksa ID Angka Murni maupun Object Table)
+            if not isDuplicate then
                 for _, entry in ipairs(SavedAssets[targetCat]) do
                     local entryId = type(entry) == "table" and (entry.ID or entry.Id) or entry
                     if tonumber(entryId) == cleanId then
@@ -2697,7 +2720,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 end
             end
 
-            -- Jika ID Sudah Ada di Kategori Tersebut
+            -- Jika ID Sudah Ada
             if isDuplicate then
                 targetBox.Text = "Sudah Ada!"
                 task.wait(1.5)
@@ -2709,45 +2732,46 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 return
             end
 
-            -- 2. SIMPAN ASSET KE SUB-KATEGORI YANG SESUAI
-            if meta then
-                -- Simpan Metadata ke Cache Lokal
-                if AssetInfoCache then
-                    AssetInfoCache[cleanId] = meta
-                end
-
-                -- Bentuk Asset Item (Mendukung ID Murni maupun Table Object)
-                local newSavedAsset = {
+            -- 3. BENTUK METADATA DEFAULT JIKA FETCH METADATA GAGAL (AGAR TIDAK DISIMPAN SEBAGAI ANGKA MURNI)
+            if not meta then
+                meta = {
                     ID = cleanId,
-                    Name = meta.Name or ("Asset " .. cleanId),
-                    Creator = meta.Creator or "Unknown",
+                    Name = "Asset " .. cleanId,
+                    Creator = "Unknown",
                     Category = targetCat,
-                    AssetTypeId = meta.AssetTypeId or 0
+                    AssetTypeId = 0
                 }
+            end
 
-                -- Masukkan ke Array Kategori
-                table.insert(SavedAssets[targetCat], newSavedAsset)
-                
-                -- Simpan Permanen ke Storage File User (delta/saved_assets.json)
-                if typeof(SaveUserData) == "function" then
-                    SaveUserData()
-                end
-                
-                SaveButton.Text = "SAVED!"
-                
-                -- Pindah Tab & Re-Render
-                if typeof(SwitchTab) == "function" then
-                    SwitchTab(targetCat)
-                elseif typeof(RenderAssets) == "function" then
-                    RenderAssets("")
-                end
-            else
-                targetBox.Text = "ID Gagal Validasi!"
-                task.wait(1.5)
-                if targetBox and targetBox.Text == "ID Gagal Validasi!" then
-                    targetBox.Text = tostring(cleanId)
-                    targetBox.TextTransparency = 0
-                end
+            -- Simpan Metadata ke Cache Lokal
+            if AssetInfoCache then
+                AssetInfoCache[cleanId] = meta
+            end
+
+            -- STIK KONSISTENSI DATA: SELALU SIMPAN SEBAGAI OBJECT TABLE KANONIKAL
+            local newSavedAsset = {
+                ID = cleanId,
+                Name = meta.Name or ("Asset " .. cleanId),
+                Creator = meta.Creator or "Unknown",
+                Category = targetCat,
+                AssetTypeId = meta.AssetTypeId or 0
+            }
+
+            -- Insert ke Memory Array
+            table.insert(SavedAssets[targetCat], newSavedAsset)
+            
+            -- Simpan Permanen ke Storage File User (delta/saved_assets.json)
+            if typeof(SaveUserData) == "function" then
+                SaveUserData()
+            end
+            
+            SaveButton.Text = "SAVED!"
+            
+            -- Pindah Tab & Re-Render List
+            if typeof(SwitchTab) == "function" then
+                SwitchTab(targetCat)
+            elseif typeof(RenderAssets) == "function" then
+                RenderAssets("")
             end
             
             task.wait(1.2)
