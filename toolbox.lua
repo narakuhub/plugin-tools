@@ -2224,16 +2224,10 @@ local function RenderAssets(searchQuery)
 end
 
 -------------------------------------------------------------------------
--- TAHAP 8: TAB SWITCHING & ACTION HANDLERS (FULL INTEGRATION FIX)
--------------------------------------------------------------------------
-
--------------------------------------------------------------------------
 -- 1. TAB SWITCHING SYSTEM (INTEGRATED VISUAL STATE)
 -------------------------------------------------------------------------
 local function SwitchTab(tabName)
     CurrentCategory = tabName
-    IsShowingSavedOnly = false -- Reset dari mode Saved ke Mode Catalog Normal saat klik tab
-    if _G then _G.IsShowingSavedOnly = false end
 
     -- Reset Seluruh Tab Visual State ke Inactive
     if typeof(UpdateTabVisualState) == "function" then
