@@ -1649,17 +1649,53 @@ local function GetAssetThumbnail(assetId, assetTypeId)
 end
 
 -------------------------------------------------------------------------
+-- HELPER: PRETTY PRINT JSON ENCODER
+-------------------------------------------------------------------------
+local function FormatPrettyJSON(data, indent)
+    indent = indent or "  "
+    local function Pretty(obj, level)
+        local t = type(obj)
+        if t ~= "table" then
+            return HttpService:JSONEncode(obj)
+        end
+        
+        local isArray = #obj > 0
+        local items = {}
+        local currentIndent = string.rep(indent, level)
+        local nextIndent = string.rep(indent, level + 1)
+        
+        if isArray then
+            for _, v in ipairs(obj) do
+                table.insert(items, nextIndent .. Pretty(v, level + 1))
+            end
+            return "[\n" .. table.concat(items, ",\n") .. "\n" .. currentIndent .. "]"
+        else
+            local keys = {}
+            for k in pairs(obj) do table.insert(keys, k) end
+            table.sort(keys)
+
+            for _, k in ipairs(keys) do
+                local v = obj[k]
+                table.insert(items, nextIndent .. HttpService:JSONEncode(tostring(k)) .. ": " .. Pretty(v, level + 1))
+            end
+            return "{\n" .. table.concat(items, ",\n") .. "\n" .. currentIndent .. "}"
+        end
+    end
+    return Pretty(data, 0)
+end
+
+-------------------------------------------------------------------------
 -- LOCAL DATA MANAGEMENT (CATEGORY-BASED SAVED ASSETS SYSTEM)
 -------------------------------------------------------------------------
 
--- 1. Menyimpan Data User ke File delta/saved_assets.json (Strict Nested Category)
+-- 1. Menyimpan Data User ke File delta/saved_assets.json (Strict Nested Category + Pretty Print)
 local function SaveUserData()
     if not writefile then return false end
     local success = pcall(function()
         if isfolder and not isfolder("delta") then 
             makefolder("delta") 
         end
-        local encodedData = HttpService:JSONEncode(SavedAssets)
+        local encodedData = FormatPrettyJSON(SavedAssets)
         writefile("delta/saved_assets.json", encodedData)
     end)
     return success
