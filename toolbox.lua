@@ -2822,5 +2822,176 @@ end
 if typeof(SwitchTab) == "function" then
     SwitchTab("Model")
 end
+
+-------------------------------------------------------------------------
+-- TAHAP 7: DYNAMIC MENU SYSTEM & RAW LINK EXECUTOR (FIXED FINAL)
+-------------------------------------------------------------------------
+
+-- Referensi UI LMG2L
+local MenuButton = LMG2L and (LMG2L["MenuButton_54"] or LMG2L["MenuButton"])
+local CardMenu   = LMG2L and (LMG2L["CardMenu_3d"] or LMG2L["CardMenu"])
+
+local ScrollingButton  = CardMenu and (CardMenu:FindFirstChild("ScrollingButton_3f") or CardMenu:FindFirstChild("ScrollingButton"))
+local TemplateBgButton = ScrollingButton and (ScrollingButton:FindFirstChild("BackgroundButton_42") or ScrollingButton:FindFirstChild("BackgroundButton"))
+
+-- Icon ID Config
+local ICON_CLOSED = "rbxassetid://76007989326576"
+local ICON_OPENED = "rbxassetid://86595679119304"
+
+-- State Menu Tracker
+local IsMenuOpen = false
+
+-------------------------------------------------------------------------
+-- 1. DATABASE LIST FEATURE BUTTONS (NAMA, ICON, & RAW LINK)
+-------------------------------------------------------------------------
+local MenuFeatureList = {
+    {
+        Name = "ARCHIMEDES",
+        Icon = "rbxassetid://87188567501065",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/Archimedes.lua"
+    },
+    {
+        Name = "TERRAIN",
+        Icon = "rbxassetid://129361331543944",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/terrain.lua"
+    },
+	{
+        Name = "IMPORT FILE",
+        Icon = "rbxassetid://126926348062230",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/vertrou/refs/heads/main/import.lua"
+    },
+    {
+        Name = "FLY GUI",
+        Icon = "rbxassetid://126428723702595",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/narakuhub/refs/heads/main/FlyV3.lua"
+    }
+}
+
+-------------------------------------------------------------------------
+-- 2. SETUP TEMPLATE & BUILD MENU LIST
+-------------------------------------------------------------------------
+if TemplateBgButton then
+    TemplateBgButton.Visible = false -- Sembunyikan Template Acuan
+end
+
+local function BuildMenuItems()
+    if not ScrollingButton or not TemplateBgButton then return end
+
+    -- Clear Button Hasil Clone Sebelumnya (Kecuali Template Default)
+    for _, child in ipairs(ScrollingButton:GetChildren()) do
+        if child:IsA("GuiObject") and child ~= TemplateBgButton then
+            child:Destroy()
+        end
+    end
+
+    -- Loop Data Feature untuk Cloning
+    for index, featureData in ipairs(MenuFeatureList) do
+        local buttonCard = TemplateBgButton:Clone()
+        buttonCard.Name = "MenuCard_" .. tostring(index)
+        buttonCard.Visible = true
+        buttonCard.Parent = ScrollingButton
+
+        -- Referensi Elemen UI Dalam Clone
+        local IconButton = buttonCard:FindFirstChild("IconButton_43") or buttonCard:FindFirstChild("IconButton")
+        local ExecButton = buttonCard:FindFirstChild("Button_45") or buttonCard:FindFirstChild("Button")
+
+        -- Assign Custom Icon ImageLabel
+        if IconButton and IconButton:IsA("ImageLabel") then
+            IconButton.Image = featureData.Icon or ICON_CLOSED
+        end
+
+        -- Assign Text & Execute Event pada Button_45
+        if ExecButton then
+            local textTarget = ExecButton:IsA("TextButton") and ExecButton or ExecButton:FindFirstChildOfClass("TextLabel")
+            if textTarget then
+                textTarget.Text = featureData.Name
+            elseif ExecButton:IsA("TextButton") then
+                ExecButton.Text = featureData.Name
+            end
+
+            -- Event Click Execute Raw Link
+            local clickTarget = ExecButton:IsA("GuiButton") and ExecButton or ExecButton:FindFirstChildOfClass("GuiButton")
+            if clickTarget then
+                clickTarget.MouseButton1Click:Connect(function()
+                    if not featureData.RawLink or featureData.RawLink == "" then return end
+
+                    -- Visual Feedback Saat Tombol Ditekan
+                    local originalText = clickTarget.Text
+                    clickTarget.Text = "EXECUTING..."
+
+                    task.spawn(function()
+                        local success, err = pcall(function()
+                            local scriptContent = game:HttpGet(featureData.RawLink)
+                            local executeScript = loadstring(scriptContent)
+                            executeScript()
+                        end)
+
+                        if success then
+                            clickTarget.Text = "SUCCESS!"
+                        else
+                            warn("[MENU EXECUTE ERROR]: " .. tostring(err))
+                            clickTarget.Text = "FAILED!"
+                        end
+
+                        task.wait(1.5)
+                        clickTarget.Text = originalText
+                    end)
+                end)
+            end
+        end
+    end
+
+    -- Auto Adjust Canvas Scrolling Frame Menu
+    local layout = ScrollingButton:FindFirstChildOfClass("UIListLayout")
+    if layout then
+        ScrollingButton.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
+    end
+end
+
+-------------------------------------------------------------------------
+-- 3. TOGGLE VISIBILITY & DIRECT IMAGEBUTTON ICON SWAP LISTENER
+-------------------------------------------------------------------------
+if MenuButton then
+    MenuButton.MouseButton1Click:Connect(function()
+        IsMenuOpen = not IsMenuOpen
+
+        -- Toggle Visible CardMenu_3d
+        if CardMenu then
+            CardMenu.Visible = IsMenuOpen
+        end
+
+        -- TEPAT: SWAP ICON LANGSUNG KEPADA MenuButton_54 (ImageButton / ImageLabel Fallback)
+        if MenuButton:IsA("ImageButton") or MenuButton:IsA("ImageLabel") then
+            MenuButton.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
+        else
+            -- Fallback jika ada child ImageLabel di dalamnya
+            local childIcon = MenuButton:FindFirstChildOfClass("ImageLabel")
+            if childIcon then
+                childIcon.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
+            end
+        end
+
+        -- Render/Build Tombol Menu saat Pertama Kali Dibuka
+        if IsMenuOpen then
+            BuildMenuItems()
+        end
+    end)
+end
+
+-------------------------------------------------------------------------
+-- INITIAL STATE SETUP
+-------------------------------------------------------------------------
+if CardMenu then 
+    CardMenu.Visible = false 
+end
+
+if MenuButton then
+    if MenuButton:IsA("ImageButton") or MenuButton:IsA("ImageLabel") then
+        MenuButton.Image = ICON_CLOSED
+    else
+        local childIcon = MenuButton:FindFirstChildOfClass("ImageLabel")
+        if childIcon then childIcon.Image = ICON_CLOSED end
+    end
+end
 	
 return LMG2L["ScreenGui_1"], require;
