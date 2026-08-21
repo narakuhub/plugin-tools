@@ -2224,6 +2224,27 @@ local function RenderAssets(searchQuery)
 end
 
 -------------------------------------------------------------------------
+-- FIX: AUTOMATIC INITIAL RENDER TRIGGER (INIT BOOTSTRAP)
+-------------------------------------------------------------------------
+task.spawn(function()
+    -- Tunggu hingga MasterAssets atau kategori default terisi/tersedia
+    local maxRetries = 50
+    local retryCount = 0
+    
+    while retryCount < maxRetries do
+        if MasterAssets and (MasterAssets[CurrentCategory] or SavedAssets) then
+            break
+        end
+        retryCount = retryCount + 1
+        task.wait(0.1)
+    end
+
+    -- Pemicu Render Otomatis Saat UI Pertama Kali Dibuka
+    if typeof(RenderAssets) == "function" then
+        RenderAssets()
+    end
+end)
+
 -- 1. TAB SWITCHING SYSTEM (SAVED STATE & VISUAL PERSISTENT)
 -------------------------------------------------------------------------
 local function SwitchTab(tabName)
@@ -2239,7 +2260,6 @@ local function SwitchTab(tabName)
         UpdateTabVisualState(tabName, true)
     end
 
-    -- [FIX] Reset visual UpdateSavedFilterVisualState DIHAPUS 
     -- Visual dan State Saved Button TETAP AKTIF mengikuti nilai IsShowingSavedOnly saat ini.
 
     -- Reset Search Box
@@ -2282,7 +2302,7 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
         end
     end)
 
-    -- Deteksi perubahan teks
+    -- Deteksi perubahan teks (Hanya untuk efek transparansi & warna visual input)
     textBox:GetPropertyChangedSignal("Text"):Connect(function()
         local currentText = textBox.Text
         if currentText ~= "" and currentText ~= defaultPlaceholder then
@@ -2298,13 +2318,28 @@ if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
 if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
 
 -------------------------------------------------------------------------
--- 3. SEARCH SYSTEM: LIVE LOCAL DATASET FILTERING (MEMORY SEARCH)
+-- 3. SEARCH SYSTEM: MANUAL BUTTON CLICK ONLY (FIXED NO LIVE SEARCH)
 -------------------------------------------------------------------------
+-- Inisialisasi Referensi Tombol Search
+local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"] or LMG2L["SearchBtn"])
+
+local function ExecuteSearch()
+    if typeof(RenderAssets) == "function" then
+        local query = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
+        RenderAssets(query)
+    end
+end
+
+-- Listener Tombol Search (Pencarian HANYA diproses saat tombol diklik)
+if SearchButton and SearchButton:IsA("GuiButton") then
+    SearchButton.MouseButton1Click:Connect(ExecuteSearch)
+end
+
+-- Listener Enter Key pada SearchBox (Opsional bila user menekan Enter di Keyboard)
 if SearchBox and SearchBox:IsA("TextBox") then
-    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        local currentQuery = SearchBox.Text
-        if currentQuery ~= "Search asset..." and typeof(RenderAssets) == "function" then
-            RenderAssets(currentQuery)
+    SearchBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            ExecuteSearch()
         end
     end)
 end
@@ -2367,7 +2402,7 @@ if HeaderSavedButton and HeaderSavedButton:IsA("GuiButton") then
     HeaderSavedButton.MouseButton1Click:Connect(ToggleSavedFilter)
 elseif HeaderIconSaved and HeaderIconSaved:IsA("GuiButton") then
     HeaderIconSaved.MouseButton1Click:Connect(ToggleSavedFilter)
-				end
+end
 
 -------------------------------------------------------------------------
 -- 7. MANUAL SAVE ID ACTION (SaveBox & SaveButton) + INSTANT RE-RENDER
@@ -2477,7 +2512,7 @@ if InsertButton and InsertButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- FIX: SEARCH SYSTEM VIA SEARCH BUTTON ONLY (CASE-INSENSITIVE)
+-- FIX: SEARCH SYSTEM VIA SEARCH BUTTON ONLY & CATEGORIZED SAVED ASSETS
 -------------------------------------------------------------------------
 
 -- Color Palette Configuration
@@ -2548,7 +2583,7 @@ local function ExecuteSearch()
             RenderAssets("")
         end
     else
-        -- Normalisasi query ke lowercase agar case-insensitive (huruf kecil/kapital tidak berpengaruh)
+        -- Normalisasi query ke lowercase agar case-insensitive
         local cleanQuery = rawQuery:lower()
         if typeof(RenderAssets) == "function" then
             RenderAssets(cleanQuery)
@@ -2573,7 +2608,7 @@ if SearchButton and SearchButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 2. FUNGSIONALITAS SAVE BUTTON (METADATA PERSISTENCE & FLAT ARRAY FIX)
+-- 2. FUNGSIONALITAS SAVE BUTTON (STRUCTURED PER-CATEGORY FIX)
 -------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
@@ -2607,41 +2642,13 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 
         -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
-            -- 1. CEGAH DUPLIKASI ID DI FLAT ARRAY SAVEDASSETS
-            local isDuplicate = false
-            if typeof(IsAssetSaved) == "function" then
-                isDuplicate = IsAssetSaved(cleanId)
-            else
-                for _, entry in ipairs(SavedAssets or {}) do
-                    if typeof(entry) == "table" and tonumber(entry.ID or entry.Id) == cleanId then
-                        isDuplicate = true
-                        break
-                    elseif typeof(entry) == "number" and entry == cleanId then
-                        isDuplicate = true
-                        break
-                    end
-                end
-            end
-
-            -- Jika ID Sudah Ada di Database Lokal
-            if isDuplicate then
-                targetBox.Text = "Sudah Ada!"
-                task.wait(1.5)
-                if SaveButton then SaveButton.Text = originalBtnText end
-                if targetBox and targetBox.Text == "Sudah Ada!" then
-                    targetBox.Text = tostring(cleanId)
-                    targetBox.TextTransparency = 0
-                end
-                return
-            end
-
-            -- 2. VALIDASI KEBERADAAN ASSET & FETCH METADATA VIA HELPER / MARKETPLACESERVICE
+            -- Fetch Metadata Real dari Marketplace/Helper
             local meta = nil
             if typeof(FetchAssetMetadata) == "function" then
                 meta = FetchAssetMetadata(cleanId)
             else
                 local success, info = pcall(function() 
-                    return MarketplaceService:GetProductInfo(cleanId) 
+                    return game:GetService("MarketplaceService"):GetProductInfo(cleanId) 
                 end)
                 if success and info and info.Name then
                     local creatorName = "Unknown"
@@ -2668,34 +2675,67 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 end
             end
 
+            local targetCat = (meta and meta.Category) or CurrentCategory or "Model"
+
+            -- Ensurance Struktur Data SavedAssets
+            if type(SavedAssets) ~= "table" then
+                SavedAssets = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
+            end
+            SavedAssets[targetCat] = SavedAssets[targetCat] or {}
+
+            -- 1. CEK DUPLIKASI PADA KATEGORI TARGET
+            local isDuplicate = false
+            if typeof(IsAssetSaved) == "function" then
+                isDuplicate = IsAssetSaved(cleanId, targetCat)
+            else
+                for _, entry in ipairs(SavedAssets[targetCat]) do
+                    local entryId = type(entry) == "table" and (entry.ID or entry.Id) or entry
+                    if tonumber(entryId) == cleanId then
+                        isDuplicate = true
+                        break
+                    end
+                end
+            end
+
+            -- Jika ID Sudah Ada di Kategori Tersebut
+            if isDuplicate then
+                targetBox.Text = "Sudah Ada!"
+                task.wait(1.5)
+                if SaveButton then SaveButton.Text = originalBtnText end
+                if targetBox and targetBox.Text == "Sudah Ada!" then
+                    targetBox.Text = tostring(cleanId)
+                    targetBox.TextTransparency = 0
+                end
+                return
+            end
+
+            -- 2. SIMPAN ASSET KE SUB-KATEGORI YANG SESUAI
             if meta then
                 -- Simpan Metadata ke Cache Lokal
                 if AssetInfoCache then
                     AssetInfoCache[cleanId] = meta
                 end
 
-                -- Bentuk Object Saved Asset Baru (Flat Array Standard)
+                -- Bentuk Asset Item (Mendukung ID Murni maupun Table Object)
                 local newSavedAsset = {
                     ID = cleanId,
                     Name = meta.Name or ("Asset " .. cleanId),
                     Creator = meta.Creator or "Unknown",
-                    Category = meta.Category or CurrentCategory or "Model",
+                    Category = targetCat,
                     AssetTypeId = meta.AssetTypeId or 0
                 }
 
-                -- Simpan ke Memory (Flat Array)
-                SavedAssets = SavedAssets or {}
-                table.insert(SavedAssets, newSavedAsset)
+                -- Masukkan ke Array Kategori
+                table.insert(SavedAssets[targetCat], newSavedAsset)
                 
-                -- Simpan Permanen ke Storage User
+                -- Simpan Permanen ke Storage File User (delta/saved_assets.json)
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
                 
                 SaveButton.Text = "SAVED!"
                 
-                -- Pindah ke Tab/Kategori Asset Tersebut Secara Otomatis
-                local targetCat = meta.Category or CurrentCategory or "Model"
+                -- Pindah Tab & Re-Render
                 if typeof(SwitchTab) == "function" then
                     SwitchTab(targetCat)
                 elseif typeof(RenderAssets) == "function" then
