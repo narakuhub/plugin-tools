@@ -2228,7 +2228,7 @@ end
 -------------------------------------------------------------------------
 task.spawn(function()
     -- Tunggu hingga MasterAssets atau kategori default terisi/tersedia
-    local maxRetries = 50
+    local maxRetries = 5000
     local retryCount = 0
     
     while retryCount < maxRetries do
@@ -2595,7 +2595,7 @@ end
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
         local originalText = SearchButton.Text
-        SearchButton.Text = "..."
+        SearchButton.Text = "SEARCH"
         
         -- Jalankan Pencarian
         ExecuteSearch()
@@ -2638,7 +2638,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         end
 
         local originalBtnText = SaveButton.Text
-        SaveButton.Text = "..."
+        SaveButton.Text = "SAVE"
 
         -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
