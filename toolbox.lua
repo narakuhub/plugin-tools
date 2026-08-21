@@ -2306,6 +2306,92 @@ if SearchBox and SearchBox:IsA("TextBox") then
         local currentQuery = SearchBox.Text
         if currentQuery ~= "Search asset..." and typeof(RenderAssets) == "function" then
             RenderAssets(currentQuery)
+-------------------------------------------------------------------------
+-- TAHAP 8: TAB SWITCHING & ACTION HANDLERS (PERSISTENT SAVED FIX)
+-------------------------------------------------------------------------
+
+-------------------------------------------------------------------------
+-- 1. TAB SWITCHING SYSTEM (SAVED STATE & VISUAL PERSISTENT)
+-------------------------------------------------------------------------
+local function SwitchTab(tabName)
+    CurrentCategory = tabName
+
+    -- Reset & Aktifkan Visual State Tab Kategori yang Dipilih
+    if typeof(UpdateTabVisualState) == "function" then
+        UpdateTabVisualState("Model", false)
+        UpdateTabVisualState("Decal", false)
+        UpdateTabVisualState("Audio", false)
+        UpdateTabVisualState("Plugin", false)
+
+        UpdateTabVisualState(tabName, true)
+    end
+
+    -- [FIX] Reset visual UpdateSavedFilterVisualState DIHAPUS 
+    -- Visual dan State Saved Button TETAP AKTIF mengikuti nilai IsShowingSavedOnly saat ini.
+
+    -- Reset Search Box
+    if SearchBox and SearchBox:IsA("TextBox") then
+        SearchBox.Text = "Search asset..."
+        SearchBox.TextTransparency = 0.5
+    end
+    
+    -- Render Ulang sesuai Kategori Baru dengan Mempertahankan Status Saved
+    if typeof(RenderAssets) == "function" then
+        RenderAssets("")
+    end
+end
+
+-------------------------------------------------------------------------
+-- 2. HELPER: EFEK FOKUS & TRANSPARANSI INPUT BOX
+-------------------------------------------------------------------------
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
+
+local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
+    if not textBox or not textBox:IsA("TextBox") then return end
+
+    -- Saat kotak di-klik / mulai diketik
+    textBox.Focused:Connect(function()
+        textBox.TextTransparency = 0
+        textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        if textBox.Text == defaultPlaceholder then
+            textBox.Text = ""
+        end
+    end)
+
+    -- Saat fokus dilepas dari kotak
+    textBox.FocusLost:Connect(function()
+        if textBox.Text == "" or textBox.Text == defaultPlaceholder then
+            textBox.Text = defaultPlaceholder
+            textBox.TextTransparency = 0.5
+        else
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+    end)
+
+    -- Deteksi perubahan teks
+    textBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local currentText = textBox.Text
+        if currentText ~= "" and currentText ~= defaultPlaceholder then
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+    end)
+end
+
+-- Menerapkan Efek Visual ke Seluruh Input Box
+if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...") end
+if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
+if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
+
+-------------------------------------------------------------------------
+-- 3. SEARCH SYSTEM: LIVE LOCAL DATASET FILTERING (MEMORY SEARCH)
+-------------------------------------------------------------------------
+if SearchBox and SearchBox:IsA("TextBox") then
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local currentQuery = SearchBox.Text
+        if currentQuery ~= "Search asset..." and typeof(RenderAssets) == "function" then
+            RenderAssets(currentQuery)
         end
     end)
 end
@@ -2345,9 +2431,10 @@ if PluginButton and PluginButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 6. TOGGLE FILTER SAVED ASSETS (HEADER BUTTON)
+-- 6. TOGGLE FILTER SAVED ASSETS (MANUAL CLICK ONLY)
 -------------------------------------------------------------------------
 local function ToggleSavedFilter()
+    -- Hanya fungsi ini yang berhak mengubah status IsShowingSavedOnly & Visual Button
     IsShowingSavedOnly = not IsShowingSavedOnly
     _G.IsShowingSavedOnly = IsShowingSavedOnly
 
@@ -2367,7 +2454,7 @@ if HeaderSavedButton and HeaderSavedButton:IsA("GuiButton") then
     HeaderSavedButton.MouseButton1Click:Connect(ToggleSavedFilter)
 elseif HeaderIconSaved and HeaderIconSaved:IsA("GuiButton") then
     HeaderIconSaved.MouseButton1Click:Connect(ToggleSavedFilter)
-end
+				end
 
 -------------------------------------------------------------------------
 -- 7. MANUAL SAVE ID ACTION (SaveBox & SaveButton) + INSTANT RE-RENDER
@@ -2390,7 +2477,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         end
 
         local originalBtnText = SaveButton.Text
-        SaveButton.Text = "..."
+        SaveButton.Text = "SAVE"
 
         task.spawn(function()
             -- Fetch Metadata Real dari Store via Helper Tahap 3
@@ -2477,7 +2564,7 @@ if InsertButton and InsertButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- FIX: LOGIC SEARCH & SAVE SYSTEM (OPTIMIZED, STABLE INPUT & ASYNC-SAFE)
+-- FIX: SEARCH SYSTEM VIA SEARCH BUTTON ONLY (CASE-INSENSITIVE)
 -------------------------------------------------------------------------
 
 -- Color Palette Configuration
@@ -2534,41 +2621,35 @@ local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"] or
 local InsertButton = LMG2L and (LMG2L["InsertButton_34"] or LMG2L["InsertButton"])
 
 -------------------------------------------------------------------------
--- 1. FUNGSIONALITAS SEARCH SYSTEM & SEARCH BUTTON
+-- 1. FUNGSIONALITAS SEARCH SYSTEM (EXCLUSIVELY VIA SEARCH BUTTON)
 -------------------------------------------------------------------------
 local function ExecuteSearch()
-    local query = ""
+    local rawQuery = ""
     if SearchBox and SearchBox:IsA("TextBox") then
-        query = SearchBox.Text:match("^%s*(.-)%s*$") or ""
+        rawQuery = SearchBox.Text:match("^%s*(.-)%s*$") or ""
     end
 
-    if query == "" or query == "Search asset..." then
+    -- Jika kosong atau masih berupa placeholder, tampilkan semua asset
+    if rawQuery == "" or rawQuery == "Search asset..." then
         if typeof(RenderAssets) == "function" then
             RenderAssets("")
         end
     else
+        -- Normalisasi query ke lowercase agar case-insensitive (huruf kecil/kapital tidak berpengaruh)
+        local cleanQuery = rawQuery:lower()
         if typeof(RenderAssets) == "function" then
-            RenderAssets(query)
+            RenderAssets(cleanQuery)
         end
     end
 end
 
--- Live Search via Typing (Persist User Keyword)
-if SearchBox and SearchBox:IsA("TextBox") then
-    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        local txt = SearchBox.Text
-        if txt ~= "Search asset..." then
-            ExecuteSearch()
-        end
-    end)
-end
-
--- Manual Trigger via SearchButton
+-- MANUAL TRIGGER: PENCARIAN HANYA JALAN SAAT SEARCH BUTTON DI-KLIK
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
         local originalText = SearchButton.Text
         SearchButton.Text = "..."
         
+        -- Jalankan Pencarian
         ExecuteSearch()
         
         task.wait(0.3)
