@@ -1568,9 +1568,16 @@ local MasterAssets = {
     Plugin = {}
 }
 
--- System 2: Local Database (File Storage) & Memory Caching
-local SavedAssets = {}    -- Flat List Object: { {ID = 12345, Name = "...", Creator = "...", Category = "Model"} }
-local AssetInfoCache = {} -- Cache Metadata MarketplaceService Biar Tidak Spam HTTP
+-- System 2: Local Database (Format Key-Array ID per Kategori)
+local SavedAssets = {
+    Model  = {},
+    Decal  = {},
+    Audio  = {},
+    Plugin = {}
+}
+
+-- Caching Metadata MarketplaceService Biar Tidak Spam HTTP
+local AssetInfoCache = {}
 
 -------------------------------------------------------------------------
 -- HELPER: CATEGORY MAPPER BY ASSET TYPE ID
@@ -1640,7 +1647,6 @@ local function GetAssetThumbnail(assetId, assetTypeId)
 
     assetTypeId = tonumber(assetTypeId) or 0
 
-    -- Formatting URL Thumbnail Resmi Roblox Store Engine
     if assetTypeId == 1 or assetTypeId == 13 or assetTypeId == 2 or assetTypeId == 14 then
         -- Decal / Image / Texture
         return "rbxthumb://type=Asset&id=" .. numericId .. "&w=420&h=420"
@@ -1694,7 +1700,6 @@ end
 -------------------------------------------------------------------------
 -- SYSTEM 2 STORAGE: SAVE & LOAD LOCAL USER DATA (delta/saved_assets.json)
 -------------------------------------------------------------------------
--- Forward Declaration untuk Fungsi Save (diakses async di LoadUserData)
 local SaveUserData
 
 SaveUserData = function()
@@ -1703,6 +1708,7 @@ SaveUserData = function()
         if isfolder and not isfolder("delta") then 
             makefolder("delta") 
         end
+        -- Encode format Key-Array ID per Kategori
         local encodedData = HttpService:JSONEncode(SavedAssets)
         writefile("delta/saved_assets.json", encodedData)
     end)
@@ -1725,90 +1731,74 @@ local function LoadUserData()
                 end)
                 
                 if decodeSuccess and type(decoded) == "table" then
-                    local flatList = {}
+                    local structuredData = {
+                        Model  = {},
+                        Decal  = {},
+                        Audio  = {},
+                        Plugin = {}
+                    }
                     
-                    -- Case A: Flat Array Objects / Pure IDs
-                    if #decoded > 0 then
-                        for _, item in ipairs(decoded) do
-                            if type(item) == "table" and item.ID then
-                                table.insert(flatList, {
-                                    Name = tostring(item.Name or "Saved Asset"),
-                                    Creator = tostring(item.Creator or "Unknown"),
-                                    ID = tonumber(item.ID),
-                                    Category = tostring(item.Category or "Model")
-                                })
-                            elseif type(item) == "number" or tonumber(item) then
-                                table.insert(flatList, {
-                                    Name = "Saved Asset " .. tostring(item),
-                                    Creator = "Unknown",
-                                    ID = tonumber(item),
-                                    Category = "Model"
-                                })
-                            end
-                        end
-                    else
-                        -- Case B: Structure Dictionary per Kategori {"Model": [123], "Decal": [456]}
-                        for catName, categoryList in pairs(decoded) do
-                            if type(categoryList) == "table" then
-                                for _, val in ipairs(categoryList) do
-                                    if type(val) == "table" and val.ID then
-                                        table.insert(flatList, {
-                                            Name = tostring(val.Name or "Saved Asset"),
-                                            Creator = tostring(val.Creator or "Unknown"),
-                                            ID = tonumber(val.ID),
-                                            Category = tostring(val.Category or catName)
-                                        })
-                                    elseif type(val) == "number" or tonumber(val) then
-                                        table.insert(flatList, {
-                                            Name = "Saved Asset " .. tostring(val),
-                                            Creator = "Unknown",
-                                            ID = tonumber(val),
-                                            Category = tostring(catName)
-                                        })
-                                    end
+                    -- Parsing Struktur Format Key-Array ID per Kategori
+                    for categoryName, list in pairs(decoded) do
+                        if structuredData[categoryName] and type(list) == "table" then
+                            for _, val in ipairs(list) do
+                                local numId = nil
+                                if type(val) == "number" then
+                                    numId = val
+                                elseif type(val) == "table" and (val.ID or val.Id) then
+                                    numId = tonumber(val.ID or val.Id)
+                                elseif tonumber(val) then
+                                    numId = tonumber(val)
+                                end
+
+                                if numId then
+                                    table.insert(structuredData[categoryName], numId)
                                 end
                             end
                         end
                     end
                     
-                    SavedAssets = flatList
-
-                    -- Async Metadata Enricher: Update Name & Creator Asli via Marketplace API
-                    task.spawn(function()
-                        local updated = false
-                        for _, entry in ipairs(SavedAssets) do
-                            if entry.Name == "Saved Asset" or entry.Name:find("Saved Asset ") or entry.Creator == "Unknown" then
-                                local meta = FetchAssetMetadata(entry.ID)
-                                if meta then
-                                    entry.Name = meta.Name
-                                    entry.Creator = meta.Creator
-                                    entry.Category = meta.Category or entry.Category
-                                    updated = true
-                                end
+                    -- Parsing fallback jika file lama berformat Flat Array
+                    if #decoded > 0 and type(decoded[1]) == "table" then
+                        for _, entry in ipairs(decoded) do
+                            local numId = tonumber(entry.ID or entry.Id)
+                            local cat = tostring(entry.Category or "Model")
+                            if numId and structuredData[cat] then
+                                table.insert(structuredData[cat], numId)
                             end
                         end
-                        if updated then
-                            SaveUserData()
-                        end
-                    end)
+                    end
+                    
+                    SavedAssets = structuredData
                 end
             end
         end
     end)
 end
 
--- Helper: Cek Keberadaan ID di SavedAssets Database
-local function IsAssetSaved(assetId)
+-- Helper: Cek Keberadaan ID di SavedAssets Database (Spesifik per Kategori atau Global)
+local function IsAssetSaved(assetId, category)
     local numericId = tonumber(assetId)
     if not numericId or type(SavedAssets) ~= "table" then return false end
     
-    for _, entry in ipairs(SavedAssets) do
-        if type(entry) == "table" and tonumber(entry.ID) == numericId then
-            return true
-        elseif type(entry) == "number" and entry == numericId then
-            return true
+    if category and SavedAssets[category] then
+        for _, savedId in ipairs(SavedAssets[category]) do
+            if tonumber(savedId) == numericId then
+                return true
+            end
+        end
+    else
+        for catName, idList in pairs(SavedAssets) do
+            if type(idList) == "table" then
+                for _, savedId in ipairs(idList) do
+                    if tonumber(savedId) == numericId then
+                        return true
+                    end
+                end
+            end
         end
     end
+    
     return false
 end
 
@@ -1827,7 +1817,7 @@ local function ClearList()
             item:Destroy()
         end
     end
-end
+end                    
 
 -------------------------------------------------------------------------
 -- TAHAP 5: FUNGSI INSERT UTAMA & SAFE STUDIO FALLBACK (FIXED)
@@ -2060,24 +2050,15 @@ local function RenderAssets(searchQuery)
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
     
-    -- Pick Dataset Source (System 1: MasterAssets / System 2: SavedAssets)
+    -- Pick Dataset Source (System 1: MasterAssets / System 2: SavedAssets[Category])
     local targetList = {}
     if isSavedModeAtCall then
-        -- Filter Flat Array SavedAssets Sesuai Kategori Aktif
-        if type(SavedAssets) == "table" then
-            for _, entry in ipairs(SavedAssets) do
-                if type(entry) == "table" then
-                    local entryCat = entry.Category or "Model"
-                    if entryCat == targetCategoryAtCall then
-                        table.insert(targetList, entry)
-                    end
-                elseif type(entry) == "number" or tonumber(entry) then
-                    table.insert(targetList, entry)
-                end
-            end
+        -- Ambil Array List ID khusus Kategori Aktif dari System 2 (SavedAssets[Category])
+        if type(SavedAssets) == "table" and type(SavedAssets[targetCategoryAtCall]) == "table" then
+            targetList = SavedAssets[targetCategoryAtCall]
         end
     else
-        -- Master Remote Assets Dataset Memory
+        -- Master Remote Assets Dataset Memory dari System 1
         targetList = MasterAssets[targetCategoryAtCall] or {}
     end
     
@@ -2100,20 +2081,37 @@ local function RenderAssets(searchQuery)
 
     task.spawn(function()
         for index, item in ipairs(targetList) do
-            -- Abort jika user buru-buru berpindah tab/filter
+            -- Abort jika user berpindah tab/filter secara cepat
             if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly ~= isSavedModeAtCall then 
                 return 
             end
 
-            -- Parse Asset Object ({ ID/Id, Name, Creator, AssetTypeId })
+            -- Parse Minimal Data
             local rawId = type(item) == "table" and (item.ID or item.Id) or item
-            local assetName = type(item) == "table" and (item.Name or ("Asset_" .. tostring(rawId))) or ("Asset_" .. tostring(rawId))
-            local assetCreator = type(item) == "table" and (item.Creator or "Unknown") or "Unknown"
-            local assetTypeId = type(item) == "table" and item.AssetTypeId or nil
-            
             local numericId = tonumber(rawId)
             
             if numericId then
+                -- Ekstrak / Fetch Metadata
+                local assetName = "Loading..."
+                local assetCreator = "Unknown"
+                local assetTypeId = nil
+
+                if type(item) == "table" and (item.Name or item.Creator) then
+                    assetName = tostring(item.Name or ("Asset_" .. numericId))
+                    assetCreator = tostring(item.Creator or "Unknown")
+                    assetTypeId = item.AssetTypeId
+                else
+                    -- Jika item berupa ID Mentah (Saved Assets Mode), Ambil dari Cache/Fetch Async
+                    local cachedMeta = AssetInfoCache and AssetInfoCache[numericId]
+                    if cachedMeta then
+                        assetName = cachedMeta.Name
+                        assetCreator = cachedMeta.Creator
+                        assetTypeId = cachedMeta.AssetTypeId
+                    else
+                        assetName = "Asset " .. numericId
+                    end
+                end
+
                 -- VALIDASI FILTER SEARCH LOKAL (Match: Name, Creator, atau ID Tepat)
                 local isMatched = true
                 if query ~= "" then
@@ -2150,28 +2148,40 @@ local function RenderAssets(searchQuery)
                     local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
                     local InsertBtn        = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
 
-                    -- Apply Data Teks Langsung
+                    -- Apply Data Teks
                     if NameLabel then NameLabel.Text = tostring(assetName) end
                     if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(assetCreator) end
                     if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
 
-                    -- Set Thumbnail Visual via Engine Helper (Tahap 3)
+                    -- Set Thumbnail Visual via Engine Helper
                     if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
                         if typeof(GetAssetThumbnail) == "function" then
                             ThumbnailAsset.Image = GetAssetThumbnail(numericId, assetTypeId)
                         else
-                            if targetCategoryAtCall == "Audio" then
-                                ThumbnailAsset.Image = "rbxthumb://type=AutoGeneratedAsset&id=" .. numericId .. "&w=150&h=150"
-                            else
-                                ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=150&h=150"
-                            end
+                            ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=420&h=420"
                         end
+                    end
+
+                    -- Async Metadata Enricher untuk Kartu Saved yang belum di-cache
+                    if isSavedModeAtCall and assetName == ("Asset " .. numericId) then
+                        task.spawn(function()
+                            if typeof(FetchAssetMetadata) == "function" then
+                                local meta = FetchAssetMetadata(numericId)
+                                if meta and card and card.Parent then
+                                    if NameLabel then NameLabel.Text = meta.Name end
+                                    if CreatorLabel then CreatorLabel.Text = "By: " .. meta.Creator end
+                                    if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") and typeof(GetAssetThumbnail) == "function" then
+                                        ThumbnailAsset.Image = GetAssetThumbnail(numericId, meta.AssetTypeId)
+                                    end
+                                end
+                            end
+                        end)
                     end
 
                     -- STATUS SAVED VISUAL PENANDA
                     if IconSaved then
                         if typeof(IsAssetSaved) == "function" then
-                            IconSaved.Visible = IsAssetSaved(numericId)
+                            IconSaved.Visible = IsAssetSaved(numericId, targetCategoryAtCall)
                         else
                             IconSaved.Visible = false
                         end
@@ -2186,7 +2196,7 @@ local function RenderAssets(searchQuery)
                             local originalText = CopyBtn.Text
                             CopyBtn.Text = "Copied!"
                             task.wait(1)
-                            CopyBtn.Text = originalText
+                            if CopyBtn then CopyBtn.Text = originalText end
                         end)
                     end
 
@@ -2205,7 +2215,7 @@ local function RenderAssets(searchQuery)
                 end
             end
 
-            -- Render instan 5 kartu per frame agar UI tetap responsive/smooth
+            -- Render 5 kartu per frame agar UI tetap responsive
             if index % 5 == 0 then
                 task.wait()
             end
@@ -2396,26 +2406,22 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             end
 
             local targetCategory = (meta and meta.Category) or CurrentCategory or "Model"
-            local assetName = (meta and meta.Name) or ("Asset " .. numericId)
-            local creatorName = (meta and meta.Creator) or "Unknown"
-            local typeId = (meta and meta.AssetTypeId) or 0
 
-            -- Cek Penambahan / Duplikasi di Flat List SavedAssets
+            -- Cek Penambahan / Duplikasi di Memori SavedAssets Key-Array
             local isAlreadySaved = false
             if typeof(IsAssetSaved) == "function" then
-                isAlreadySaved = IsAssetSaved(numericId)
+                isAlreadySaved = IsAssetSaved(numericId, targetCategory)
             end
 
             if not isAlreadySaved then
-                table.insert(SavedAssets, {
-                    ID = numericId,
-                    Name = assetName,
-                    Creator = creatorName,
-                    Category = targetCategory,
-                    AssetTypeId = typeId
-                })
+                if type(SavedAssets) ~= "table" then
+                    SavedAssets = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
+                end
                 
-                -- Simpan Permanen ke File Data User
+                SavedAssets[targetCategory] = SavedAssets[targetCategory] or {}
+                table.insert(SavedAssets[targetCategory], numericId)
+                
+                -- Simpan Permanen ke File Data User (delta/saved_assets.json)
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
