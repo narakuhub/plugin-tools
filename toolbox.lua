@@ -1546,49 +1546,44 @@ local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 -------------------------------------------------------------------------
--- TAHAP 3: DATA CONFIGURATION & LOCAL STORAGE SYSTEM (DUAL SYSTEM ENGINE)
+-- HTTP REQUEST HANDLER (EXECUTOR COMPATIBILITY)
+-------------------------------------------------------------------------
+local function GetRequestFunction()
+    return http_request
+        or request
+        or (syn and syn.request)
+        or (fluxus and fluxus.request)
+end
+
+local requestFunc = GetRequestFunction()
+
+-------------------------------------------------------------------------
+-- CONFIGURATION & LOCAL STORAGE SYSTEM
 -------------------------------------------------------------------------
 local CurrentCategory = "Model" 
 local CurrentSessionId = 0
-local IsShowingSavedOnly = false -- Status Filter (False = MasterAssets, True = SavedAssets)
+local IsShowingSavedOnly = false -- Status Toggle Filter (False = Roblox API, True = SavedAssets)
 
--- Target Remote JSON Endpoints
-local AssetEndpoints = {
-    Model  = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/models.json",
-    Decal  = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/decal.json",
-    Audio  = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/audio.json",
-    Plugin = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/Assets/plugin.json"
-}
-
--- System 1: Katalog Utama (Remote JSON Endpoint Memory)
-local MasterAssets = {
-    Model  = {},
-    Decal  = {},
-    Audio  = {},
-    Plugin = {}
-}
-
--- System 2: Local Database (Format Key-Array ID per Kategori)
+-- Nested Table Database Lokal User
 local SavedAssets = {
-    Model  = {},
-    Decal  = {},
-    Audio  = {},
+    Model = {},
+    Decal = {},
+    Audio = {},
     Plugin = {}
 }
 
--- Caching Metadata MarketplaceService Biar Tidak Spam HTTP
-local AssetInfoCache = {}
+local AssetInfoCache = {} -- Cache Metadata MarketplaceService
 
 -------------------------------------------------------------------------
--- HELPER: CATEGORY MAPPER BY ASSET TYPE ID
+-- HELPER: CATEGORY CONVERTER
 -------------------------------------------------------------------------
 local function GetCategoryFromAssetType(assetTypeId)
-    assetTypeId = tonumber(assetTypeId)
-    if assetTypeId == 13 or assetTypeId == 1 or assetTypeId == 2 or assetTypeId == 14 then
+    local id = tonumber(assetTypeId)
+    if id == 13 or id == 1 or id == 2 or id == 14 then
         return "Decal"
-    elseif assetTypeId == 3 or assetTypeId == 34 then
+    elseif id == 3 or id == 34 then
         return "Audio"
-    elseif assetTypeId == 38 then
+    elseif id == 38 then
         return "Plugin"
     else
         return "Model"
@@ -1596,7 +1591,7 @@ local function GetCategoryFromAssetType(assetTypeId)
 end
 
 -------------------------------------------------------------------------
--- HELPER: FETCH REAL METADATA FROM ROBLOX MARKETPLACE STORE
+-- HELPER: FETCH REAL METADATA FROM ROBLOX MARKETPLACE
 -------------------------------------------------------------------------
 local function FetchAssetMetadata(assetId)
     local numericId = tonumber(assetId)
@@ -1620,15 +1615,11 @@ local function FetchAssetMetadata(assetId)
             creatorName = tostring(info.CreatorName)
         end
 
-        local typeId = tonumber(info.AssetTypeId) or 0
-        local detectedCategory = GetCategoryFromAssetType(typeId)
-
         local parsedMeta = {
-            Name = tostring(info.Name or ("Asset " .. numericId)),
+            Name = tostring(info.Name or "Asset " .. numericId),
             Creator = creatorName,
             ID = numericId,
-            AssetTypeId = typeId,
-            Category = detectedCategory
+            AssetTypeId = info.AssetTypeId
         }
         
         AssetInfoCache[numericId] = parsedMeta
@@ -1645,8 +1636,6 @@ local function GetAssetThumbnail(assetId, assetTypeId)
     local numericId = tonumber(assetId)
     if not numericId then return "" end
 
-    assetTypeId = tonumber(assetTypeId) or 0
-
     if assetTypeId == 1 or assetTypeId == 13 or assetTypeId == 2 or assetTypeId == 14 then
         -- Decal / Image / Texture
         return "rbxthumb://type=Asset&id=" .. numericId .. "&w=420&h=420"
@@ -1660,61 +1649,23 @@ local function GetAssetThumbnail(assetId, assetTypeId)
 end
 
 -------------------------------------------------------------------------
--- SYSTEM 1 LOADER: FETCH MASTER REMOTE ASSETS (GITHUB ENDPOINTS)
+-- LOCAL DATA MANAGEMENT (CATEGORY-BASED SAVED ASSETS SYSTEM)
 -------------------------------------------------------------------------
-local function FetchMasterAssets()
-    for category, url in pairs(AssetEndpoints) do
-        task.spawn(function()
-            local responseData = nil
-            
-            -- Retry Mechanism Mencegah Network Drop pada Raw Link GitHub
-            for attempt = 1, 3 do
-                local success, response = pcall(function()
-                    return game:HttpGet(url)
-                end)
-                
-                if success and response and #response > 0 then
-                    responseData = response
-                    break
-                end
-                task.wait(0.5)
-            end
-            
-            if responseData then
-                local decodeSuccess, decoded = pcall(function()
-                    return HttpService:JSONDecode(responseData)
-                end)
-                
-                if decodeSuccess and type(decoded) == "table" then
-                    MasterAssets[category] = decoded
-                else
-                    warn("[AssetLoader] Gagal JSONDecode untuk kategori: " .. tostring(category))
-                end
-            else
-                warn("[AssetLoader] Gagal memuat HTTP Endpoint untuk kategori: " .. tostring(category))
-            end
-        end)
-    end
-end
 
--------------------------------------------------------------------------
--- SYSTEM 2 STORAGE: SAVE & LOAD LOCAL USER DATA (delta/saved_assets.json)
--------------------------------------------------------------------------
-local SaveUserData
-
-SaveUserData = function()
+-- 1. Menyimpan Data User ke File delta/saved_assets.json (Nested Category)
+local function SaveUserData()
     if not writefile then return false end
     local success = pcall(function()
         if isfolder and not isfolder("delta") then 
             makefolder("delta") 
         end
-        -- Encode format Key-Array ID per Kategori
         local encodedData = HttpService:JSONEncode(SavedAssets)
         writefile("delta/saved_assets.json", encodedData)
     end)
     return success
 end
 
+-- 2. Memuat Data Saved User dengan Dukungan Retro-Compatibility
 local function LoadUserData()
     if not (readfile and isfile and HttpService) then return end
     
@@ -1731,67 +1682,92 @@ local function LoadUserData()
                 end)
                 
                 if decodeSuccess and type(decoded) == "table" then
-                    local structuredData = {
-                        Model  = {},
-                        Decal  = {},
-                        Audio  = {},
-                        Plugin = {}
-                    }
-                    
-                    -- Parsing Struktur Format Key-Array ID per Kategori
-                    for categoryName, list in pairs(decoded) do
-                        if structuredData[categoryName] and type(list) == "table" then
-                            for _, val in ipairs(list) do
-                                local numId = nil
-                                if type(val) == "number" then
-                                    numId = val
-                                elseif type(val) == "table" and (val.ID or val.Id) then
-                                    numId = tonumber(val.ID or val.Id)
-                                elseif tonumber(val) then
-                                    numId = tonumber(val)
-                                end
+                    -- Reset struktur tabel
+                    SavedAssets = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
 
-                                if numId then
-                                    table.insert(structuredData[categoryName], numId)
+                    -- Kasus A: Format Baru (Nested Object berdasarkan Kategori)
+                    if decoded.Model or decoded.Decal or decoded.Audio or decoded.Plugin then
+                        for catName, catList in pairs(decoded) do
+                            if SavedAssets[catName] and type(catList) == "table" then
+                                for _, item in ipairs(catList) do
+                                    if type(item) == "table" and item.ID then
+                                        table.insert(SavedAssets[catName], {
+                                            Name = tostring(item.Name or "Saved Asset"),
+                                            Creator = tostring(item.Creator or "Unknown"),
+                                            ID = tonumber(item.ID),
+                                            AssetTypeId = item.AssetTypeId
+                                        })
+                                    elseif type(item) == "number" then
+                                        table.insert(SavedAssets[catName], {
+                                            Name = "Saved Asset " .. tostring(item),
+                                            Creator = "Unknown",
+                                            ID = tonumber(item)
+                                        })
+                                    end
                                 end
                             end
                         end
-                    end
-                    
-                    -- Parsing fallback jika file lama berformat Flat Array
-                    if #decoded > 0 and type(decoded[1]) == "table" then
-                        for _, entry in ipairs(decoded) do
-                            local numId = tonumber(entry.ID or entry.Id)
-                            local cat = tostring(entry.Category or "Model")
-                            if numId and structuredData[cat] then
-                                table.insert(structuredData[cat], numId)
+                    -- Kasus B: Format Lama (Flat Array) -> Otomatis Migrasi per Kategori via Metadata
+                    elseif #decoded > 0 then
+                        for _, item in ipairs(decoded) do
+                            local targetId = type(item) == "table" and item.ID or item
+                            local numericId = tonumber(targetId)
+                            
+                            if numericId then
+                                table.insert(SavedAssets.Model, {
+                                    Name = type(item) == "table" and item.Name or ("Saved Asset " .. numericId),
+                                    Creator = type(item) == "table" and item.Creator or "Unknown",
+                                    ID = numericId
+                                })
                             end
                         end
                     end
-                    
-                    SavedAssets = structuredData
+
+                    -- Async Refreshing metadata untuk memperbarui Nama/Creator/Kategori yang belum lengkap
+                    task.spawn(function()
+                        local updated = false
+                        for catName, list in pairs(SavedAssets) do
+                            for _, entry in ipairs(list) do
+                                if entry.Name == "Saved Asset" or entry.Name:find("Saved Asset ") or entry.Creator == "Unknown" then
+                                    local meta = FetchAssetMetadata(entry.ID)
+                                    if meta then
+                                        entry.Name = meta.Name
+                                        entry.Creator = meta.Creator
+                                        entry.AssetTypeId = meta.AssetTypeId
+                                        updated = true
+                                    end
+                                end
+                            end
+                        end
+                        if updated then
+                            SaveUserData()
+                        end
+                    end)
                 end
             end
         end
     end)
 end
 
--- Helper: Cek Keberadaan ID di SavedAssets Database (Spesifik per Kategori atau Global)
+-- 3. Helper Checking: Status Apakah ID Terdaftar di Kategori Tertentu / Global SavedAssets
 local function IsAssetSaved(assetId, category)
     local numericId = tonumber(assetId)
     if not numericId or type(SavedAssets) ~= "table" then return false end
     
-    if category and SavedAssets[category] then
-        for _, savedId in ipairs(SavedAssets[category]) do
-            if tonumber(savedId) == numericId then
+    local targetCategory = category or CurrentCategory
+    
+    if targetCategory and SavedAssets[targetCategory] then
+        for _, entry in ipairs(SavedAssets[targetCategory]) do
+            if type(entry) == "table" and tonumber(entry.ID) == numericId then
                 return true
             end
         end
     else
-        for catName, idList in pairs(SavedAssets) do
-            if type(idList) == "table" then
-                for _, savedId in ipairs(idList) do
-                    if tonumber(savedId) == numericId then
+        -- Fallback: Cek seluruh kategori
+        for _, catList in pairs(SavedAssets) do
+            if type(catList) == "table" then
+                for _, entry in ipairs(catList) do
+                    if type(entry) == "table" and tonumber(entry.ID) == numericId then
                         return true
                     end
                 end
@@ -1802,12 +1778,66 @@ local function IsAssetSaved(assetId, category)
     return false
 end
 
--- Inisialisasi Memuat Kedua Engine Database
-FetchMasterAssets()
+-- Inisialisasi Memuat Database Lokal
 LoadUserData()
 
 -------------------------------------------------------------------------
--- TAHAP 4: CLEAR LIST SYSTEM
+-- DIRECT ROBLOX CREATOR STORE API SEARCH ENGINE
+-------------------------------------------------------------------------
+local function SearchRobloxStore(query, category)
+    if not requestFunc then
+        warn("❌ Executing environment does not support HTTP Requests")
+        return {}
+    end
+
+    local encodedQuery = HttpService:UrlEncode(query or "")
+    local searchCategory = category or CurrentCategory or "Model"
+    local url = "https://apis.roblox.com/toolbox-service/v2/assets:search?searchCategoryType=" .. searchCategory .. "&query=" .. encodedQuery
+
+    local success, response = pcall(function()
+        return requestFunc({
+            Url = url,
+            Method = "GET",
+            Headers = {
+                ["Accept"] = "application/json"
+            }
+        })
+    end)
+
+    if not success or not response or response.StatusCode ~= 200 then
+        warn("❌ Search API Error:", response and response.StatusCode or "No response")
+        return {}
+    end
+
+    local decodeSuccess, decoded = pcall(function()
+        return HttpService:JSONDecode(response.Body)
+    end)
+
+    if not decodeSuccess or not decoded or not decoded.creatorStoreAssets then
+        return {}
+    end
+
+    -- Mapping Format API Roblox ke Format Standard UI
+    local results = {}
+    for _, item in ipairs(decoded.creatorStoreAssets) do
+        local asset = item.asset or {}
+        local creator = item.creator or {}
+
+        if asset.id then
+            table.insert(results, {
+                Name = asset.name or "Unknown Asset",
+                Creator = creator.name or "Unknown",
+                ID = tonumber(asset.id),
+                AssetTypeId = asset.assetType
+            })
+        end
+    end
+
+    return results
+end
+
+-------------------------------------------------------------------------
+-- CLEAR LIST HELPER
 -------------------------------------------------------------------------
 local function ClearList()
     if not ScrollingFrame then return end
@@ -1817,7 +1847,7 @@ local function ClearList()
             item:Destroy()
         end
     end
-end                    
+end 
 
 -------------------------------------------------------------------------
 -- TAHAP 5: FUNGSI INSERT UTAMA & SAFE STUDIO FALLBACK (FIXED)
@@ -2026,22 +2056,43 @@ local function InsertAsset(assetId, category, statusTarget)
 end
 
 -------------------------------------------------------------------------
--- TAHAP 6: INSTANT RENDER FROM MASTER & SAVED DATASET (DUPLICATE-FREE FIX)
+-- TAHAP 6: DYNAMIC CREATOR STORE RENDER ENGINE
 -------------------------------------------------------------------------
 local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
 
--- Format Display Jumlah Asset
-local function UpdateAmountAssetDisplay(count, category, isSavedOnly)
+-- Update Label Status Header
+local function UpdateAmountAssetDisplay(count, category, isSavedOnly, queryText, isSearching)
     if not AmountAssetLabel or not AmountAssetLabel:IsA("TextLabel") then return end
+    
     local categoryName = tostring(category):upper()
+    
+    if isSearching then
+        local qUpper = queryText and queryText ~= "" and (" '" .. queryText:upper() .. "'") or ""
+        AmountAssetLabel.Text = string.format("SEARCHING%s...", qUpper)
+        return
+    end
+
     if isSavedOnly then
         AmountAssetLabel.Text = string.format("SAVED (%s) • %d Assets", categoryName, count)
     else
-        AmountAssetLabel.Text = string.format("%s • %d Assets", categoryName, count)
+        if queryText and #queryText > 0 then
+            AmountAssetLabel.Text = string.format("%s ('%s') • %d Assets", categoryName, queryText:upper(), count)
+        else
+            AmountAssetLabel.Text = string.format("%s • %d Assets", categoryName, count)
+        end
     end
 end
 
--- FUNGSI RENDER UTAMA
+-- Helper Penyesuaian Canvas UI
+local function UpdateCanvas()
+    if not ScrollingFrame then return end
+    local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
+    if layout then
+        ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
+    end
+end
+
+-- MAIN RENDER FUNCTION
 local function RenderAssets(searchQuery)
     ClearList()
     
@@ -2049,115 +2100,52 @@ local function RenderAssets(searchQuery)
     local thisSession = CurrentSessionId
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
-    
-    local rawSourceList = {}
-    
-    if isSavedModeAtCall then
-        -- MODES SAVED: HANYA mengambil data dari saved_assets.json (SavedAssets)
-        if type(SavedAssets) == "table" and type(SavedAssets[targetCategoryAtCall]) == "table" then
-            rawSourceList = SavedAssets[targetCategoryAtCall]
-        end
-    else
-        -- MODE NORMAL: GABUNGKAN Data Internal (4 RAW JSON / MasterAssets) + File saved_assets.json
-        local masterList = (type(MasterAssets) == "table" and MasterAssets[targetCategoryAtCall]) or {}
-        local savedList  = (type(SavedAssets) == "table" and SavedAssets[targetCategoryAtCall]) or {}
-        
-        for _, item in ipairs(masterList) do
-            table.insert(rawSourceList, item)
-        end
-        for _, item in ipairs(savedList) do
-            table.insert(rawSourceList, item)
-        end
-    end
 
-    -- SANITASI & DE-DUPLIKASI DATASET (Menghapus Duplikat ID & Membersihkan Format Table vs Number)
-    local targetList = {}
-    local processedIds = {}
-
-    for _, item in ipairs(rawSourceList) do
-        local rawId = type(item) == "table" and (item.ID or item.Id) or item
-        local numericId = tonumber(rawId)
-        
-        if numericId and not processedIds[numericId] then
-            processedIds[numericId] = true
-            table.insert(targetList, item)
-        end
-    end
-
-    local renderedCount = 0
-    UpdateAmountAssetDisplay(0, targetCategoryAtCall, isSavedModeAtCall)
-    
-    -- Normalisasi Query Search
+    -- Normalisasi Clean String Query
     local query = ""
     if searchQuery and searchQuery ~= "Search asset..." then
-        query = searchQuery:lower():match("^%s*(.-)%s*$") or ""
+        query = searchQuery:match("^%s*(.-)%s*$") or ""
     end
 
-    local function UpdateCanvas()
-        if CurrentCategory ~= targetCategoryAtCall or not ScrollingFrame then return end
-        local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
-        if layout then
-            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
-        end
-    end
+    ---------------------------------------------------------------------
+    -- CASE A: MODE SAVED ASSETS (MEMBACA LOG DARI SavedAssets[CurrentCategory])
+    ---------------------------------------------------------------------
+    if isSavedModeAtCall then
+        -- Ambil data khusus kategori aktif dari Nested SavedAssets
+        local categoryList = SavedAssets and SavedAssets[targetCategoryAtCall] or {}
+        local targetList = {}
 
-    task.spawn(function()
-        for index, item in ipairs(targetList) do
-            -- Abort jika user berpindah tab/filter secara cepat
-            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly ~= isSavedModeAtCall then 
-                return 
+        for _, entry in ipairs(categoryList) do
+            if type(entry) == "table" and entry.ID then
+                -- Filtering query teks lokal jika user mengetik di Mode Saved
+                local nameMatch = (query == "") or entry.Name:lower():find(query:lower(), 1, true)
+                local idMatch = tostring(entry.ID):find(query, 1, true)
+                
+                if nameMatch or idMatch then
+                    table.insert(targetList, entry)
+                end
             end
+        end
 
-            local rawId = type(item) == "table" and (item.ID or item.Id) or item
-            local numericId = tonumber(rawId)
-            
-            if numericId then
-                -- Parsing Metadata
-                local assetName = "Loading..."
-                local assetCreator = "Unknown"
-                local assetTypeId = nil
+        local renderedCount = 0
+        UpdateAmountAssetDisplay(#targetList, targetCategoryAtCall, true, query, false)
 
-                if type(item) == "table" and (item.Name or item.Creator) then
-                    assetName = tostring(item.Name or ("Asset " .. numericId))
-                    assetCreator = tostring(item.Creator or "Unknown")
-                    assetTypeId = item.AssetTypeId
-                else
-                    -- Jika item berupa ID Mentah, ambil dari Cache jika tersedia
-                    local cachedMeta = AssetInfoCache and AssetInfoCache[numericId]
-                    if cachedMeta then
-                        assetName = cachedMeta.Name
-                        assetCreator = cachedMeta.Creator
-                        assetTypeId = cachedMeta.AssetTypeId
-                    else
-                        assetName = "Asset " .. numericId
-                    end
+        task.spawn(function()
+            for index, item in ipairs(targetList) do
+                if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or not IsShowingSavedOnly then 
+                    return 
                 end
 
-                -- VALIDASI FILTER SEARCH LOKAL (Match: Name, Creator, atau ID Tepat)
-                local isMatched = true
-                if query ~= "" then
-                    local nameLower = tostring(assetName):lower()
-                    local creatorLower = tostring(assetCreator):lower()
-                    local assetIdStr = tostring(numericId)
-                    
-                    if not nameLower:find(query, 1, true) and 
-                       not creatorLower:find(query, 1, true) and 
-                       not assetIdStr:find(query, 1, true) then
-                        isMatched = false
-                    end
-                end
-
-                -- INSTANT CARD CREATION
-                if isMatched and TemplateFrame then
+                local numericId = tonumber(item.ID)
+                if numericId and TemplateFrame then
                     local card = TemplateFrame:Clone()
                     card.Visible = true
                     card.Parent = ScrollingFrame
-                    card.Name = "Asset_" .. numericId
+                    card.Name = "SavedAsset_" .. numericId
 
                     renderedCount = renderedCount + 1
-                    UpdateAmountAssetDisplay(renderedCount, targetCategoryAtCall, isSavedModeAtCall)
 
-                    -- Element Mapping
+                    -- Elements Mapping
                     local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
                     local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
                     local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
@@ -2169,100 +2157,151 @@ local function RenderAssets(searchQuery)
                     local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
                     local InsertBtn        = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
 
-                    -- Apply Data Teks
-                    if NameLabel then NameLabel.Text = tostring(assetName) end
-                    if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(assetCreator) end
+                    if NameLabel then NameLabel.Text = item.Name end
+                    if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(item.Creator) end
                     if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
 
-                    -- Set Thumbnail Visual
                     if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
-                        if typeof(GetAssetThumbnail) == "function" then
-                            ThumbnailAsset.Image = GetAssetThumbnail(numericId, assetTypeId)
+                        if targetCategoryAtCall == "Audio" then
+                            ThumbnailAsset.Image = "rbxassetid://16327318049"
                         else
-                            ThumbnailAsset.Image = "rbxthumb://type=Asset&id=" .. numericId .. "&w=420&h=420"
+                            ThumbnailAsset.Image = GetAssetThumbnail(numericId, item.AssetTypeId)
                         end
                     end
 
-                    -- Async Metadata Fetcher untuk ID mentah
-                    if assetName == ("Asset " .. numericId) then
-                        task.spawn(function()
-                            if typeof(FetchAssetMetadata) == "function" then
-                                local meta = FetchAssetMetadata(numericId)
-                                if meta and card and card.Parent then
-                                    if NameLabel then NameLabel.Text = meta.Name end
-                                    if CreatorLabel then CreatorLabel.Text = "By: " .. meta.Creator end
-                                    if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") and typeof(GetAssetThumbnail) == "function" then
-                                        ThumbnailAsset.Image = GetAssetThumbnail(numericId, meta.AssetTypeId)
-                                    end
-                                end
-                            end
-                        end)
-                    end
+                    if IconSaved then IconSaved.Visible = true end
 
-                    -- STATUS SAVED VISUAL PENANDA (Bintang Highlight)
-                    if IconSaved then
-                        if typeof(IsAssetSaved) == "function" then
-                            IconSaved.Visible = IsAssetSaved(numericId, targetCategoryAtCall)
-                        else
-                            IconSaved.Visible = false
-                        end
-                    end
-
-                    -- Listener Copy ID
+                    -- Event Listeners
                     if CopyBtn and CopyBtn:IsA("GuiButton") then
                         CopyBtn.MouseButton1Click:Connect(function()
-                            if setclipboard then
-                                setclipboard(tostring(numericId))
-                            end
-                            local originalText = CopyBtn.Text
+                            if setclipboard then setclipboard(tostring(numericId)) end
                             CopyBtn.Text = "Copied!"
                             task.wait(1)
-                            if CopyBtn then CopyBtn.Text = originalText end
+                            CopyBtn.Text = "COPY ID"
                         end)
                     end
 
-                    -- Listener Insert Asset
                     if InsertBtn and InsertBtn:IsA("GuiButton") then
                         InsertBtn.MouseButton1Click:Connect(function()
                             if typeof(InsertAsset) == "function" then
                                 InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
                             end
                             task.wait(1.5)
-                            if InsertBtn then InsertBtn.Text = "INSERT" end
+                            InsertBtn.Text = "INSERT"
                         end)
                     end
 
                     UpdateCanvas()
                 end
+
+                if index % 5 == 0 then task.wait() end
+            end
+        end)
+        return
+    end
+
+    ---------------------------------------------------------------------
+    -- CASE B: MODE ROBLOX API SEARCH (BERSIH KOSONG JIKA TIDAK ADA QUERY)
+    ---------------------------------------------------------------------
+    if query == "" then
+        -- Jika mode API aktif tapi user belum mengetik/klik search, biarkan kosong
+        UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, "", false)
+        return
+    end
+
+    -- Set status UI ke mode Loading
+    UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, query, true)
+
+    task.spawn(function()
+        -- Direct Request API Search Roblox Store
+        local apiResults = SearchRobloxStore(query, targetCategoryAtCall)
+
+        -- Abort jika user berpindah tab/session saat HTTP request berjalan
+        if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly then
+            return
+        end
+
+        local totalAssetsFound = #apiResults
+        UpdateAmountAssetDisplay(totalAssetsFound, targetCategoryAtCall, false, query, false)
+
+        local renderedCount = 0
+
+        for index, item in ipairs(apiResults) do
+            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly then 
+                return 
             end
 
-            -- Responsive rendering per frame
+            local numericId = tonumber(item.ID)
+            if numericId and TemplateFrame then
+                local card = TemplateFrame:Clone()
+                card.Visible = true
+                card.Parent = ScrollingFrame
+                card.Name = "Asset_" .. numericId
+
+                renderedCount = renderedCount + 1
+
+                -- Mapping GUI Elements
+                local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
+                local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
+                local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
+                local IDLabel        = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
+                local IconSaved      = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
+                
+                local BackgroundCopy   = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
+                local CopyBtn          = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
+                local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
+                local InsertBtn        = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
+
+                -- Set Text Value
+                if NameLabel then NameLabel.Text = item.Name end
+                if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(item.Creator) end
+                if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
+
+                -- Thumbnail Image
+                if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
+                    if targetCategoryAtCall == "Audio" then
+                        ThumbnailAsset.Image = "rbxassetid://16327318049"
+                    else
+                        ThumbnailAsset.Image = GetAssetThumbnail(numericId, item.AssetTypeId)
+                    end
+                end
+
+                -- Penanda Apakah Sudah Di-Save oleh User (Cek per Kategori)
+                if IconSaved then
+                    IconSaved.Visible = IsAssetSaved(numericId, targetCategoryAtCall)
+                end
+
+                -- Listener Copy ID
+                if CopyBtn and CopyBtn:IsA("GuiButton") then
+                    CopyBtn.MouseButton1Click:Connect(function()
+                        if setclipboard then setclipboard(tostring(numericId)) end
+                        CopyBtn.Text = "Copied!"
+                        task.wait(1)
+                        CopyBtn.Text = "COPY ID"
+                    end)
+                end
+
+                -- Listener Insert Asset
+                if InsertBtn and InsertBtn:IsA("GuiButton") then
+                    InsertBtn.MouseButton1Click:Connect(function()
+                        if typeof(InsertAsset) == "function" then
+                            InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                        end
+                        task.wait(1.5)
+                        InsertBtn.Text = "INSERT"
+                    end)
+                end
+
+                UpdateCanvas()
+            end
+
+            -- Staggered rendering agar GUI tidak lag
             if index % 5 == 0 then
                 task.wait()
             end
         end
     end)
 end
-
--------------------------------------------------------------------------
--- AUTOMATIC INITIAL RENDER TRIGGER (INIT BOOTSTRAP)
--------------------------------------------------------------------------
-task.spawn(function()
-    local maxRetries = 5000
-    local retryCount = 0
-    
-    while retryCount < maxRetries do
-        if MasterAssets and (MasterAssets[CurrentCategory] or SavedAssets) then
-            break
-        end
-        retryCount = retryCount + 1
-        task.wait(0.1)
-    end
-
-    if typeof(RenderAssets) == "function" then
-        RenderAssets()
-    end
-end)
 
 -- 1. TAB SWITCHING SYSTEM (SAVED STATE & VISUAL PERSISTENT)
 -------------------------------------------------------------------------
@@ -2531,7 +2570,7 @@ if InsertButton and InsertButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- FIX: SEARCH SYSTEM VIA SEARCH BUTTON ONLY & CATEGORIZED SAVED ASSETS
+-- FIX: LOGIC SEARCH & SAVE SYSTEM (OPTIMIZED, STABLE INPUT & CATEGORY-BASED)
 -------------------------------------------------------------------------
 
 -- Color Palette Configuration
@@ -2545,7 +2584,6 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
 
     -- Saat kotak di-klik / fokus
     textBox.Focused:Connect(function()
-        -- HANYA hapus jika teks saat ini adalah placeholder default
         if textBox.Text == defaultPlaceholder then
             textBox.Text = ""
         end
@@ -2576,47 +2614,42 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
 end
 
 -- Menerapkan Efek Visual & Stabilitas Teks ke Seluruh Input Box
-if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...") end
-if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
-if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
+SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
+SetupInputBoxBehavior(SearchBox, "Search asset...")
+SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
 
 -------------------------------------------------------------------------
 -- REFERENSI TOMBOL & INPUT UTAMA
 -------------------------------------------------------------------------
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"])
-local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"] or LMG2L["SaveIDButton"])
+local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"])
 local InsertButton = LMG2L and (LMG2L["InsertButton_34"] or LMG2L["InsertButton"])
 
 -------------------------------------------------------------------------
--- 1. FUNGSIONALITAS SEARCH SYSTEM (EXCLUSIVELY VIA SEARCH BUTTON)
+-- 1. FUNGSIONALITAS SEARCH SYSTEM (MANUAL TRIGGER ONLY)
 -------------------------------------------------------------------------
 local function ExecuteSearch()
-    local rawQuery = ""
+    local query = ""
     if SearchBox and SearchBox:IsA("TextBox") then
-        rawQuery = SearchBox.Text:match("^%s*(.-)%s*$") or ""
+        query = SearchBox.Text:match("^%s*(.-)%s*$")
     end
 
-    -- Jika kosong atau masih berupa placeholder, tampilkan semua asset
-    if rawQuery == "" or rawQuery == "Search asset..." then
-        if typeof(RenderAssets) == "function" then
+    if typeof(RenderAssets) == "function" then
+        if query == "Search asset..." then
             RenderAssets("")
-        end
-    else
-        -- Normalisasi query ke lowercase agar case-insensitive
-        local cleanQuery = rawQuery:lower()
-        if typeof(RenderAssets) == "function" then
-            RenderAssets(cleanQuery)
+        else
+            RenderAssets(query)
         end
     end
 end
 
--- MANUAL TRIGGER: PENCARIAN HANYA JALAN SAAT SEARCH BUTTON DI-KLIK
+-- Trigger Search via Tombol Klik Manual
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
         local originalText = SearchButton.Text
-        SearchButton.Text = "SEARCH"
+        SearchButton.Text = "..."
         
-        -- Jalankan Pencarian
+        -- Eksekusi pencarian & pembersihan list
         ExecuteSearch()
         
         task.wait(0.3)
@@ -2626,152 +2659,122 @@ if SearchButton and SearchButton:IsA("GuiButton") then
     end)
 end
 
+-- Trigger Search via Keyboard Enter (Opsional)
+if SearchBox and SearchBox:IsA("TextBox") then
+    SearchBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            ExecuteSearch()
+        end
+    end)
+end
+
 -------------------------------------------------------------------------
--- 2. FUNGSIONALITAS SAVE BUTTON (STRICT OBJECT TABLE & DUPLICATE-PROOF)
+-- 2. FUNGSIONALITAS SAVE BUTTON (SAVE TO SPECIFIC CATEGORY)
 -------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
-        local targetBox = SaveIDBox or (LMG2L and (LMG2L["SaveBox_24"] or LMG2L["SaveBox"]))
-        if not targetBox or not targetBox:IsA("TextBox") then return end
+        if not SaveIDBox or not SaveIDBox:IsA("TextBox") then return end
         
-        local rawText = targetBox.Text
+        local rawText = SaveIDBox.Text
         local cleanId = tonumber(rawText:match("%d+"))
 
         -- Validasi Input Harus Angka
         if not cleanId then
-            targetBox.Text = "Harus ID Angka!"
-            targetBox.TextTransparency = 0
+            SaveIDBox.Text = "Harus ID Angka!"
+            SaveIDBox.TextTransparency = 0
             task.wait(1.5)
-            if targetBox and targetBox.Text == "Harus ID Angka!" then
-                targetBox.Text = "Masukan ID save asset..."
-                targetBox.TextTransparency = 0.5
+            if SaveIDBox and SaveIDBox.Text == "Harus ID Angka!" then
+                SaveIDBox.Text = "Masukan ID save asset..."
+                SaveIDBox.TextTransparency = 0.5
             end
             return
         end
 
         -- Pertahankan Teks Angka yang Valid di Box
-        targetBox.Text = tostring(cleanId)
-        targetBox.TextTransparency = 0
+        SaveIDBox.Text = tostring(cleanId)
+        SaveIDBox.TextTransparency = 0
         if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
-            targetBox.TextColor3 = COLOR_TEXT_ACTIVE
+            SaveIDBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
 
         local originalBtnText = SaveButton.Text
-        SaveButton.Text = "SAVE"
+        SaveButton.Text = "..."
 
-        -- Eksekusi Asynchronous
+        -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
-            -- 1. FETCH METADATA DAHULU UNTUK MENENTUKAN KATEGORI TARGET
-            local meta = nil
-            if typeof(FetchAssetMetadata) == "function" then
-                meta = FetchAssetMetadata(cleanId)
-            else
-                local success, info = pcall(function() 
-                    return game:GetService("MarketplaceService"):GetProductInfo(cleanId) 
-                end)
-                if success and info and info.Name then
-                    local creatorName = "Unknown"
-                    if type(info.Creator) == "table" and info.Creator.Name then
-                        creatorName = tostring(info.Creator.Name)
-                    elseif type(info.Creator) == "string" then
-                        creatorName = info.Creator
-                    elseif info.CreatorName then
-                        creatorName = tostring(info.CreatorName)
-                    end
+            -- 1. VALIDASI KEBERADAAN ASSET & FETCH METADATA VIA MARKETPLACESERVICE
+            local success, info = pcall(function() 
+                return MarketplaceService:GetProductInfo(cleanId) 
+            end)
 
-                    local detectedCat = CurrentCategory or "Model"
-                    if typeof(GetCategoryFromAssetType) == "function" and info.AssetTypeId then
-                        detectedCat = GetCategoryFromAssetType(info.AssetTypeId) or detectedCat
-                    end
-
-                    meta = {
-                        ID = cleanId,
-                        Name = tostring(info.Name),
-                        Creator = creatorName,
-                        Category = detectedCat,
-                        AssetTypeId = info.AssetTypeId or 0
-                    }
+            if success and info and info.Name then
+                -- Tentukan Kategori Berdasarkan AssetTypeId
+                local targetCategory = CurrentCategory or "Model"
+                if typeof(GetCategoryFromAssetType) == "function" and info.AssetTypeId then
+                    targetCategory = GetCategoryFromAssetType(info.AssetTypeId) or targetCategory
                 end
-            end
 
-            local targetCat = (meta and meta.Category) or CurrentCategory or "Model"
+                -- CEGAH DUPLIKASI ID DI KATEGORI TERSEBUT
+                local isDuplicate = false
+                if typeof(IsAssetSaved) == "function" then
+                    isDuplicate = IsAssetSaved(cleanId, targetCategory)
+                end
 
-            -- Ensurance Structure SavedAssets
-            if type(SavedAssets) ~= "table" then
-                SavedAssets = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
-            end
-            SavedAssets[targetCat] = SavedAssets[targetCat] or {}
-
-            -- 2. PENGECEKAN DUPLIKASI KETAT (PERIKSA SEMENTARA SELURUH TIPE DATA DALAM KATEGORI)
-            local isDuplicate = false
-            
-            if typeof(IsAssetSaved) == "function" then
-                isDuplicate = IsAssetSaved(cleanId, targetCat)
-            end
-
-            -- Fallback Check (Memeriksa ID Angka Murni maupun Object Table)
-            if not isDuplicate then
-                for _, entry in ipairs(SavedAssets[targetCat]) do
-                    local entryId = type(entry) == "table" and (entry.ID or entry.Id) or entry
-                    if tonumber(entryId) == cleanId then
-                        isDuplicate = true
-                        break
+                if isDuplicate then
+                    SaveIDBox.Text = "Sudah Ada!"
+                    task.wait(1.5)
+                    if SaveButton then SaveButton.Text = originalBtnText end
+                    if SaveIDBox and SaveIDBox.Text == "Sudah Ada!" then
+                        SaveIDBox.Text = tostring(cleanId)
+                        SaveIDBox.TextTransparency = 0
                     end
+                    return
                 end
-            end
 
-            -- Jika ID Sudah Ada
-            if isDuplicate then
-                targetBox.Text = "Sudah Ada!"
-                task.wait(1.5)
-                if SaveButton then SaveButton.Text = originalBtnText end
-                if targetBox and targetBox.Text == "Sudah Ada!" then
-                    targetBox.Text = tostring(cleanId)
-                    targetBox.TextTransparency = 0
+                local assetName = tostring(info.Name)
+                local creatorName = "Unknown"
+
+                if type(info.Creator) == "table" and info.Creator.Name then
+                    creatorName = tostring(info.Creator.Name)
+                elseif type(info.Creator) == "string" and #info.Creator > 0 then
+                    creatorName = info.Creator
+                elseif info.CreatorName and #tostring(info.CreatorName) > 0 then
+                    creatorName = tostring(info.CreatorName)
                 end
-                return
-            end
 
-            -- 3. BENTUK METADATA DEFAULT JIKA FETCH METADATA GAGAL (AGAR TIDAK DISIMPAN SEBAGAI ANGKA MURNI)
-            if not meta then
-                meta = {
+                -- Object Asset Baru
+                local newSavedAsset = {
+                    Name = assetName,
+                    Creator = creatorName,
                     ID = cleanId,
-                    Name = "Asset " .. cleanId,
-                    Creator = "Unknown",
-                    Category = targetCat,
-                    AssetTypeId = 0
+                    AssetTypeId = info.AssetTypeId
                 }
-            end
 
-            -- Simpan Metadata ke Cache Lokal
-            if AssetInfoCache then
-                AssetInfoCache[cleanId] = meta
-            end
-
-            -- STIK KONSISTENSI DATA: SELALU SIMPAN SEBAGAI OBJECT TABLE KANONIKAL
-            local newSavedAsset = {
-                ID = cleanId,
-                Name = meta.Name or ("Asset " .. cleanId),
-                Creator = meta.Creator or "Unknown",
-                Category = targetCat,
-                AssetTypeId = meta.AssetTypeId or 0
-            }
-
-            -- Insert ke Memory Array
-            table.insert(SavedAssets[targetCat], newSavedAsset)
-            
-            -- Simpan Permanen ke Storage File User (delta/saved_assets.json)
-            if typeof(SaveUserData) == "function" then
-                SaveUserData()
-            end
-            
-            SaveButton.Text = "SAVED!"
-            
-            -- Pindah Tab & Re-Render List
-            if typeof(SwitchTab) == "function" then
-                SwitchTab(targetCat)
-            elseif typeof(RenderAssets) == "function" then
-                RenderAssets("")
+                -- Simpan ke Category Target di SavedAssets
+                SavedAssets = SavedAssets or { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
+                SavedAssets[targetCategory] = SavedAssets[targetCategory] or {}
+                table.insert(SavedAssets[targetCategory], newSavedAsset)
+                
+                -- Simpan Permanen ke Storage User (delta/saved_assets.json)
+                if typeof(SaveUserData) == "function" then
+                    SaveUserData()
+                end
+                
+                SaveButton.Text = "SAVED!"
+                
+                -- Refresh UI jika sedang di mode Saved Assets
+                if IsShowingSavedOnly and typeof(RenderAssets) == "function" then
+                    RenderAssets("")
+                elseif typeof(SwitchTab) == "function" then
+                    SwitchTab(targetCategory)
+                end
+            else
+                SaveIDBox.Text = "ID Gagal Validasi!"
+                task.wait(1.5)
+                if SaveIDBox and SaveIDBox.Text == "ID Gagal Validasi!" then
+                    SaveIDBox.Text = tostring(cleanId)
+                    SaveIDBox.TextTransparency = 0
+                end
             end
             
             task.wait(1.2)
