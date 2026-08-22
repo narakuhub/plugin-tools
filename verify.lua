@@ -589,17 +589,21 @@ openTween:Play()
 -- Services & Dependencies
 local HttpService = game:GetService("HttpService")
 
--- Reference UI dari Hard Code (Mencari Folder 'VerifyNars' dan 'Panel')
+-- Reference UI dari Hard Code
+-- (Memastikan mengambil ScreenGui dengan aman baik dari script.Parent maupun dipanggil langsung)
 local screenGui = script.Parent
-local verifyNars = screenGui:WaitForChild("VerifyNars", 5) or screenGui:FindFirstChild("VerifyNars")
-local panel = verifyNars:WaitForChild("Panel", 5) or verifyNars:FindFirstChild("Panel")
+if not screenGui:FindFirstChild("VerifyNars") then
+	screenGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ScreenGui")
+end
 
--- Ambil CardFrature dan ScrollingFrame
-local cardFrature = panel:WaitForChild("CardFrature", 5) or panel:FindFirstChild("CardFrature")
-local scrollingFrame = cardFrature:WaitForChild("ScrollingFrame", 5) or cardFrature:FindFirstChild("ScrollingFrame")
+local verifyNars = screenGui:WaitForChild("VerifyNars")
+local panel = verifyNars:WaitForChild("Panel")
 
--- Ambil Template Card Asli dari UI
-local templateCard = scrollingFrame:WaitForChild("Card", 5) or scrollingFrame:FindFirstChild("Card")
+local cardFrature = panel:WaitForChild("CardFrature")
+local scrollingFrame = cardFrature:WaitForChild("ScrollingFrame")
+
+-- MENGAMBIL TEMPLATE CARD (Card_17)
+local templateCard = scrollingFrame:WaitForChild("Card") :: Frame
 
 -- 1. SETUP TEMPLATE CARD
 templateCard.Visible = false
@@ -653,20 +657,20 @@ local function populateFeatures(features)
 		end
 	end
 
-	-- Loop data dan clone dari templateCard
+	-- Loop data dan clone tepat berdasarkan elemen di dalam Card_17
 	for index, data in ipairs(features) do
-		local newCard = templateCard:Clone()
+		local newCard = templateCard:Clone() :: Frame
 		newCard.Name = "Card_" .. tostring(index)
 		newCard.Visible = true
 
-		-- Ambil komponen elemen di dalam Card
-		local nameLabel = newCard:FindFirstChild("Name")
-		local pathLabel = newCard:FindFirstChild("Path")
-		local tagLabel = newCard:FindFirstChild("Tag")
-		local statusLabel = newCard:FindFirstChild("Status")
-		local iconFeature = newCard:FindFirstChild("IconFeature")
+		-- Mengambil elemen persis sesuai struktur Card_17
+		local nameLabel = newCard:FindFirstChild("Name") :: TextLabel
+		local pathLabel = newCard:FindFirstChild("Path") :: TextLabel
+		local tagLabel = newCard:FindFirstChild("Tag") :: TextLabel
+		local statusLabel = newCard:FindFirstChild("Status") :: TextLabel
+		local iconFeature = newCard:FindFirstChild("IconFeature") :: ImageLabel
 
-		-- Assign nilai properti berdasarkan data
+		-- Set teks dan gambar dari data
 		if nameLabel then nameLabel.Text = data.Name end
 		if pathLabel then pathLabel.Text = data.Path end
 		if tagLabel then tagLabel.Text = data.Tag end
@@ -677,7 +681,7 @@ local function populateFeatures(features)
 		newCard.Parent = scrollingFrame
 	end
 
-	-- Adjust CanvasSize otomatis berdasarkan UIListLayout & UIPadding
+	-- Adjust CanvasSize otomatis agar ScrollingFrame bisa di-scroll dengan rapi
 	task.defer(function()
 		local listLayout = scrollingFrame:FindFirstChildOfClass("UIListLayout")
 		local padding = scrollingFrame:FindFirstChildOfClass("UIPadding")
