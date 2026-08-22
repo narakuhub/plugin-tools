@@ -17,12 +17,17 @@ local http_request = (typeof(request) == "function" and request)
 
 if not http_request then return end
 
--- 2. Inisialisasi Player & Map Information
+-- 2. Inisialisasi Player & Map Information (Pastikan Player Ready)
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 
-local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do
+    task.wait(0.1)
+    LocalPlayer = Players.LocalPlayer
+end
+
 local userIdStr = tostring(LocalPlayer.UserId)
 local isAllowedMap = (game.PlaceId == ALLOWED_PLACE_ID)
 
@@ -60,21 +65,21 @@ local currentTimeWIB = os.date("!%Y-%m-%d %H:%M:%S", os.time() + (7 * 3600)) .. 
 
 local userData = allUsersData[userIdStr] or { messageId = nil, totalExecutions = 0, lastDate = currentDateWIB }
 
--- Jika berganti hari (lewat 24 jam), reset counter dan hapus Message ID agar membuat Embed baru
+-- Auto Reset 24 Jam
 if userData.lastDate ~= currentDateWIB then
     userData.totalExecutions = 0
     userData.messageId = nil
     userData.lastDate = currentDateWIB
 end
 
--- Increment total execution khusus jika dijalankan di Whitelisted Map
+-- Update counter eksekusi
 if isAllowedMap then
     userData.totalExecutions = (userData.totalExecutions or 0) + 1
 end
 
 -- 5. Build Dynamic Embed Data
 local embedTitle = isAllowedMap and "```SYSTEM :: EXECUTION DETECTED```" or "```SYSTEM :: ACCESS DENIED```"
-local embedColor = isAllowedMap and 0x000000 or 0xFF0000 -- Black (Success) | Red (Unauthorized)
+local embedColor = isAllowedMap and 0x000000 or 0xFF0000
 local statusText = isAllowedMap and "\u{001b}[32mSUCCESSFULLY EXECUTED" or "\u{001b}[31mUNAUTHORIZED MAP DETECTED"
 
 local embedData = {
@@ -84,7 +89,7 @@ local embedData = {
     ["fields"] = {
         {
             ["name"] = "Target Info",
-            ["value"] = string.format("```ansi\n\u{001b}[37mUser   : %s (@%s)\nID     : %d```", LocalPlayer.DisplayName, LocalPlayer.Name, LocalPlayer.UserId),
+            ["value"] = string.format("```ansi\n\u{001b}[37mUser   : %s (@%s)\nID     : %d```", LocalPlayer.DisplayName or "Unknown", LocalPlayer.Name or "Unknown", LocalPlayer.UserId or 0),
             ["inline"] = false
         },
         {
@@ -110,8 +115,8 @@ local payload = HttpService:JSONEncode({
     ["embeds"] = { embedData }
 })
 
--- 6. Kirim Notifikasi Discord (POST / PATCH)
-task.spawn(function()
+-- 6. Fungsi Pengiriman Webhook Berulang/Fallback
+local function sendWebhook()
     local targetUrl = WEBHOOK_URL
     local httpMethod = "POST"
 
@@ -134,6 +139,15 @@ task.spawn(function()
     if success and response then
         local code = response.StatusCode or response.Status or 0
         
+        -- Jika PATCH gagal (misal pesan terhapus di discord), fallback kirim POST baru
+        if httpMethod == "PATCH" and code == 404 then
+            userData.messageId = nil
+            allUsersData[userIdStr] = userData
+            sendWebhook()
+            return
+        end
+
+        -- Simpan ID pesan baru jika eksekusi POST pertama berhasil
         if (code == 200 or code == 201) and not userData.messageId then
             pcall(function()
                 local resData = HttpService:JSONDecode(response.Body)
@@ -143,6 +157,7 @@ task.spawn(function()
             end)
         end
 
+        -- Update storage
         allUsersData[userIdStr] = userData
         pcall(function()
             if writefile then
@@ -150,4 +165,7 @@ task.spawn(function()
             end
         end)
     end
-end)
+end
+
+-- Jalankan pengiriman webhook
+task.spawn(sendWebhook)
