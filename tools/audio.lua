@@ -475,16 +475,15 @@ local PAUSE_ICON = "rbxassetid://102338167215000"
 local DEFAULT_TEXT = "masukan audio id..."
 local TEXT_COLOR = Color3.fromRGB(223, 230, 237)
 
+--// KNOB POSITION
+local KNOB_INITIAL_POSITION = UDim2.new(0, 0, 0, -3)
+local KNOB_PROGRESS_OFFSET = -8
+
 --// STATE
 local loadedAudio = false
 local isDragging = false
 local currentAssetId = nil
 local loadToken = 0
-
---// KNOB
-local KNOB_SIZE = 12
-local KNOB_HALF = KNOB_SIZE / 2
-local KNOB_Y_OFFSET = -3
 
 --// INITIAL UI
 IconPlayPause.Image = PLAY_ICON
@@ -498,9 +497,7 @@ CurrentTimeLabel.Text = "00:00"
 DurationLabel.Text = "00:00"
 
 Fill.Size = UDim2.new(0, 0, 1, 0)
-
---// KNOB MENUTUPI UJUNG FILL
-KnobButton.Position = UDim2.new(0, -KNOB_HALF, 0, KNOB_Y_OFFSET)
+KnobButton.Position = KNOB_INITIAL_POSITION
 
 --// FORMAT TIME
 local function formatTime(seconds)
@@ -548,13 +545,16 @@ local function setProgress(percent)
 
 	Fill.Size = UDim2.new(0, fillWidth, 1, 0)
 
-	--// TITIK TENGAH KNOB TEPAT DI UJUNG FILL
-	KnobButton.Position = UDim2.new(
-		1,
-		-KNOB_HALF,
-		0,
-		KNOB_Y_OFFSET
-	)
+	if percent <= 0 then
+		KnobButton.Position = KNOB_INITIAL_POSITION
+	else
+		KnobButton.Position = UDim2.new(
+			1,
+			KNOB_PROGRESS_OFFSET,
+			0,
+			-3
+		)
+	end
 end
 
 --// RESET PLAYER
