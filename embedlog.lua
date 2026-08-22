@@ -2,7 +2,7 @@
 -- KONFIGURASI WEBHOOK, MAP LOCK, & ICON
 -- =================================================================
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1540627876150382602/_khXMSCs9InKfTVAm8OrcP1omocKwk49yAsM4LqdQKTMC0HrB6mQ8Gg6Dk5gt2iEa-KU"
-local ICON_URL = "https://files.catbox.moe/23199e.png"
+local ICON_URL = "https://imgbs.com/i/10659/naraku"
 local ALLOWED_PLACE_ID = 10959918411 -- Lock eksekusi hanya untuk map ini
 
 -- File lokal penyimpanan data per user ID
