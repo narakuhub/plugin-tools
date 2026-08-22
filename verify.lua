@@ -699,39 +699,53 @@ TemplateCard.Name = "CardTemplate"
 
 local FEATURE_LIST = {
 	{
-		Name = "Toolbox Store",
+		Name = "TOOLBOX STORE",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/toolbox.lua",
 		Icon = "rbxassetid://126926348062230"
 	},
 	{
-		Name = "Archimedes Tool",
+		Name = "ARCHIMEDES TOOLS",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/archimedes.lua",
 		Icon = "rbxassetid://87188567501065"
 	},
 	{
-		Name = "Terrain Editor",
+		Name = "TERRAIN EDITOR",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/terrain.lua",
 		Icon = "rbxassetid://129361331543944"
 	},
 	{
-		Name = "Audio Player",
+		Name = "AUDIO PLAY",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/audioplay.lua",
 		Icon = "rbxassetid://136460394404917"
 	},
 	{
-		Name = "Fly GUI",
+		Name = "FLY GUI",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/flygui.lua",
 		Icon = "rbxassetid://126428723702595"
+	},
+	{
+		Name = "INFINITY YEALD",
+		Tag = "GET",
+		Status = "200",
+		Path = "/EdgeIY/infiniteyield/master/source",
+		Icon = "rbxassetid://98186789507879"
+	},
+	{
+		Name = "DEX PLUS PLUS",
+		Tag = "GET",
+		Status = "200",
+		Path = "/AZYsGithub/DexPlusPlus",
+		Icon = "rbxassetid://119977886496737"
 	}
 }
 
