@@ -589,17 +589,19 @@ openTween:Play()
 -- Services & Dependencies
 local HttpService = game:GetService("HttpService")
 
--- Reference UI dari Hard Code
+-- Reference UI dari Hard Code (Mencari Folder 'VerifyNars' dan 'Panel')
 local screenGui = script.Parent
-local verifyNars = screenGui:WaitForChild("VerifyNars")
-local panel = verifyNars:WaitForChild("Panel")
+local verifyNars = screenGui:WaitForChild("VerifyNars", 5) or screenGui:FindFirstChild("VerifyNars")
+local panel = verifyNars:WaitForChild("Panel", 5) or verifyNars:FindFirstChild("Panel")
 
-local cardFrature = panel:WaitForChild("CardFrature")
-local scrollingFrame = cardFrature:WaitForChild("ScrollingFrame")
-local templateCard = scrollingFrame:WaitForChild("Card") :: Frame
+-- Ambil CardFrature dan ScrollingFrame
+local cardFrature = panel:WaitForChild("CardFrature", 5) or panel:FindFirstChild("CardFrature")
+local scrollingFrame = cardFrature:WaitForChild("ScrollingFrame", 5) or cardFrature:FindFirstChild("ScrollingFrame")
+
+-- Ambil Template Card Asli dari UI
+local templateCard = scrollingFrame:WaitForChild("Card", 5) or scrollingFrame:FindFirstChild("Card")
 
 -- 1. SETUP TEMPLATE CARD
--- Sembunyikan dan tandai template asli agar tidak mengganggu layout
 templateCard.Visible = false
 templateCard.Name = "CardTemplate"
 
@@ -653,16 +655,16 @@ local function populateFeatures(features)
 
 	-- Loop data dan clone dari templateCard
 	for index, data in ipairs(features) do
-		local newCard = templateCard:Clone() :: Frame
+		local newCard = templateCard:Clone()
 		newCard.Name = "Card_" .. tostring(index)
 		newCard.Visible = true
 
 		-- Ambil komponen elemen di dalam Card
-		local nameLabel = newCard:WaitForChild("Name") :: TextLabel
-		local pathLabel = newCard:WaitForChild("Path") :: TextLabel
-		local tagLabel = newCard:WaitForChild("Tag") :: TextLabel
-		local statusLabel = newCard:WaitForChild("Status") :: TextLabel
-		local iconFeature = newCard:WaitForChild("IconFeature") :: ImageLabel
+		local nameLabel = newCard:FindFirstChild("Name")
+		local pathLabel = newCard:FindFirstChild("Path")
+		local tagLabel = newCard:FindFirstChild("Tag")
+		local statusLabel = newCard:FindFirstChild("Status")
+		local iconFeature = newCard:FindFirstChild("IconFeature")
 
 		-- Assign nilai properti berdasarkan data
 		if nameLabel then nameLabel.Text = data.Name end
