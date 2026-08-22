@@ -549,7 +549,7 @@ local SAVE_FILE_PATH = "Delta/saved_verify.json"
 local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/toolboxpc.lua"
 
 local ICON_NORMAL = "rbxassetid://107077233630749"
-local ICON_LOADING = "rbxassetid://107077233630749"
+local ICON_LOADING = "rbxassetid://93961794643171"
 local ICON_SUCCESS = "rbxassetid://120592199803976"
 
 --------------------------------------------------------------------------------
