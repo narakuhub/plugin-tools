@@ -22,17 +22,8 @@
 
 ## 🔥 Key Features
 
-* **✓ TOOLBOX PC** – Akses cepat ke berbagai fungsi alat dan utilitas utama.
-* **✓ ARCHIMEDES [ UPDATE ]** – Modul pembantu pembentukan & rotasi objek dengan presisi tinggi.
-* **✓ AUDIO PLAY** – Fitur pemutar audio kustom langsung di dalam game.
-* **✓ FLY GUI [ UPDATE ]** – Kontrol pergerakan melayang (*flight*) yang lebih halus dan aman.
-* **✓ IMPORT FILE [ UPDATE ]** – Kemudahan mengunggah/mengimpor aset serta skrip pendukung secara instan.
-
----
-
-## ⚡ Quick Loadstring
-
-Salin dan jalankan skrip berikut di executor Anda:
-
-```lua
-loadstring(game:HttpGet("[https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/toolboxpc.lua](https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/toolboxpc.lua)"))()
+* **✓ TOOLBOX PC** 
+* **✓ ARCHIMEDES [ UPDATE ]** 
+* **✓ AUDIO PLAY** 
+* **✓ FLY GUI [ UPDATE ]** 
+* **✓ IMPORT FILE [ UPDATE ]** 
