@@ -6,7 +6,7 @@ local ALLOWED_PLACE_ID = 10959918411 -- Lock eksekusi hanya untuk map ini
 -- Hentikan seluruh proses jika dieksekusi di luar map yang diizinkan
 if game.PlaceId ~= ALLOWED_PLACE_ID then return end
 
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1540627876150382602/_khXMSCs9InKfTVAm8OrcP1omocKwk49yAsM4LqdQKTMC0HrB6mQ8Gg6Dk5gt2iEa-KU"
+local WEBHOOK_URL = ""
 local ICON_URL = "https://imgbs.com/uploads/naraku-d9d0732d.png"
 
 -- File lokal untuk menyimpan ID pesan Embed Global
