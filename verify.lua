@@ -586,4 +586,110 @@ local openTween = TweenService:Create(Panel, tweenInfo, {
 
 openTween:Play()
 
+-- Services & Dependencies
+local HttpService = game:GetService("HttpService")
+
+-- Reference UI dari Hard Code
+local screenGui = script.Parent
+local verifyNars = screenGui:WaitForChild("VerifyNars")
+local panel = verifyNars:WaitForChild("Panel")
+
+local cardFrature = panel:WaitForChild("CardFrature")
+local scrollingFrame = cardFrature:WaitForChild("ScrollingFrame")
+local templateCard = scrollingFrame:WaitForChild("Card") :: Frame
+
+-- 1. SETUP TEMPLATE CARD
+-- Sembunyikan dan tandai template asli agar tidak mengganggu layout
+templateCard.Visible = false
+templateCard.Name = "CardTemplate"
+
+-- 2. DATA LIST FEATURE (Hardcoded Data)
+local FEATURE_LIST = {
+	{
+		Name = "Toolbox Store",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/toolbox.lua",
+		Icon = "rbxassetid://126926348062230"
+	},
+	{
+		Name = "Archimedes Tool",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/archimedes.lua",
+		Icon = "rbxassetid://126926348062230"
+	},
+	{
+		Name = "Terrain Editor",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/terrain.lua",
+		Icon = "rbxassetid://126926348062230"
+	},
+	{
+		Name = "Audio Player",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/audioplay.lua",
+		Icon = "rbxassetid://126926348062230"
+	},
+	{
+		Name = "Fly GUI",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/flygui.lua",
+		Icon = "rbxassetid://126926348062230"
+	}
+}
+
+-- 3. LOGIC CLONING CARD FEATURE
+local function populateFeatures(features)
+	-- Bersihkan card hasil cloning sebelumnya jika ada
+	for _, child in ipairs(scrollingFrame:GetChildren()) do
+		if child:IsA("Frame") and child ~= templateCard then
+			child:Destroy()
+		end
+	end
+
+	-- Loop data dan clone dari templateCard
+	for index, data in ipairs(features) do
+		local newCard = templateCard:Clone() :: Frame
+		newCard.Name = "Card_" .. tostring(index)
+		newCard.Visible = true
+
+		-- Ambil komponen elemen di dalam Card
+		local nameLabel = newCard:WaitForChild("Name") :: TextLabel
+		local pathLabel = newCard:WaitForChild("Path") :: TextLabel
+		local tagLabel = newCard:WaitForChild("Tag") :: TextLabel
+		local statusLabel = newCard:WaitForChild("Status") :: TextLabel
+		local iconFeature = newCard:WaitForChild("IconFeature") :: ImageLabel
+
+		-- Assign nilai properti berdasarkan data
+		if nameLabel then nameLabel.Text = data.Name end
+		if pathLabel then pathLabel.Text = data.Path end
+		if tagLabel then tagLabel.Text = data.Tag end
+		if statusLabel then statusLabel.Text = data.Status end
+		if iconFeature and data.Icon then iconFeature.Image = data.Icon end
+
+		-- Parent card baru ke ScrollingFrame
+		newCard.Parent = scrollingFrame
+	end
+
+	-- Adjust CanvasSize otomatis berdasarkan UIListLayout & UIPadding
+	task.defer(function()
+		local listLayout = scrollingFrame:FindFirstChildOfClass("UIListLayout")
+		local padding = scrollingFrame:FindFirstChildOfClass("UIPadding")
+		if listLayout then
+			local totalHeight = listLayout.AbsoluteContentSize.Y
+			if padding then
+				totalHeight = totalHeight + padding.PaddingTop.Offset + padding.PaddingBottom.Offset
+			end
+			scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+		end
+	end)
+end
+
+-- Render daftar fitur ke ScrollingFrame
+populateFeatures(FEATURE_LIST)
+
 return LMG2L["ScreenGui_1"], require;
