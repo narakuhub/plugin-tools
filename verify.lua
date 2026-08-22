@@ -515,6 +515,75 @@ LMG2L["IconLink_3a"]["BackgroundTransparency"] = 1;
 LMG2L["IconLink_3a"]["Name"] = [[IconLink]];
 LMG2L["IconLink_3a"]["Position"] = UDim2.new(0, 5, 0, 4);
 
+-- Services
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 
+local LocalPlayer = Players.LocalPlayer
+
+-- Reference UI Elements (Berdasarkan variabel LMG2L Anda)
+local ScreenGui = LMG2L["ScreenGui_1"]
+local Panel = LMG2L["Panel_3"]
+local Thumbnail = LMG2L["Thumbnail_d"]
+local Description = LMG2L["Description_4"]
+
+--------------------------------------------------------------------------------
+-- 1. SETTING PARENT KE COREGUI
+--------------------------------------------------------------------------------
+-- Menggunakan pcall untuk keamanan privilege akses CoreGui
+local success, err = pcall(function()
+	ScreenGui.Parent = CoreGui
+end)
+
+if not success then
+	-- Fallback jika dijalankan di environment standar tanpa akses CoreGui
+	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+--------------------------------------------------------------------------------
+-- 2. SETUP THUMBNAIL PLACE ID
+--------------------------------------------------------------------------------
+local PLACE_ID = 10959918411
+local THUMBNAIL_URI = "rbxthumb://type=GameThumbnail&id=" .. PLACE_ID .. "&w=768&h=432"
+
+if Thumbnail and Thumbnail:IsA("ImageLabel") then
+	Thumbnail.Image = THUMBNAIL_URI
+	Thumbnail.ScaleType = Enum.ScaleType.Stretch
+end
+
+--------------------------------------------------------------------------------
+-- 3. SUSUNAN DESKRIPSI DEVELOPER
+--------------------------------------------------------------------------------
+if Description then
+	Description.Text = "The ultimate studio plugin and toolkit provider. Featuring fast integration for Toolbox Search Store, Archimedes, and a wide range of Roblox game development tools."
+end
+
+--------------------------------------------------------------------------------
+-- 5. ANIMASI KEMUNCULAN (TWEENING OPEN)
+--------------------------------------------------------------------------------
+-- Posisi Awal dan Target (AnchorPoint 0.5, 0.5)
+local TargetPosition = UDim2.new(0.5, 0, 0.5, 0)
+local TargetSize = UDim2.new(0, 330, 0, 230)
+
+-- Inisialisasi awal Panel (Kecil & Transparan untuk efek Pop-Up smooth)
+Panel.Size = UDim2.new(0, 0, 0, 0)
+Panel.Position = TargetPosition
+
+-- Tween Info
+local tweenInfo = TweenInfo.new(
+	0.5,                           -- Durasi (detik)
+	Enum.EasingStyle.Back,          -- Efek membal (Pop-up)
+	Enum.EasingDirection.Out
+)
+
+-- Buat dan Mainkan Tween
+local openTween = TweenService:Create(Panel, tweenInfo, {
+	Size = TargetSize,
+	Position = TargetPosition
+})
+
+openTween:Play()
 
 return LMG2L["ScreenGui_1"], require;
