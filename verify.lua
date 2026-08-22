@@ -548,8 +548,9 @@ local TARGET_PLACE_ID = 10959918411
 local SAVE_FILE_PATH = "Delta/saved_verify.json"
 local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/toolboxpc.lua"
 
-local ICON_NORMAL = "rbxassetid://120592199803976"
-local ICON_LOADING = "rbxassetid://93961794643171"
+local ICON_NORMAL = "rbxassetid://107077233630749"
+local ICON_LOADING = "rbxassetid://107077233630749"
+local ICON_SUCCESS = "rbxassetid://120592199803976"
 
 --------------------------------------------------------------------------------
 -- 1. EFEK BLUR LIGHTING
@@ -572,7 +573,7 @@ local function removeBlurAndGui()
 end
 
 --------------------------------------------------------------------------------
--- 2. HELPER SYSTEM (EXECUTE RAW & SAVE/LOAD FILE)
+-- 2. HELPER SYSTEM (EXECUTE RAW & MULTI-USER SAVE/LOAD FILE)
 --------------------------------------------------------------------------------
 local function executeRawScript()
 	removeBlurAndGui()
@@ -586,28 +587,7 @@ local function executeRawScript()
 	end)
 end
 
-local function saveVerificationData()
-	if writefile then
-		local data = {
-			UserId = LocalPlayer.UserId,
-			PlaceId = game.PlaceId,
-			VerifiedAt = os.time()
-		}
-		
-		-- Buat folder jika belum ada (Safe pcall)
-		pcall(function()
-			if makefolder and not isfolder("Delta") then
-				makefolder("Delta")
-			end
-		end)
-		
-		pcall(function()
-			writefile(SAVE_FILE_PATH, HttpService:JSONEncode(data))
-		end)
-	end
-end
-
-local function isAlreadyVerified()
+local function getSavedData()
 	if readfile and isfile and isfile(SAVE_FILE_PATH) then
 		local success, content = pcall(function()
 			return readfile(SAVE_FILE_PATH)
@@ -616,26 +596,54 @@ local function isAlreadyVerified()
 			local parseSuccess, data = pcall(function()
 				return HttpService:JSONDecode(content)
 			end)
-			if parseSuccess and data then
-				if data.UserId == LocalPlayer.UserId and data.PlaceId == TARGET_PLACE_ID and game.PlaceId == TARGET_PLACE_ID then
-					return true
-				end
+			if parseSuccess and type(data) == "table" then
+				return data
 			end
+		end
+	end
+	return { VerifiedUsers = {} }
+end
+
+local function saveVerificationData()
+	if writefile then
+		local currentData = getSavedData()
+		if not currentData.VerifiedUsers then
+			currentData.VerifiedUsers = {}
+		end
+
+		-- Simpan/update UserId ke dalam list dalam 1 file JSON
+		local userIdStr = tostring(LocalPlayer.UserId)
+		currentData.VerifiedUsers[userIdStr] = {
+			PlaceId = game.PlaceId,
+			VerifiedAt = os.time()
+		}
+
+		pcall(function()
+			if makefolder and not isfolder("Delta") then
+				makefolder("Delta")
+			end
+		end)
+
+		pcall(function()
+			writefile(SAVE_FILE_PATH, HttpService:JSONEncode(currentData))
+		end)
+	end
+end
+
+local function isAlreadyVerified()
+	local currentData = getSavedData()
+	local userIdStr = tostring(LocalPlayer.UserId)
+	if currentData.VerifiedUsers and currentData.VerifiedUsers[userIdStr] then
+		local userData = currentData.VerifiedUsers[userIdStr]
+		if userData.PlaceId == TARGET_PLACE_ID and game.PlaceId == TARGET_PLACE_ID then
+			return true
 		end
 	end
 	return false
 end
 
 --------------------------------------------------------------------------------
--- 3. CHECK AUTO-VERIFY SEBELUM RENDER GUI
---------------------------------------------------------------------------------
-if isAlreadyVerified() then
-	executeRawScript()
-	return
-end
-
---------------------------------------------------------------------------------
--- 4. SETTING PARENT KE COREGUI / PLAYERGUI
+-- 3. SETTING PARENT KE COREGUI / PLAYERGUI
 --------------------------------------------------------------------------------
 local success, err = pcall(function()
 	ScreenGui.Parent = CoreGui
@@ -646,7 +654,7 @@ if not success then
 end
 
 --------------------------------------------------------------------------------
--- 5. SETUP THUMBNAIL & DESKRIPSI
+-- 4. SETUP THUMBNAIL & DESKRIPSI
 --------------------------------------------------------------------------------
 local THUMBNAIL_URI = "rbxthumb://type=GameThumbnail&id=" .. TARGET_PLACE_ID .. "&w=768&h=432"
 
@@ -660,7 +668,7 @@ if Description then
 end
 
 --------------------------------------------------------------------------------
--- 6. ANIMASI KEMUNCULAN (TWEENING OPEN)
+-- 5. ANIMASI KEMUNCULAN (TWEENING OPEN)
 --------------------------------------------------------------------------------
 local TargetPosition = UDim2.new(0.5, 0, 0.5, 0)
 local TargetSize = UDim2.new(0, 330, 0, 230)
@@ -682,7 +690,7 @@ local openTween = TweenService:Create(Panel, tweenInfo, {
 openTween:Play()
 
 --------------------------------------------------------------------------------
--- 7. LOGIC CLONING CARD FEATURE
+-- 6. LOGIC CLONING CARD FEATURE
 --------------------------------------------------------------------------------
 TemplateCard.Visible = false
 TemplateCard.Name = "CardTemplate"
@@ -768,27 +776,25 @@ end
 populateFeatures(FEATURE_LIST)
 
 --------------------------------------------------------------------------------
--- 8. LOGIC VERIFY BUTTON & LOADING ANIMATION
+-- 7. LOGIC VERIFY PROCESS FUNCTION (MANUAL / AUTO)
 --------------------------------------------------------------------------------
 local isVerifying = false
 local rotateConnection = nil
 
-VerifyButton.MouseButton1Click:Connect(function()
+local function startVerificationProcess(isAuto)
 	if isVerifying then return end
 	isVerifying = true
 
 	-- Ubah Icon ke Icon Loading
 	IconVerify.Image = ICON_LOADING
-	VerifyButton.Text = "VERIFYING..."
+	VerifyButton.Text = isAuto and "AUTO VERIFYING..." or "VERIFYING..."
 
 	-- Animasi Memutar pada Icon Loading
 	rotateConnection = RunService.RenderStepped:Connect(function(delta)
 		IconVerify.Rotation = (IconVerify.Rotation + (delta * 360)) % 360
 	end)
 
-	-- Simulasi Proses Verifikasi
 	task.delay(1.5, function()
-		-- Cek kecocokan Place ID
 		if game.PlaceId == TARGET_PLACE_ID then
 			saveVerificationData()
 			
@@ -796,13 +802,15 @@ VerifyButton.MouseButton1Click:Connect(function()
 				rotateConnection:Disconnect()
 			end
 			
+			-- Ubah ke Icon Checklis Sukses
+			IconVerify.Rotation = 0
+			IconVerify.Image = ICON_SUCCESS
 			VerifyButton.Text = "SUCCESS!"
 			task.wait(0.5)
 			
-			-- Execute Script RAW & Hapus GUI
+			-- Execute RAW Script dan Hapus ScreenGui
 			executeRawScript()
 		else
-			-- Jika Place ID Tidak Cocok
 			if rotateConnection then
 				rotateConnection:Disconnect()
 			end
@@ -815,6 +823,21 @@ VerifyButton.MouseButton1Click:Connect(function()
 			isVerifying = false
 		end
 	end)
+end
+
+-- Listener Tombol Manual Click
+VerifyButton.MouseButton1Click:Connect(function()
+	startVerificationProcess(false)
 end)
+
+--------------------------------------------------------------------------------
+-- 8. TRIGGER AUTO VERIFY JIKA TERVERIFIKASI SEBELUMNYA
+--------------------------------------------------------------------------------
+if isAlreadyVerified() then
+	task.spawn(function()
+		openTween.Completed:Wait() -- Tunggu animasi buka UI selesai dulu
+		startVerificationProcess(true)
+	end)
+end
 
 return LMG2L["ScreenGui_1"], require;
