@@ -49,7 +49,7 @@ task.spawn(function()
     end)
 end)
 
--- 4. Manajemen Storage Lokal & Logika Auto Reset 24 Jam
+-- 4. Manajemen Storage Lokal (Permanen Tanpa Reset)
 local allUsersData = {}
 pcall(function()
     if isfile and readfile and isfile(DATA_FILE) then
@@ -62,18 +62,9 @@ pcall(function()
 end)
 
 local currentDateWIB = os.date("!%Y-%m-%d", os.time() + (7 * 3600))
-local currentTimeWIB = os.date("!%Y-%m-%d %H:%M:%S", os.time() + (7 * 3600)) .. " WIB"
+local userData = allUsersData[userIdStr] or { messageId = nil, totalExecutions = 0 }
 
-local userData = allUsersData[userIdStr] or { messageId = nil, totalExecutions = 0, lastDate = currentDateWIB }
-
--- Auto Reset Per 24 Jam
-if userData.lastDate ~= currentDateWIB then
-    userData.totalExecutions = 0
-    userData.messageId = nil
-    userData.lastDate = currentDateWIB
-end
-
--- Update counter eksekusi
+-- Increment total request eksekusi secara akumulatif/permanen
 userData.totalExecutions = (userData.totalExecutions or 0) + 1
 
 -- 5. Build Dynamic Embed Data
@@ -94,12 +85,12 @@ local embedData = {
         },
         {
             ["name"] = "System Stats",
-            ["value"] = string.format("```ansi\nStatus          : \u{001b}[32mONLINE (ACTIVE)\n\u{001b}[33mTotal Requests  : %d\nExecuted At     : %s```", userData.totalExecutions, currentTimeWIB),
+            ["value"] = string.format("```ansi\nStatus          : \u{001b}[32mONLINE\n\u{001b}[33mTotal Requests  : %d\nExecuted Date   : %s```", userData.totalExecutions, currentDateWIB),
             ["inline"] = false
         }
     },
     ["footer"] = { 
-        ["text"] = "Execution Plugin Engine • Last Active: " .. currentTimeWIB,
+        ["text"] = "Execution Plugin Engine • Date: " .. currentDateWIB,
         ["icon_url"] = ICON_URL
     }
 }
@@ -110,7 +101,7 @@ local payload = HttpService:JSONEncode({
     ["embeds"] = { embedData }
 })
 
--- 6. Fungsi Pengiriman Webhook Live (POST / PATCH)
+-- 6. Fungsi Pengiriman Webhook Live Update (POST / PATCH)
 local function sendWebhook()
     local targetUrl = WEBHOOK_URL
     local httpMethod = "POST"
@@ -142,7 +133,7 @@ local function sendWebhook()
             return
         end
 
-        -- Simpan Message ID baru untuk penimpaan live update selanjutnya
+        -- Simpan Message ID pertama kali untuk selalu di-update lewat PATCH
         if (code == 200 or code == 201) and not userData.messageId then
             pcall(function()
                 local resData = HttpService:JSONDecode(response.Body)
