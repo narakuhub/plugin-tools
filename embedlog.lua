@@ -87,7 +87,7 @@ if isAllowedMap then
 end
 
 -- 5. Build Dynamic Embed Data
-local embedTitle = isAllowedMap and "```LOG :: EXECUTION PLUGIN```" or "```SYSTEM :: ACCESS DENIED```"
+local embedTitle = isAllowedMap and "```SYSTEM :: EXECUTION DETECTED```" or "```SYSTEM :: ACCESS DENIED```"
 local embedColor = isAllowedMap and 0x000000 or 0xFF0000
 local statusText = isAllowedMap and "\u{001b}[32mSUCCESSFULLY EXECUTED" or "\u{001b}[31mUNAUTHORIZED MAP DETECTED"
 
@@ -113,13 +113,13 @@ local embedData = {
         }
     },
     ["footer"] = { 
-        ["text"] = "Execution Plugin Engine • Last Active: " .. currentTimeWIB,
+        ["text"] = "Execution Stalker Engine • Last Active: " .. currentTimeWIB,
         ["icon_url"] = ICON_URL
     }
 }
 
 local payload = HttpService:JSONEncode({
-    ["username"] = "Execution Plugin",
+    ["username"] = "Execution Stalker",
     ["avatar_url"] = ICON_URL,
     ["embeds"] = { embedData }
 })
