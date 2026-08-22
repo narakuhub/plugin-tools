@@ -520,65 +520,160 @@ local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Reference UI Elements (Berdasarkan variabel LMG2L Anda)
+-- Reference UI Elements Langsung dari Tabel LMG2L
 local ScreenGui = LMG2L["ScreenGui_1"]
 local Panel = LMG2L["Panel_3"]
 local Thumbnail = LMG2L["Thumbnail_d"]
 local Description = LMG2L["Description_4"]
 
+-- Sub-Elements UI (Diambil langsung dari instance LMG2L)
+local VerifyNars = LMG2L["VerifyNars_2"]
+local CardFrature = LMG2L["CardFrature_12"]
+local ScrollingFrame = LMG2L["ScrollingFrame_14"]
+local TemplateCard = LMG2L["Card_17"]
+
+-- Elements Verification Button
+local BgVerify = LMG2L["BgVerify_6"]
+local VerifyButton = LMG2L["VerifyButton_9"]
+local IconVerify = LMG2L["IconVerify_8"]
+
+-- CONSTANTS & CONFIGURATION
+local TARGET_PLACE_ID = 10959918411
+local SAVE_FILE_PATH = "Delta/saved_verify.json"
+local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/toolboxpc.lua"
+
+local ICON_NORMAL = "rbxassetid://120592199803976"
+local ICON_LOADING = "rbxassetid://93961794643171"
+
 --------------------------------------------------------------------------------
--- 1. SETTING PARENT KE COREGUI
+-- 1. EFEK BLUR LIGHTING
 --------------------------------------------------------------------------------
--- Menggunakan pcall untuk keamanan privilege akses CoreGui
+local blurEffect = Lighting:FindFirstChild("NarsVerifyBlur")
+if not blurEffect then
+	blurEffect = Instance.new("BlurEffect")
+	blurEffect.Name = "NarsVerifyBlur"
+	blurEffect.Size = 18
+	blurEffect.Parent = Lighting
+end
+
+local function removeBlurAndGui()
+	if blurEffect then
+		blurEffect:Destroy()
+	end
+	if ScreenGui then
+		ScreenGui:Destroy()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- 2. HELPER SYSTEM (EXECUTE RAW & SAVE/LOAD FILE)
+--------------------------------------------------------------------------------
+local function executeRawScript()
+	removeBlurAndGui()
+	task.spawn(function()
+		local success, result = pcall(function()
+			return game:HttpGet(RAW_SCRIPT_URL)
+		end)
+		if success and result then
+			loadstring(result)()
+		end
+	end)
+end
+
+local function saveVerificationData()
+	if writefile then
+		local data = {
+			UserId = LocalPlayer.UserId,
+			PlaceId = game.PlaceId,
+			VerifiedAt = os.time()
+		}
+		
+		-- Buat folder jika belum ada (Safe pcall)
+		pcall(function()
+			if makefolder and not isfolder("Delta") then
+				makefolder("Delta")
+			end
+		end)
+		
+		pcall(function()
+			writefile(SAVE_FILE_PATH, HttpService:JSONEncode(data))
+		end)
+	end
+end
+
+local function isAlreadyVerified()
+	if readfile and isfile and isfile(SAVE_FILE_PATH) then
+		local success, content = pcall(function()
+			return readfile(SAVE_FILE_PATH)
+		end)
+		if success and content then
+			local parseSuccess, data = pcall(function()
+				return HttpService:JSONDecode(content)
+			end)
+			if parseSuccess and data then
+				if data.UserId == LocalPlayer.UserId and data.PlaceId == TARGET_PLACE_ID and game.PlaceId == TARGET_PLACE_ID then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- 3. CHECK AUTO-VERIFY SEBELUM RENDER GUI
+--------------------------------------------------------------------------------
+if isAlreadyVerified() then
+	executeRawScript()
+	return
+end
+
+--------------------------------------------------------------------------------
+-- 4. SETTING PARENT KE COREGUI / PLAYERGUI
+--------------------------------------------------------------------------------
 local success, err = pcall(function()
 	ScreenGui.Parent = CoreGui
 end)
 
 if not success then
-	-- Fallback jika dijalankan di environment standar tanpa akses CoreGui
 	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
 --------------------------------------------------------------------------------
--- 2. SETUP THUMBNAIL PLACE ID
+-- 5. SETUP THUMBNAIL & DESKRIPSI
 --------------------------------------------------------------------------------
-local PLACE_ID = 10959918411
-local THUMBNAIL_URI = "rbxthumb://type=GameThumbnail&id=" .. PLACE_ID .. "&w=768&h=432"
+local THUMBNAIL_URI = "rbxthumb://type=GameThumbnail&id=" .. TARGET_PLACE_ID .. "&w=768&h=432"
 
 if Thumbnail and Thumbnail:IsA("ImageLabel") then
 	Thumbnail.Image = THUMBNAIL_URI
 	Thumbnail.ScaleType = Enum.ScaleType.Stretch
 end
 
---------------------------------------------------------------------------------
--- 3. SUSUNAN DESKRIPSI DEVELOPER
---------------------------------------------------------------------------------
 if Description then
 	Description.Text = "The ultimate studio plugin and toolkit provider. Featuring fast integration for Toolbox Search Store, Archimedes, and a wide range of Roblox game development tools."
 end
 
 --------------------------------------------------------------------------------
--- 5. ANIMASI KEMUNCULAN (TWEENING OPEN)
+-- 6. ANIMASI KEMUNCULAN (TWEENING OPEN)
 --------------------------------------------------------------------------------
--- Posisi Awal dan Target (AnchorPoint 0.5, 0.5)
 local TargetPosition = UDim2.new(0.5, 0, 0.5, 0)
 local TargetSize = UDim2.new(0, 330, 0, 230)
 
--- Inisialisasi awal Panel (Kecil & Transparan untuk efek Pop-Up smooth)
 Panel.Size = UDim2.new(0, 0, 0, 0)
 Panel.Position = TargetPosition
 
--- Tween Info
 local tweenInfo = TweenInfo.new(
-	0.5,                           -- Durasi (detik)
-	Enum.EasingStyle.Back,          -- Efek membal (Pop-up)
+	0.5,
+	Enum.EasingStyle.Back,
 	Enum.EasingDirection.Out
 )
 
--- Buat dan Mainkan Tween
 local openTween = TweenService:Create(Panel, tweenInfo, {
 	Size = TargetSize,
 	Position = TargetPosition
@@ -586,30 +681,12 @@ local openTween = TweenService:Create(Panel, tweenInfo, {
 
 openTween:Play()
 
--- Services & Dependencies
-local HttpService = game:GetService("HttpService")
+--------------------------------------------------------------------------------
+-- 7. LOGIC CLONING CARD FEATURE
+--------------------------------------------------------------------------------
+TemplateCard.Visible = false
+TemplateCard.Name = "CardTemplate"
 
--- Reference UI dari Hard Code
--- (Memastikan mengambil ScreenGui dengan aman baik dari script.Parent maupun dipanggil langsung)
-local screenGui = script.Parent
-if not screenGui:FindFirstChild("VerifyNars") then
-	screenGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ScreenGui")
-end
-
-local verifyNars = screenGui:WaitForChild("VerifyNars")
-local panel = verifyNars:WaitForChild("Panel")
-
-local cardFrature = panel:WaitForChild("CardFrature")
-local scrollingFrame = cardFrature:WaitForChild("ScrollingFrame")
-
--- MENGAMBIL TEMPLATE CARD (Card_17)
-local templateCard = scrollingFrame:WaitForChild("Card") :: Frame
-
--- 1. SETUP TEMPLATE CARD
-templateCard.Visible = false
-templateCard.Name = "CardTemplate"
-
--- 2. DATA LIST FEATURE (Hardcoded Data)
 local FEATURE_LIST = {
 	{
 		Name = "Toolbox Store",
@@ -648,54 +725,96 @@ local FEATURE_LIST = {
 	}
 }
 
--- 3. LOGIC CLONING CARD FEATURE
 local function populateFeatures(features)
-	-- Bersihkan card hasil cloning sebelumnya jika ada
-	for _, child in ipairs(scrollingFrame:GetChildren()) do
-		if child:IsA("Frame") and child ~= templateCard then
+	for _, child in ipairs(ScrollingFrame:GetChildren()) do
+		if child:IsA("Frame") and child ~= TemplateCard then
 			child:Destroy()
 		end
 	end
 
-	-- Loop data dan clone tepat berdasarkan elemen di dalam Card_17
 	for index, data in ipairs(features) do
-		local newCard = templateCard:Clone() :: Frame
+		local newCard = TemplateCard:Clone()
 		newCard.Name = "Card_" .. tostring(index)
 		newCard.Visible = true
 
-		-- Mengambil elemen persis sesuai struktur Card_17
-		local nameLabel = newCard:FindFirstChild("Name") :: TextLabel
-		local pathLabel = newCard:FindFirstChild("Path") :: TextLabel
-		local tagLabel = newCard:FindFirstChild("Tag") :: TextLabel
-		local statusLabel = newCard:FindFirstChild("Status") :: TextLabel
-		local iconFeature = newCard:FindFirstChild("IconFeature") :: ImageLabel
+		local nameLabel = newCard:FindFirstChild("Name")
+		local pathLabel = newCard:FindFirstChild("Path")
+		local tagLabel = newCard:FindFirstChild("Tag")
+		local statusLabel = newCard:FindFirstChild("Status")
+		local iconFeature = newCard:FindFirstChild("IconFeature")
 
-		-- Set teks dan gambar dari data
 		if nameLabel then nameLabel.Text = data.Name end
 		if pathLabel then pathLabel.Text = data.Path end
 		if tagLabel then tagLabel.Text = data.Tag end
 		if statusLabel then statusLabel.Text = data.Status end
 		if iconFeature and data.Icon then iconFeature.Image = data.Icon end
 
-		-- Parent card baru ke ScrollingFrame
-		newCard.Parent = scrollingFrame
+		newCard.Parent = ScrollingFrame
 	end
 
-	-- Adjust CanvasSize otomatis agar ScrollingFrame bisa di-scroll dengan rapi
 	task.defer(function()
-		local listLayout = scrollingFrame:FindFirstChildOfClass("UIListLayout")
-		local padding = scrollingFrame:FindFirstChildOfClass("UIPadding")
+		local listLayout = ScrollingFrame:FindFirstChildOfClass("UIListLayout")
+		local padding = ScrollingFrame:FindFirstChildOfClass("UIPadding")
 		if listLayout then
 			local totalHeight = listLayout.AbsoluteContentSize.Y
 			if padding then
 				totalHeight = totalHeight + padding.PaddingTop.Offset + padding.PaddingBottom.Offset
 			end
-			scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+			ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 		end
 	end)
 end
 
--- Render daftar fitur ke ScrollingFrame
 populateFeatures(FEATURE_LIST)
+
+--------------------------------------------------------------------------------
+-- 8. LOGIC VERIFY BUTTON & LOADING ANIMATION
+--------------------------------------------------------------------------------
+local isVerifying = false
+local rotateConnection = nil
+
+VerifyButton.MouseButton1Click:Connect(function()
+	if isVerifying then return end
+	isVerifying = true
+
+	-- Ubah Icon ke Icon Loading
+	IconVerify.Image = ICON_LOADING
+	VerifyButton.Text = "VERIFYING..."
+
+	-- Animasi Memutar pada Icon Loading
+	rotateConnection = RunService.RenderStepped:Connect(function(delta)
+		IconVerify.Rotation = (IconVerify.Rotation + (delta * 360)) % 360
+	end)
+
+	-- Simulasi Proses Verifikasi
+	task.delay(1.5, function()
+		-- Cek kecocokan Place ID
+		if game.PlaceId == TARGET_PLACE_ID then
+			saveVerificationData()
+			
+			if rotateConnection then
+				rotateConnection:Disconnect()
+			end
+			
+			VerifyButton.Text = "SUCCESS!"
+			task.wait(0.5)
+			
+			-- Execute Script RAW & Hapus GUI
+			executeRawScript()
+		else
+			-- Jika Place ID Tidak Cocok
+			if rotateConnection then
+				rotateConnection:Disconnect()
+			end
+			IconVerify.Rotation = 0
+			IconVerify.Image = ICON_NORMAL
+			VerifyButton.Text = "INVALID PLACE ID!"
+			
+			task.wait(2)
+			VerifyButton.Text = "VERIFY ACCESS PLUGIN"
+			isVerifying = false
+		end
+	end)
+end)
 
 return LMG2L["ScreenGui_1"], require;
