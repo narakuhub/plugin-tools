@@ -670,6 +670,8 @@ end
 --------------------------------------------------------------------------------
 -- 5. ANIMASI KEMUNCULAN (TWEENING OPEN)
 --------------------------------------------------------------------------------
+Panel.AnchorPoint = Vector2.new(0.5, 0.5)
+
 local TargetPosition = UDim2.new(0.5, 0, 0.5, 0)
 local TargetSize = UDim2.new(0, 330, 0, 230)
 
@@ -708,28 +710,28 @@ local FEATURE_LIST = {
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/archimedes.lua",
-		Icon = "rbxassetid://126926348062230"
+		Icon = "rbxassetid://87188567501065"
 	},
 	{
 		Name = "Terrain Editor",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/terrain.lua",
-		Icon = "rbxassetid://126926348062230"
+		Icon = "rbxassetid://129361331543944"
 	},
 	{
 		Name = "Audio Player",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/audioplay.lua",
-		Icon = "rbxassetid://126926348062230"
+		Icon = "rbxassetid://136460394404917"
 	},
 	{
 		Name = "Fly GUI",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/flygui.lua",
-		Icon = "rbxassetid://126926348062230"
+		Icon = "rbxassetid://126428723702595"
 	}
 }
 
@@ -802,7 +804,7 @@ local function startVerificationProcess(isAuto)
 				rotateConnection:Disconnect()
 			end
 			
-			-- Ubah ke Icon Checklis Sukses
+			-- Ubah ke Icon Checklist Sukses
 			IconVerify.Rotation = 0
 			IconVerify.Image = ICON_SUCCESS
 			VerifyButton.Text = "SUCCESS!"
@@ -818,9 +820,9 @@ local function startVerificationProcess(isAuto)
 			IconVerify.Image = ICON_NORMAL
 			VerifyButton.Text = "INVALID PLACE ID!"
 			
+			-- Tunggu 2 detik untuk menampilkan pesan error, lalu hapus ScreenGui & Blur
 			task.wait(2)
-			VerifyButton.Text = "VERIFY ACCESS PLUGIN"
-			isVerifying = false
+			removeBlurAndGui()
 		end
 	end)
 end
@@ -835,7 +837,7 @@ end)
 --------------------------------------------------------------------------------
 if isAlreadyVerified() then
 	task.spawn(function()
-		openTween.Completed:Wait() -- Tunggu animasi buka UI selesai dulu
+		openTween.Completed:Wait() -- Tunggu animasi buka UI selesai
 		startVerificationProcess(true)
 	end)
 end
