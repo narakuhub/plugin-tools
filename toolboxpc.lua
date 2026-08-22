@@ -715,7 +715,7 @@ LMG2L["Title_51"]["FontFace"] = Font.new([[rbxasset://fonts/families/Arial.json]
 LMG2L["Title_51"]["TextColor3"] = Color3.fromRGB(0, 0, 0);
 LMG2L["Title_51"]["BackgroundTransparency"] = 1;
 LMG2L["Title_51"]["Size"] = UDim2.new(0, 134, 0, 26);
-LMG2L["Title_51"]["Text"] = [[NARAKU • TOOLBOX]];
+LMG2L["Title_51"]["Text"] = [[NARS'S ENDEAVOR • TOOLBOX]];
 LMG2L["Title_51"]["Name"] = [[Title]];
 LMG2L["Title_51"]["Position"] = UDim2.new(0, 26, 0, 0);
 
