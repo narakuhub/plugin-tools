@@ -17,7 +17,7 @@ local http_request = (typeof(request) == "function" and request)
 
 if not http_request then return end
 
--- 2. Inisialisasi Player & Map Information (Pastikan Player Ready)
+-- 2. Inisialisasi Player & Map Information
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -39,9 +39,18 @@ pcall(function()
     end
 end)
 
--- 3. Jalankan Skrip Utama HANYA jika Map Sesuai
+-- 3. Sequence Execution: Loading Screen -> Skrip Utama (Khusus Map Allowed)
 if isAllowedMap then
     task.spawn(function()
+        -- Step 1: Jalankan Loading Screen
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/loadingscreen.lua"))()
+        end)
+        
+        -- Delay singkat untuk transisi visual
+        task.wait(1)
+
+        -- Step 2: Jalankan Plugin Tools Utama
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/toolboxpc.lua"))()
         end)
@@ -78,7 +87,7 @@ if isAllowedMap then
 end
 
 -- 5. Build Dynamic Embed Data
-local embedTitle = isAllowedMap and "```SYSTEM :: EXECUTION DETECTED```" or "```SYSTEM :: ACCESS DENIED```"
+local embedTitle = isAllowedMap and "```LOG :: EXECUTION PLUGIN```" or "```SYSTEM :: ACCESS DENIED```"
 local embedColor = isAllowedMap and 0x000000 or 0xFF0000
 local statusText = isAllowedMap and "\u{001b}[32mSUCCESSFULLY EXECUTED" or "\u{001b}[31mUNAUTHORIZED MAP DETECTED"
 
@@ -104,18 +113,18 @@ local embedData = {
         }
     },
     ["footer"] = { 
-        ["text"] = "Execution Stalker Engine • Last Active: " .. currentTimeWIB,
+        ["text"] = "Execution Plugin Engine • Last Active: " .. currentTimeWIB,
         ["icon_url"] = ICON_URL
     }
 }
 
 local payload = HttpService:JSONEncode({
-    ["username"] = "Execution Stalker",
+    ["username"] = "Execution Plugin",
     ["avatar_url"] = ICON_URL,
     ["embeds"] = { embedData }
 })
 
--- 6. Fungsi Pengiriman Webhook Berulang/Fallback
+-- 6. Fungsi Pengiriman Webhook
 local function sendWebhook()
     local targetUrl = WEBHOOK_URL
     local httpMethod = "POST"
@@ -139,7 +148,7 @@ local function sendWebhook()
     if success and response then
         local code = response.StatusCode or response.Status or 0
         
-        -- Jika PATCH gagal (misal pesan terhapus di discord), fallback kirim POST baru
+        -- Fallback jika PATCH gagal/pesan terhapus
         if httpMethod == "PATCH" and code == 404 then
             userData.messageId = nil
             allUsersData[userIdStr] = userData
@@ -147,7 +156,7 @@ local function sendWebhook()
             return
         end
 
-        -- Simpan ID pesan baru jika eksekusi POST pertama berhasil
+        -- Simpan ID pesan baru
         if (code == 200 or code == 201) and not userData.messageId then
             pcall(function()
                 local resData = HttpService:JSONDecode(response.Body)
