@@ -2905,7 +2905,7 @@ local MenuFeatureList = {
     {
         Name = "ARCHIMEDES",
         Icon = "rbxassetid://87188567501065",
-        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/Archimedes.lua"
+        RawLink = ""
     },
     {
         Name = "TERRAIN",
@@ -2915,7 +2915,7 @@ local MenuFeatureList = {
 	{
         Name = "IMPORT FILE",
         Icon = "rbxassetid://126926348062230",
-        RawLink = "https://raw.githubusercontent.com/narakuhub/vertrou/refs/heads/main/import.lua"
+        RawLink = ""
     },
 	{
         Name = "AUDIO",
@@ -2926,6 +2926,16 @@ local MenuFeatureList = {
         Name = "FLY GUI",
         Icon = "rbxassetid://126428723702595",
         RawLink = "https://raw.githubusercontent.com/narakuhub/narakuhub/refs/heads/main/FlyV3.lua"
+    },
+	{
+        Name = "DEX PLUS PLUS",
+        Icon = "rbxassetid://119977886496737",
+        RawLink = "https://github.com/AZYsGithub/DexPlusPlus"
+    },
+	{
+        Name = "INFINITY YEALD",
+        Icon = "rbxassetid://98186789507879",
+        RawLink = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"
     }
 }
 
