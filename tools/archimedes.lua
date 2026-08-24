@@ -1095,42 +1095,48 @@ Panel_3.Size = UDim2.new(0, 0, 0, 0)
 
 -- Services
 local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
+local Players      = game:GetService("Players")
+local Workspace    = game:GetService("Workspace")
+local CoreGui      = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local Mouse       = LocalPlayer:GetMouse()
+
+-- Safe UI Parent & Global Table Guard
+local getHui = gethui or function() return CoreGui end
+local LMG2L  = (typeof(LMG2L) == "table") and LMG2L or {}
 
 -- Referensi UI Utama
-local ScreenGui_1 = LMG2L["ScreenGui_1"]
-local Panel_3     = LMG2L["Panel_3"]
+local ScreenGui_1 = LMG2L["ScreenGui_1"] or CoreGui:FindFirstChild("ScreenGui_1")
+local Panel_3     = LMG2L["Panel_3"] or (ScreenGui_1 and ScreenGui_1:FindFirstChild("Panel_3"))
 
 -- Global Control Variables
 local isMinimized = false
 
--- Color Palette Constants (Axis Button Active State)
+-- Color Palette Constants (Axis Selection Active/Normal)
 local COLOR_AXIS_ACTIVE_BG  = Color3.fromRGB(223, 230, 237)
 local COLOR_AXIS_ACTIVE_TXT = Color3.fromRGB(0, 0, 0)
 local COLOR_AXIS_NORMAL_BG  = Color3.fromRGB(33, 33, 33)
 local COLOR_AXIS_NORMAL_TXT = Color3.fromRGB(255, 255, 255)
 
 -- Proteksi GUI
-ScreenGui_1.ResetOnSpawn = false
-pcall(function()
-	ScreenGui_1.Parent = CoreGui
-end)
+if ScreenGui_1 then
+	ScreenGui_1.ResetOnSpawn = false
+	pcall(function()
+		ScreenGui_1.Parent = getHui()
+	end)
+end
 
 -- 1. INTEGRASI AXIS BUTTONS
-local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
+local CardAxisButton_28 = LMG2L["CardAxisButton_28"] or (Panel_3 and Panel_3:FindFirstChild("CardAxisButton_28"))
 
 local axisButtons = {
-	["X"]  = LMG2L["AxisXButton_38"] or CardAxisButton_28:FindFirstChild("AxisXButton_38"),
-	["Y"]  = LMG2L["AxisYButton_36"] or CardAxisButton_28:FindFirstChild("AxisYButton_36"),
-	["Z"]  = LMG2L["AxisZButton_3d"] or CardAxisButton_28:FindFirstChild("AxisZButton_3d"),
-	["X²"] = LMG2L["AxisX²Button_3f"] or CardAxisButton_28:FindFirstChild("AxisX²Button_3f"),
-	["Y²"] = LMG2L["AxisY²Button_33"] or CardAxisButton_28:FindFirstChild("AxisY²Button_33"),
-	["Z²"] = LMG2L["AxisZ²Button_3a"] or CardAxisButton_28:FindFirstChild("AxisZ²Button_3a")
+	["X"]  = LMG2L["AxisXButton_38"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisXButton_38")),
+	["Y"]  = LMG2L["AxisYButton_36"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisYButton_36")),
+	["Z"]  = LMG2L["AxisZButton_3d"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisZButton_3d")),
+	["X²"] = LMG2L["AxisX²Button_3f"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisX²Button_3f")),
+	["Y²"] = LMG2L["AxisY²Button_33"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisY²Button_33")),
+	["Z²"] = LMG2L["AxisZ²Button_3a"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisZ²Button_3a"))
 }
 
 local axisOrder = {
@@ -1149,39 +1155,33 @@ for name, btn in pairs(axisButtons) do
 end
 
 -- 2. INTEGRASI ANGLE & AMOUNT INPUT CONTROLS
-local CardAngle_f  = LMG2L["CardAngle_f"]
-local CardAmount_1e = LMG2L["CardAmount_1e"]
+local CardAngle_f   = LMG2L["CardAngle_f"] or (Panel_3 and Panel_3:FindFirstChild("CardAngle_f"))
+local CardAmount_1e = LMG2L["CardAmount_1e"] or (Panel_3 and Panel_3:FindFirstChild("CardAmount_1e"))
 
-local angleBox      = LMG2L["AngleBox_b"] or CardAngle_f:FindFirstChildOfClass("TextBox")
+local angleBox      = LMG2L["AngleBox_b"] or (CardAngle_f and CardAngle_f:FindFirstChildOfClass("TextBox"))
 local uiStrokeAngle = LMG2L["UIStroke_d"] or (angleBox and angleBox:FindFirstChildOfClass("UIStroke"))
-local amountBox     = LMG2L["AmountBox_10"] or CardAmount_1e:FindFirstChildOfClass("TextBox")
+local amountBox     = LMG2L["AmountBox_10"] or (CardAmount_1e and CardAmount_1e:FindFirstChildOfClass("TextBox"))
 
--- 3. INTEGRASI TOGGLE COMPONENTS (NAVIGASI KE BACKGROUND FRAME & CHEKLIS BUTTON)
-local CardFlipAxis_4  = LMG2L["CardFlipAxis_4"]
+-- 3. INTEGRASI TOGGLE COMPONENTS (MENGGUNAKAN REFERENSI LANGSUNG DUMP)
+local CardFlipAxis_4   = LMG2L["CardFlipAxis_4"]
 local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
 local CardEnable_49    = LMG2L["CardEnable_49"]
 
-local function FetchChecklistButton(cardInstance)
-	if not cardInstance then return nil end
-	local bgFrame = cardInstance:FindFirstChild("BackgroundCheklis_67") or cardInstance:FindFirstChildOfClass("Frame") or cardInstance
-	return bgFrame:FindFirstChildOfClass("ImageButton") or cardInstance:FindFirstChildOfClass("ImageButton")
-end
-
 local toggleComponents = {
-	["FlipAxis"]  = FetchChecklistButton(CardFlipAxis_4) or LMG2L["ChecklisButton_24"],
-	["SwapSides"] = FetchChecklistButton(CardSwapSides_62) or LMG2L["ChecklisButton_2c"],
-	["Enabled"]   = FetchChecklistButton(CardEnable_49) or LMG2L["ChecklisButton_1a"]
+	["FlipAxis"]  = LMG2L["ChecklisButton_24"] or (CardFlipAxis_4 and CardFlipAxis_4:FindFirstChildWhichIsA("ImageButton", true)),
+	["SwapSides"] = LMG2L["ChecklisButton_2c"] or (CardSwapSides_62 and CardSwapSides_62:FindFirstChildWhichIsA("ImageButton", true)),
+	["Enabled"]   = LMG2L["ChecklisButton_1a"] or (CardEnable_49 and CardEnable_49:FindFirstChildWhichIsA("ImageButton", true))
 }
 
 -- 4. INTEGRASI ACTION & CLOSE BUTTONS
-local BackgroundUndo_5c      = LMG2L["BackgroundUndo_5c"]
-local BackgroundRender_6d    = LMG2L["BackgroundRender_6d"]
-local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
+local BackgroundUndo_5c      = LMG2L["BackgroundUndo_5c"] or (Panel_3 and Panel_3:FindFirstChild("BackgroundUndo_5c"))
+local BackgroundRender_6d    = LMG2L["BackgroundRender_6d"] or (Panel_3 and Panel_3:FindFirstChild("BackgroundRender_6d"))
+local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"] or (Panel_3 and Panel_3:FindFirstChild("BackgroundRenderAll_18"))
 
-local undoButton      = LMG2L["UndoButton_5"] or BackgroundUndo_5c:FindFirstChildOfClass("TextButton")
-local renderButton    = LMG2L["RenderButton_41"] or BackgroundRender_6d:FindFirstChildOfClass("TextButton")
-local renderAllButton = LMG2L["RenderAllButton_3"] or BackgroundRenderAll_18:FindFirstChildOfClass("TextButton")
-local closeButton     = LMG2L["CloseButton_59"]
+local undoButton      = LMG2L["UndoButton_5"] or (BackgroundUndo_5c and BackgroundUndo_5c:FindFirstChildOfClass("TextButton"))
+local renderButton    = LMG2L["RenderButton_41"] or (BackgroundRender_6d and BackgroundRender_6d:FindFirstChildOfClass("TextButton"))
+local renderAllButton = LMG2L["RenderAllButton_3"] or (BackgroundRenderAll_18 and BackgroundRenderAll_18:FindFirstChildOfClass("TextButton"))
+local closeButton     = LMG2L["CloseButton_59"] or (Panel_3 and Panel_3:FindFirstChild("CloseButton_59"))
 
 -- State Configurations (Default Settings)
 local CurrentSettings = {
@@ -1194,18 +1194,18 @@ local CurrentSettings = {
 }
 
 -- References & State Handlers
-local SelectedPart = nil
-local PreviewPart = nil
-local RenderHistory = {}       
+local SelectedPart       = nil
+local PreviewPart        = nil
+local RenderHistory      = {}       
 local ActiveRenderFolder = nil 
-local FolderCounter = 1
-local clickConnection = nil
+local FolderCounter      = 1
+local clickConnection    = nil
 
 -- Setup Initial Box Values
 if amountBox then amountBox.Text = "0" end
 if angleBox then angleBox.Text = "5" end
 
--- 1. UTILITY: CALCULATE CFRAME AXIS (EDGE PIVOT TRANSFORMATION MATRIKS)
+-- 1. UTILITY: CALCULATE CFRAME AXIS (PIVOT ARCHIMEDES EDGE TRANSFORMATION)
 local function CalculateCFrame(baseCFrame, size, direction, angle, flip, swap)
 	local radAngle = math.rad(angle)
 	if flip then radAngle = -radAngle end
@@ -1232,7 +1232,6 @@ local function CalculateCFrame(baseCFrame, size, direction, angle, flip, swap)
 		offsetVector = Vector3.new(xOffset, 0, 0)
 	end
 
-	-- Formulas: P_new = P_base * Offset * Rotation * Offset
 	return baseCFrame * CFrame.new(offsetVector) * rotCFrame * CFrame.new(offsetVector)
 end
 
@@ -1258,7 +1257,7 @@ local function UpdatePreview()
 		return
 	end
 
-	if not CurrentSettings.Enabled or not ScreenGui_1.Parent or isMinimized then 
+	if not CurrentSettings.Enabled or (ScreenGui_1 and not ScreenGui_1.Parent) or isMinimized then 
 		return 
 	end
 
@@ -1286,7 +1285,7 @@ local function UpdatePreview()
 	PreviewPart.Parent = Workspace
 end
 
--- 4. VISUAL AXIS SELECTION SYSTEM (ACTIVE: BG 223, 230, 237 | TEXT: BLACK)
+-- 4. VISUAL AXIS SELECTION SYSTEM
 local function updateAxisUI(chosenAxis)
 	CurrentSettings.Direction = chosenAxis
 	for axisName, button in pairs(axisButtons) do
@@ -1316,7 +1315,7 @@ for axisName, button in pairs(axisButtons) do
 end
 updateAxisUI("X")
 
--- 5. TOGGLE CHECKLIST SYSTEM (OFF FOR FLIP & SWAP, ON FOR ENABLE)
+-- 5. TOGGLE CHECKLIST SYSTEM
 local function setupChecklistToggle(checkButton, settingName, defaultState)
 	if not checkButton then return end
 	
@@ -1329,7 +1328,7 @@ local function setupChecklistToggle(checkButton, settingName, defaultState)
 	
 	refreshToggleVisual()
 	
-	local parentClickArea = checkButton.Parent:IsA("GuiButton") and checkButton.Parent or checkButton
+	local parentClickArea = (checkButton.Parent and checkButton.Parent:IsA("GuiButton")) and checkButton.Parent or checkButton
 	parentClickArea.MouseButton1Click:Connect(function()
 		CurrentSettings[settingName] = not CurrentSettings[settingName]
 		refreshToggleVisual()
@@ -1358,12 +1357,12 @@ if clickConnection then
 end
 
 clickConnection = Mouse.Button1Down:Connect(function()
-	if not CurrentSettings.Enabled or not ScreenGui_1.Parent or isMinimized then 
+	if not CurrentSettings.Enabled or (ScreenGui_1 and not ScreenGui_1.Parent) or isMinimized then 
 		return 
 	end
 
 	local target = Mouse.Target
-	if target and target:IsA("BasePart") and not target:IsDescendantOf(ScreenGui_1) then
+	if target and target:IsA("BasePart") and ScreenGui_1 and not target:IsDescendantOf(ScreenGui_1) then
 		if target.Name ~= "Archimedes_Preview" and target.Name ~= "Baseplate" then
 			SelectedPart = target
 			ActiveRenderFolder = nil 
@@ -1412,7 +1411,7 @@ for axisName, button in pairs(axisButtons) do
 end
 updateAxisUI("X")
 
--- 2. TOGGLE CHECKLIST SYSTEM (IMAGEBUTTON LOGIC + CARD CLICK)
+-- 2. TOGGLE CHECKLIST SYSTEM (SAFE FALLBACK LOGIC)
 local function setupChecklistToggle(checkButton, settingName, defaultState)
 	if not checkButton then return end
 	
@@ -1422,21 +1421,15 @@ local function setupChecklistToggle(checkButton, settingName, defaultState)
 		local state = CurrentSettings[settingName]
 		if checkButton:IsA("ImageButton") or checkButton:IsA("ImageLabel") then
 			checkButton.ImageTransparency = state and 0 or 1
+		else
+			checkButton.Visible = state
 		end
-		checkButton.Visible = state
 	end
 	
 	refreshToggleVisual()
 	
-	-- Menghubungkan Event Klik ke Parent Frame/Card agar area klik lebih luas
-	local parentCard = checkButton.Parent
-	while parentCard and not parentCard:IsA("GuiButton") and parentCard ~= ScreenGui_1 do
-		parentCard = parentCard.Parent
-	end
-	
-	local clickTarget = (parentCard and parentCard:IsA("GuiButton")) and parentCard or checkButton
-	
-	clickTarget.MouseButton1Click:Connect(function()
+	local parentClickArea = (checkButton.Parent and checkButton.Parent:IsA("GuiButton")) and checkButton.Parent or checkButton
+	parentClickArea.MouseButton1Click:Connect(function()
 		CurrentSettings[settingName] = not CurrentSettings[settingName]
 		refreshToggleVisual()
 		
@@ -1503,7 +1496,7 @@ local function GetMainFolder()
 	return mainFolder
 end
 
--- 5. EXECUTE RENDER SYSTEM (PRECISION ARCHIMEDES LOOP)
+-- 5. EXECUTE RENDER SYSTEM (WITH ANGLE VALIDATION & SAFE-CHECKS)
 local function ExecuteRender(renderAllMode)
 	if not SelectedPart or not SelectedPart.Parent or not SelectedPart:IsA("BasePart") then
 		SelectedPart = nil
@@ -1511,7 +1504,7 @@ local function ExecuteRender(renderAllMode)
 		return
 	end
 
-	if not CurrentSettings.Enabled or isMinimized or not ScreenGui_1.Parent then 
+	if not CurrentSettings.Enabled or isMinimized or (ScreenGui_1 and not ScreenGui_1.Parent) then 
 		return 
 	end
 
@@ -1527,13 +1520,7 @@ local function ExecuteRender(renderAllMode)
 		FolderCounter = FolderCounter + 1
 	end
 
-	local loops = 1
-	if renderAllMode then
-		loops = math.floor(360 / absAngle)
-	else
-		loops = math.max(1, CurrentSettings.Amount)
-	end
-
+	local loops = renderAllMode and math.floor(360 / absAngle) or math.max(1, CurrentSettings.Amount)
 	local nextCFrame = SelectedPart.CFrame
 	local lastRenderedPart = nil
 
@@ -1629,15 +1616,23 @@ if closeButton then
 		ClearPreview()
 		SelectedPart = nil
 
-		local tweenInfoClose = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-		local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
-			Size = UDim2.new(0, 0, 0, 0)
-		})
-		closeTween:Play()
+		if Panel_3 then
+			local tweenInfoClose = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
+				Size = UDim2.new(0, 0, 0, 0)
+			})
+			closeTween:Play()
 
-		closeTween.Completed:Connect(function()
-			ScreenGui_1:Destroy()
-		end)
+			closeTween.Completed:Connect(function()
+				if ScreenGui_1 then
+					ScreenGui_1:Destroy()
+				end
+			end)
+		else
+			if ScreenGui_1 then
+				ScreenGui_1:Destroy()
+			end
+		end
 	end)
 end
 
