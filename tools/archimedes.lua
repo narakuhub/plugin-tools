@@ -1005,7 +1005,7 @@ local childContent = {
 	BackgroundRenderAll_18
 }
 
--- 2. SYSTEM DRAG PANEL (VIA HEADER)
+-- 2. SYSTEM DRAG PANEL (VIA PANEL DIRECTLY)
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -1022,7 +1022,7 @@ local function updateDrag(input)
 	}):Play()
 end
 
-Header_54.InputBegan:Connect(function(input)
+Panel_3.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
@@ -1036,7 +1036,7 @@ Header_54.InputBegan:Connect(function(input)
 	end
 end)
 
-Header_54.InputChanged:Connect(function(input)
+Panel_3.InputChanged:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		dragInput = input
 	end
