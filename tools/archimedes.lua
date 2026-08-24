@@ -971,25 +971,46 @@ local BackgroundUndo_5c = LMG2L["BackgroundUndo_5c"]
 local BackgroundRender_6d = LMG2L["BackgroundRender_6d"]
 local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
 
--- 1. SET PARENT TO COREGUI & PREPARE PROPERTIES
+-- Services
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Reference UI Elements
+local ScreenGui_1 = LMG2L["ScreenGui_1"]
+local Panel_3 = LMG2L["Panel_3"]
+local Header_54 = LMG2L["Header_54"]
+local MinimalButton_56 = LMG2L["MinimalButton_56"]
+local CloseButton_59 = LMG2L["CloseButton_59"]
+
+-- Reference Child Elements Inside Panel_3
+local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
+local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
+local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
+local CardEnable_49 = LMG2L["CardEnable_49"]
+local CardAngle_f = LMG2L["CardAngle_f"]
+local CardAmount_1e = LMG2L["CardAmount_1e"]
+local BackgroundUndo_5c = LMG2L["BackgroundUndo_5c"]
+local BackgroundRender_6d = LMG2L["BackgroundRender_6d"]
+local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
+
+-- 1. PARENT & INITIAL SETUP
 ScreenGui_1.Parent = CoreGui
 Panel_3.ClipsDescendants = true
 
--- Image Asset IDs
-local ID_NORMAL = "rbxassetid://3533944381010"
+-- Ambil ID Normal langsung dari ImageButton bawaan agar tidak hilang
+local ID_NORMAL = MinimalButton_56.Image 
 local ID_MINIMAL = "rbxassetid://7863347848901"
-
--- Set Default Image
-MinimalButton_56.Image = ID_NORMAL
 
 -- Dimensions & States
 local NORMAL_SIZE = UDim2.new(0, 258, 0, 294)
-local MINIMAL_SIZE = UDim2.new(0, 258, 0, 30)
+local MINIMAL_SIZE = UDim2.new(0, 258, 0, 26)
 local TARGET_POSITION = UDim2.new(0, 10, 0, 20)
 
 local isMinimized = false
-local tweenInfoFast = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tweenInfoFast = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local tweenInfoOpen = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local tweenInfoClose = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 -- List Child Content
 local childContent = {
@@ -1047,38 +1068,46 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- 3. MINIMIZE & MAXIMIZE SYSTEM (FIX GLITCH & ICON TOGGLE)
+-- 3. TOGGLE MINIMIZE / MAXIMIZE SYSTEM
 MinimalButton_56.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 
 	if isMinimized then
-		-- Pindah ke Minimal Mode
 		MinimalButton_56.Image = ID_MINIMAL
-		local tween = TweenService:Create(Panel_3, tweenInfoFast, { Size = MINIMAL_SIZE })
+		for _, child in ipairs(childContent) do
+			child.Visible = false
+		end
+		TweenService:Create(Panel_3, tweenInfoFast, { Size = MINIMAL_SIZE }):Play()
+	else
+		MinimalButton_56.Image = ID_NORMAL
+		local tween = TweenService:Create(Panel_3, tweenInfoFast, { Size = NORMAL_SIZE })
 		tween:Play()
 		tween.Completed:Connect(function()
-			if isMinimized then
+			if not isMinimized then
 				for _, child in ipairs(childContent) do
-					child.Visible = false
+					child.Visible = true
 				end
 			end
 		end)
-	else
-		-- Pindah ke Normal Mode
-		MinimalButton_56.Image = ID_NORMAL
-		for _, child in ipairs(childContent) do
-			child.Visible = true
-		end
-		TweenService:Create(Panel_3, tweenInfoFast, { Size = NORMAL_SIZE }):Play()
 	end
 end)
 
--- 4. CLOSE BUTTON FUNCTION (DESTROY SCREENGUI)
+-- 4. CLOSE BUTTON SYSTEM WITH EXIT ANIMATION
+local isClosing = false
 CloseButton_59.MouseButton1Click:Connect(function()
-	ScreenGui_1:Destroy()
+	if isClosing then return end
+	isClosing = true
+
+	local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
+		Size = UDim2.new(0, 0, 0, 0)
+	})
+	closeTween:Play()
+	closeTween.Completed:Connect(function()
+		ScreenGui_1:Destroy()
+	end)
 end)
 
--- 5. ENTRY ANIMATION (SPAWN IN PLACE VIA SCALE TWEEN)
+-- 5. ENTRY ANIMATION (SPAWN IN PLACE)
 Panel_3.Position = TARGET_POSITION
 Panel_3.Size = UDim2.new(0, 0, 0, 0)
 
