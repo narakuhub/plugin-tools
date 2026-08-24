@@ -1111,13 +1111,16 @@ local Mouse = LocalPlayer:GetMouse()
 local ScreenGui_1 = LMG2L["ScreenGui_1"]
 local Panel_3     = LMG2L["Panel_3"]
 
+-- Global Control Variables
+local isMinimized = false
+
 -- Proteksi GUI
 ScreenGui_1.ResetOnSpawn = false
 pcall(function()
 	ScreenGui_1.Parent = CoreGui
 end)
 
--- 1. INTREGRASI AXIS BUTTONS (SUSUNAN BARIS 1: X, Y, Z | BARIS 2: X², Y², Z²)
+-- 1. INTEGRASI AXIS BUTTONS
 local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
 
 local axisButtons = {
@@ -1129,7 +1132,6 @@ local axisButtons = {
 	["Z²"] = LMG2L["AxisZ²Button_3a"] or CardAxisButton_28:FindFirstChild("AxisZ²Button_3a")
 }
 
--- Atur Urutan Layout Grid (Baris 1: X, Y, Z | Baris 2: X², Y², Z²)
 local axisOrder = {
 	["X"]  = 1,
 	["Y"]  = 2,
@@ -1190,12 +1192,11 @@ local PreviewPart = nil
 local RenderHistory = {}       
 local ActiveRenderFolder = nil 
 local FolderCounter = 1
-local panelTerbuka = true     
 local clickConnection = nil
 
 -- Setup Initial Box Values
-amountBox.Text = "0"
-angleBox.Text = "5"
+if amountBox then amountBox.Text = "0" end
+if angleBox then angleBox.Text = "5" end
 
 -- 1. UTILITY: CALCULATE CFRAME AXIS
 local function CalculateCFrame(baseCFrame, size, direction, angle, flip, swap)
@@ -1239,14 +1240,19 @@ local function ClearPreview()
 		PreviewPart:Destroy()
 		PreviewPart = nil
 	end
-end
+end 
 
--- 3. UPDATE PREVIEW SYSTEM
+-- 3. UPDATE PREVIEW SYSTEM (DENGAN SAFE-CHECK PART EXISTENCE)
 local function UpdatePreview()
 	ClearPreview()
 
-	-- Menggunakan ScreenGui_1 & isMinimized state
-	if not CurrentSettings.Enabled or not ScreenGui_1.Parent or isMinimized or not SelectedPart then 
+	-- Validasi keberadaan SelectedPart di Workspace
+	if not SelectedPart or not SelectedPart.Parent or not SelectedPart:IsA("BasePart") then
+		SelectedPart = nil
+		return
+	end
+
+	if not CurrentSettings.Enabled or not ScreenGui_1.Parent or isMinimized then 
 		return 
 	end
 
@@ -1274,7 +1280,7 @@ local function UpdatePreview()
 	PreviewPart.Parent = Workspace
 end
 
--- 4. MOUSE CLICK CONNECTION FOR TARGET SELECTION
+-- 4. MOUSE CLICK CONNECTION (DENGAN AUTO-CLEAR SAAT KLIK KOSONG)
 if clickConnection then 
 	clickConnection:Disconnect() 
 end
@@ -1291,8 +1297,17 @@ clickConnection = Mouse.Button1Down:Connect(function()
 			ActiveRenderFolder = nil 
 			UpdatePreview()
 		end
+	else
+		-- Bersihkan selection & preview jika mengeklik luar part valid
+		SelectedPart = nil
+		ActiveRenderFolder = nil
+		ClearPreview()
 	end
 end)
+
+-- Color Palette Constants
+local COLOR_ACTIVE = Color3.fromRGB(0, 162, 255)     
+local COLOR_NORMAL = Color3.fromRGB(33, 33, 33)      
 
 -- 1. AXIS BUTTON SELECTION SYSTEM
 local function updateAxisUI(chosenAxis)
@@ -1314,7 +1329,7 @@ for axisName, button in pairs(axisButtons) do
 end
 updateAxisUI("X")
 
--- 2. TOGGLE CHECKLIST SYSTEM (KHUSUS IMAGEBUTTON)
+-- 2. TOGGLE CHECKLIST SYSTEM (IMAGEBUTTON LOGIC)
 local function setupChecklistToggle(checkButton, settingName, defaultState)
 	if not checkButton then return end
 	
@@ -1322,7 +1337,6 @@ local function setupChecklistToggle(checkButton, settingName, defaultState)
 	
 	local function refreshToggleVisual()
 		local state = CurrentSettings[settingName]
-		-- Mengontrol transparansi gambar (0 = Terlihat Aktif, 1 = Sembunyi/Nonaktif)
 		if checkButton:IsA("ImageButton") or checkButton:IsA("ImageLabel") then
 			checkButton.ImageTransparency = state and 0 or 1
 		else
@@ -1350,12 +1364,11 @@ local function setupChecklistToggle(checkButton, settingName, defaultState)
 	end)
 end
 
--- Integrasi Komponen Checklist Toggle
 setupChecklistToggle(toggleComponents["FlipAxis"], "FlipAxis", false)
 setupChecklistToggle(toggleComponents["SwapSides"], "SwapSides", false)
 setupChecklistToggle(toggleComponents["Enabled"], "Enabled", true)
 
--- 3. INPUT EVENT HANDLING (ANGLE & AMOUNT)
+-- 3. INPUT EVENT HANDLING (WITH FOCUS LOST FALLBACK)
 if angleBox then
 	angleBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local val = tonumber(angleBox.Text) or 0
@@ -1366,17 +1379,31 @@ if angleBox then
 		end
 		UpdatePreview()
 	end)
+	
+	angleBox.FocusLost:Connect(function()
+		if not tonumber(angleBox.Text) then
+			angleBox.Text = "5"
+			CurrentSettings.Angle = 5
+			UpdatePreview()
+		end
+	end)
 end
 
 if amountBox then
 	amountBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local val = tonumber(amountBox.Text)
-		-- Menerima angka dari 0 sampai 500 (Default 0 jika input kosong)
 		CurrentSettings.Amount = val and math.clamp(math.floor(val), 0, 500) or 0
+	end)
+	
+	amountBox.FocusLost:Connect(function()
+		if not tonumber(amountBox.Text) then
+			amountBox.Text = "0"
+			CurrentSettings.Amount = 0
+		end
 	end)
 end
 
--- 1. FOLDER MANAGEMENT SYSTEM
+-- 4. FOLDER MANAGEMENT SYSTEM
 local function GetMainFolder()
 	local mainFolder = Workspace:FindFirstChild("Archimedes By Naraku")
 	if not mainFolder then
@@ -1386,11 +1413,21 @@ local function GetMainFolder()
 	return mainFolder
 end
 
--- 2. EXECUTE RENDER SYSTEM (RENDER ONCE / RENDER ALL)
+-- 5. EXECUTE RENDER SYSTEM (WITH ANGLE VALIDATION & SAFE-CHECKS)
 local function ExecuteRender(renderAllMode)
-	if not SelectedPart or not CurrentSettings.Enabled or isMinimized or not ScreenGui_1.Parent then 
+	-- Safe check: Validasi keberadaan SelectedPart di Workspace & Angle != 0
+	if not SelectedPart or not SelectedPart.Parent or not SelectedPart:IsA("BasePart") then
+		SelectedPart = nil
+		ClearPreview()
+		return
+	end
+
+	if not CurrentSettings.Enabled or isMinimized or not ScreenGui_1.Parent then 
 		return 
 	end
+
+	local absAngle = math.abs(CurrentSettings.Angle)
+	if absAngle == 0 then return end -- Guard clause: Cegah infinite loop / duplikasi bertumpuk
 
 	ClearPreview()
 	local mainFolder = GetMainFolder()
@@ -1403,10 +1440,8 @@ local function ExecuteRender(renderAllMode)
 
 	local loops = 1
 	if renderAllMode then
-		local absAngle = math.abs(CurrentSettings.Angle)
-		loops = (absAngle > 0) and math.floor(360 / absAngle) or 1
+		loops = math.floor(360 / absAngle)
 	else
-		-- Jika Amount 0/kosong, minimal render 1 part
 		loops = math.max(1, CurrentSettings.Amount)
 	end
 
@@ -1443,7 +1478,7 @@ local function ExecuteRender(renderAllMode)
 	UpdatePreview()
 end
 
--- 3. INTEGRASI BUTTON CLICK EVENT (RENDER & UNDO)
+-- 6. ACTION BUTTONS & UNDO
 if renderButton then
 	renderButton.MouseButton1Click:Connect(function()
 		ExecuteRender(false) 
@@ -1489,14 +1524,13 @@ if undoButton then
 	end)
 end
 
--- 4. CLOSE BUTTON SYSTEM (ANIMASI PENUTUPAN & CLEANUP)
+-- 7. CLOSE BUTTON SYSTEM
 local isClosing = false
 
-CloseButton_59.MouseButton1Click:Connect(function()
+closeButton.MouseButton1Click:Connect(function()
 	if isClosing then return end
 	isClosing = true
 
-	-- Disconnect koneksi mouse & bersihkan preview
 	if clickConnection then
 		clickConnection:Disconnect()
 		clickConnection = nil
@@ -1505,7 +1539,6 @@ CloseButton_59.MouseButton1Click:Connect(function()
 	ClearPreview()
 	SelectedPart = nil
 
-	-- Animasi Penutupan
 	local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
 		Size = UDim2.new(0, 0, 0, 0)
 	})
