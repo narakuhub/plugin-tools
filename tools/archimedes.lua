@@ -976,8 +976,8 @@ ScreenGui_1.Parent = CoreGui
 Panel_3.ClipsDescendants = true
 
 -- Fixed Asset IDs untuk Bergantian
-local ID_NORMAL = "rbxassetid://3533944381010"
-local ID_MINIMAL = "rbxassetid://7863347848901"
+local ID_NORMAL = "rbxassetid://93533944381010"
+local ID_MINIMAL = "rbxassetid://77863347848901"
 
 -- Set Awal Image
 MinimalButton_56.Image = ID_NORMAL
