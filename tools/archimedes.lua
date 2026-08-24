@@ -959,8 +959,20 @@ local Panel_3 = LMG2L["Panel_3"]
 local Header_54 = LMG2L["Header_54"]
 local MinimalButton_56 = LMG2L["MinimalButton_56"]
 
--- 1. SET PARENT TO COREGUI
+-- Reference Child Elements Inside Panel_3 (Urut Sesuai Hirarki)
+local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
+local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
+local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
+local CardEnable_49 = LMG2L["CardEnable_49"]
+local CardAngle_f = LMG2L["CardAngle_f"]
+local CardAmount_1e = LMG2L["CardAmount_1e"]
+local BackgroundUndo_5c = LMG2L["BackgroundUndo_5c"]
+local BackgroundRender_6d = LMG2L["BackgroundRender_6d"]
+local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
+
+-- 1. SET PARENT TO COREGUI & PREPARE PANEL PROPERTIES
 ScreenGui_1.Parent = CoreGui
+Panel_3.ClipsDescendants = true -- Memotong child elemen saat size panel mengecil
 
 -- Image Asset IDs
 local ID_NORMAL = "rbxassetid://3533944381010"
@@ -974,6 +986,19 @@ local TARGET_POSITION = UDim2.new(0, 10, 0, 20)
 local isMinimized = false
 local tweenInfoFast = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local tweenInfoOpen = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- Datar Child Elemen yang disembunyikan/ditampilkan saat minimize
+local childContent = {
+	CardAxisButton_28,
+	CardFlipAxis_4,
+	CardSwapSides_62,
+	CardEnable_49,
+	CardAngle_f,
+	CardAmount_1e,
+	BackgroundUndo_5c,
+	BackgroundRender_6d,
+	BackgroundRenderAll_18
+}
 
 -- 2. SYSTEM DRAG PANEL (VIA HEADER)
 local dragging = false
@@ -1025,15 +1050,18 @@ MinimalButton_56.MouseButton1Click:Connect(function()
 	local targetSize = isMinimized and MINIMAL_SIZE or NORMAL_SIZE
 	MinimalButton_56.Image = isMinimized and ID_MINIMAL or ID_NORMAL
 
+	-- Sembunyikan/Tampilkan isi elemen
+	for _, child in ipairs(childContent) do
+		child.Visible = not isMinimized
+	end
+
 	TweenService:Create(Panel_3, tweenInfoFast, { Size = targetSize }):Play()
 end)
 
--- 4. ENTRY ANIMATION (SPAWN IN PLACE)
+-- 4. ENTRY ANIMATION (SPAWN IN PLACE VIA SCALE TWEEN)
 Panel_3.Position = TARGET_POSITION
 Panel_3.Size = UDim2.new(0, 0, 0, 0)
-Panel_3.GroupTransparency = 1 -- Opsional jika menggunakan CanvasGroup, alternatif menggunakan Scale 0
 
--- Play Animation
 TweenService:Create(Panel_3, tweenInfoOpen, {
 	Size = NORMAL_SIZE,
 	Position = TARGET_POSITION
