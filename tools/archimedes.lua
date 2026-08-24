@@ -960,29 +960,6 @@ local Header_54 = LMG2L["Header_54"]
 local MinimalButton_56 = LMG2L["MinimalButton_56"]
 local CloseButton_59 = LMG2L["CloseButton_59"]
 
--- Reference Child Elements
-local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
-local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
-local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
-local CardEnable_49 = LMG2L["CardEnable_49"]
-local CardAngle_f = LMG2L["CardAngle_f"]
-local CardAmount_1e = LMG2L["CardAmount_1e"]
-local BackgroundUndo_5c = LMG2L["BackgroundUndo_5c"]
-local BackgroundRender_6d = LMG2L["BackgroundRender_6d"]
-local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
-
--- Services
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-
--- Reference UI Elements
-local ScreenGui_1 = LMG2L["ScreenGui_1"]
-local Panel_3 = LMG2L["Panel_3"]
-local Header_54 = LMG2L["Header_54"]
-local MinimalButton_56 = LMG2L["MinimalButton_56"]
-local CloseButton_59 = LMG2L["CloseButton_59"]
-
 -- Reference Child Elements Inside Panel_3
 local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
 local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
@@ -998,9 +975,12 @@ local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
 ScreenGui_1.Parent = CoreGui
 Panel_3.ClipsDescendants = true
 
--- Ambil ID Normal langsung dari ImageButton bawaan agar tidak hilang
-local ID_NORMAL = MinimalButton_56.Image 
+-- Explicit Asset IDs
+local ID_NORMAL = "rbxassetid://3533944381010"
 local ID_MINIMAL = "rbxassetid://7863347848901"
+
+-- Enforce ID Normal saat pertama kali di-load
+MinimalButton_56.Image = ID_NORMAL
 
 -- Dimensions & States
 local NORMAL_SIZE = UDim2.new(0, 258, 0, 294)
@@ -1068,7 +1048,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- 3. TOGGLE MINIMIZE / MAXIMIZE SYSTEM
+-- 3. TOGGLE MINIMIZE / MAXIMIZE SYSTEM (FIXED ICON SWITCHING)
 MinimalButton_56.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 
