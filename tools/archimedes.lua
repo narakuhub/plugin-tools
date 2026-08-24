@@ -1098,4 +1098,422 @@ TweenService:Create(Panel_3, tweenInfoOpen, {
 	Position = TARGET_POSITION
 }):Play()
 
+-- Services
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- Referensi UI Utama
+local ScreenGui_1 = LMG2L["ScreenGui_1"]
+local Panel_3     = LMG2L["Panel_3"]
+
+-- Proteksi GUI
+ScreenGui_1.ResetOnSpawn = false
+pcall(function()
+	ScreenGui_1.Parent = CoreGui
+end)
+
+-- 1. INTREGRASI AXIS BUTTONS (SUSUNAN BARIS 1: X, Y, Z | BARIS 2: X², Y², Z²)
+local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
+
+local axisButtons = {
+	["X"]  = LMG2L["AxisXButton_38"] or CardAxisButton_28:FindFirstChild("AxisXButton_38"),
+	["Y"]  = LMG2L["AxisYButton_36"] or CardAxisButton_28:FindFirstChild("AxisYButton_36"),
+	["Z"]  = LMG2L["AxisZButton_3d"] or CardAxisButton_28:FindFirstChild("AxisZButton_3d"),
+	["X²"] = LMG2L["AxisX²Button_3f"] or CardAxisButton_28:FindFirstChild("AxisX²Button_3f"),
+	["Y²"] = LMG2L["AxisY²Button_33"] or CardAxisButton_28:FindFirstChild("AxisY²Button_33"),
+	["Z²"] = LMG2L["AxisZ²Button_3a"] or CardAxisButton_28:FindFirstChild("AxisZ²Button_3a")
+}
+
+-- Atur Urutan Layout Grid (Baris 1: X, Y, Z | Baris 2: X², Y², Z²)
+local axisOrder = {
+	["X"]  = 1,
+	["Y"]  = 2,
+	["Z"]  = 3,
+	["X²"] = 4,
+	["Y²"] = 5,
+	["Z²"] = 6
+}
+
+for name, btn in pairs(axisButtons) do
+	if btn then
+		btn.LayoutOrder = axisOrder[name]
+	end
+end
+
+-- 2. INTEGRASI ANGLE & AMOUNT INPUT CONTROLS
+local CardAngle_f  = LMG2L["CardAngle_f"]
+local CardAmount_1e = LMG2L["CardAmount_1e"]
+
+local angleBox      = LMG2L["AngleBox_b"] or CardAngle_f:FindFirstChildOfClass("TextBox")
+local uiStrokeAngle = LMG2L["UIStroke_d"] or (angleBox and angleBox:FindFirstChildOfClass("UIStroke"))
+local amountBox     = LMG2L["AmountBox_10"] or CardAmount_1e:FindFirstChildOfClass("TextBox")
+
+-- 3. INTEGRASI TOGGLE COMPONENTS
+local CardFlipAxis_4  = LMG2L["CardFlipAxis_4"]
+local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
+local CardEnable_49    = LMG2L["CardEnable_49"]
+
+local toggleComponents = {
+	["FlipAxis"]  = LMG2L["ChecklisButton_24"] or CardFlipAxis_4:FindFirstChildOfClass("ImageButton"),
+	["SwapSides"] = LMG2L["ChecklisButton_2c"] or CardSwapSides_62:FindFirstChildOfClass("ImageButton"),
+	["Enabled"]   = LMG2L["ChecklisButton_1a"] or CardEnable_49:FindFirstChildOfClass("ImageButton")
+}
+
+-- 4. INTEGRASI ACTION & CLOSE BUTTONS
+local BackgroundUndo_5c      = LMG2L["BackgroundUndo_5c"]
+local BackgroundRender_6d    = LMG2L["BackgroundRender_6d"]
+local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
+
+local undoButton      = LMG2L["UndoButton_5"] or BackgroundUndo_5c:FindFirstChildOfClass("TextButton")
+local renderButton    = LMG2L["RenderButton_41"] or BackgroundRender_6d:FindFirstChildOfClass("TextButton")
+local renderAllButton = LMG2L["RenderAllButton_3"] or BackgroundRenderAll_18:FindFirstChildOfClass("TextButton")
+local closeButton     = LMG2L["CloseButton_59"]
+
+-- State Configurations (Default Settings)
+local CurrentSettings = {
+	Direction = "X",
+	Angle = 5,
+	FlipAxis = false,
+	SwapSides = false,
+	Enabled = true,
+	Amount = 0
+}
+
+-- References & State Handlers
+local SelectedPart = nil
+local PreviewPart = nil
+local RenderHistory = {}       
+local ActiveRenderFolder = nil 
+local FolderCounter = 1
+local panelTerbuka = true     
+local clickConnection = nil
+
+-- Setup Initial Box Values
+amountBox.Text = "0"
+angleBox.Text = "5"
+
+-- 1. UTILITY: CALCULATE CFRAME AXIS
+local function CalculateCFrame(baseCFrame, size, direction, angle, flip, swap)
+	local radAngle = math.rad(angle)
+	if flip then radAngle = -radAngle end
+
+	local rotation = CFrame.identity
+	local offset = Vector3.zero
+
+	if direction == "X" then
+		rotation = CFrame.Angles(radAngle, 0, 0)
+		offset = Vector3.new(0, 0, swap and -size.Z or size.Z)
+	elseif direction == "X²" then
+		rotation = CFrame.Angles(-radAngle, 0, 0)
+		offset = Vector3.new(0, 0, swap and size.Z or -size.Z)
+	elseif direction == "Y" then
+		rotation = CFrame.Angles(0, radAngle, 0)
+		offset = Vector3.new(swap and -size.X or size.X, 0, 0)
+	elseif direction == "Y²" then
+		rotation = CFrame.Angles(0, -radAngle, 0)
+		offset = Vector3.new(swap and size.X or -size.X, 0, 0)
+	elseif direction == "Z" then
+		rotation = CFrame.Angles(0, 0, radAngle)
+		offset = Vector3.new(swap and -size.X or size.X, 0, 0)
+	elseif direction == "Z²" then
+		rotation = CFrame.Angles(0, 0, -radAngle)
+		offset = Vector3.new(swap and size.X or -size.X, 0, 0)
+	end
+
+	return baseCFrame * CFrame.new(offset / 2) * rotation * CFrame.new(offset / 2)
+end
+
+-- 2. CLEAR PREVIEW SYSTEM
+local function ClearPreview()
+	local oldPreview = Workspace:FindFirstChild("Archimedes_Preview")
+	if oldPreview then
+		oldPreview:Destroy()
+	end
+
+	if PreviewPart then
+		PreviewPart:Destroy()
+		PreviewPart = nil
+	end
+end
+
+-- 3. UPDATE PREVIEW SYSTEM
+local function UpdatePreview()
+	ClearPreview()
+
+	-- Menggunakan ScreenGui_1 & isMinimized state
+	if not CurrentSettings.Enabled or not ScreenGui_1.Parent or isMinimized or not SelectedPart then 
+		return 
+	end
+
+	PreviewPart = SelectedPart:Clone()
+	PreviewPart.Name = "Archimedes_Preview"
+	PreviewPart.Transparency = 0.5
+	PreviewPart.Color = Color3.fromRGB(0, 255, 100) 
+	PreviewPart.CanCollide = false
+	PreviewPart.Anchored = true
+
+	for _, desc in pairs(PreviewPart:GetDescendants()) do
+		if desc:IsA("BaseScript") then 
+			desc:Destroy() 
+		end
+	end
+
+	PreviewPart.CFrame = CalculateCFrame(
+		SelectedPart.CFrame, 
+		SelectedPart.Size, 
+		CurrentSettings.Direction, 
+		CurrentSettings.Angle, 
+		CurrentSettings.FlipAxis, 
+		CurrentSettings.SwapSides
+	)
+	PreviewPart.Parent = Workspace
+end
+
+-- 4. MOUSE CLICK CONNECTION FOR TARGET SELECTION
+if clickConnection then 
+	clickConnection:Disconnect() 
+end
+
+clickConnection = Mouse.Button1Down:Connect(function()
+	if not CurrentSettings.Enabled or not ScreenGui_1.Parent or isMinimized then 
+		return 
+	end
+
+	local target = Mouse.Target
+	if target and target:IsA("BasePart") and not target:IsDescendantOf(ScreenGui_1) then
+		if target.Name ~= "Archimedes_Preview" and target.Name ~= "Baseplate" then
+			SelectedPart = target
+			ActiveRenderFolder = nil 
+			UpdatePreview()
+		end
+	end
+end)
+
+-- 1. AXIS BUTTON SELECTION SYSTEM
+local function updateAxisUI(chosenAxis)
+	CurrentSettings.Direction = chosenAxis
+	for axisName, button in pairs(axisButtons) do
+		if button then
+			button.BackgroundColor3 = (axisName == chosenAxis) and COLOR_ACTIVE or COLOR_NORMAL
+		end
+	end
+end
+
+for axisName, button in pairs(axisButtons) do
+	if button then
+		button.MouseButton1Click:Connect(function()
+			updateAxisUI(axisName)
+			UpdatePreview()
+		end)
+	end
+end
+updateAxisUI("X")
+
+-- 2. TOGGLE CHECKLIST SYSTEM (KHUSUS IMAGEBUTTON)
+local function setupChecklistToggle(checkButton, settingName, defaultState)
+	if not checkButton then return end
+	
+	CurrentSettings[settingName] = defaultState
+	
+	local function refreshToggleVisual()
+		local state = CurrentSettings[settingName]
+		-- Mengontrol transparansi gambar (0 = Terlihat Aktif, 1 = Sembunyi/Nonaktif)
+		if checkButton:IsA("ImageButton") or checkButton:IsA("ImageLabel") then
+			checkButton.ImageTransparency = state and 0 or 1
+		else
+			checkButton.Visible = state
+		end
+	end
+	
+	refreshToggleVisual()
+	
+	checkButton.MouseButton1Click:Connect(function()
+		CurrentSettings[settingName] = not CurrentSettings[settingName]
+		refreshToggleVisual()
+		
+		if settingName == "Enabled" then
+			if not CurrentSettings.Enabled then
+				ClearPreview() 
+				SelectedPart = nil
+				ActiveRenderFolder = nil
+			else
+				UpdatePreview() 
+			end
+		else
+			UpdatePreview() 
+		end
+	end)
+end
+
+-- Integrasi Komponen Checklist Toggle
+setupChecklistToggle(toggleComponents["FlipAxis"], "FlipAxis", false)
+setupChecklistToggle(toggleComponents["SwapSides"], "SwapSides", false)
+setupChecklistToggle(toggleComponents["Enabled"], "Enabled", true)
+
+-- 3. INPUT EVENT HANDLING (ANGLE & AMOUNT)
+if angleBox then
+	angleBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local val = tonumber(angleBox.Text) or 0
+		CurrentSettings.Angle = val
+		if uiStrokeAngle then
+			local ClampedAngle = math.clamp(math.abs(val), 0, 360)
+			uiStrokeAngle.Color = Color3.fromHSV(0.6, ClampedAngle / 360, 1)
+		end
+		UpdatePreview()
+	end)
+end
+
+if amountBox then
+	amountBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local val = tonumber(amountBox.Text)
+		-- Menerima angka dari 0 sampai 500 (Default 0 jika input kosong)
+		CurrentSettings.Amount = val and math.clamp(math.floor(val), 0, 500) or 0
+	end)
+end
+
+-- 1. FOLDER MANAGEMENT SYSTEM
+local function GetMainFolder()
+	local mainFolder = Workspace:FindFirstChild("Archimedes By Naraku")
+	if not mainFolder then
+		mainFolder = Instance.new("Folder", Workspace)
+		mainFolder.Name = "Archimedes By Naraku"
+	end
+	return mainFolder
+end
+
+-- 2. EXECUTE RENDER SYSTEM (RENDER ONCE / RENDER ALL)
+local function ExecuteRender(renderAllMode)
+	if not SelectedPart or not CurrentSettings.Enabled or isMinimized or not ScreenGui_1.Parent then 
+		return 
+	end
+
+	ClearPreview()
+	local mainFolder = GetMainFolder()
+
+	if not ActiveRenderFolder or not ActiveRenderFolder.Parent then
+		ActiveRenderFolder = Instance.new("Folder", mainFolder)
+		ActiveRenderFolder.Name = "Archimedes_Group_" .. tostring(FolderCounter)
+		FolderCounter = FolderCounter + 1
+	end
+
+	local loops = 1
+	if renderAllMode then
+		local absAngle = math.abs(CurrentSettings.Angle)
+		loops = (absAngle > 0) and math.floor(360 / absAngle) or 1
+	else
+		-- Jika Amount 0/kosong, minimal render 1 part
+		loops = math.max(1, CurrentSettings.Amount)
+	end
+
+	local nextCFrame = SelectedPart.CFrame
+	local lastRenderedPart = nil
+
+	for i = 1, loops do
+		local newPart = SelectedPart:Clone()
+		newPart.Parent = ActiveRenderFolder
+		newPart.Anchored = true
+
+		nextCFrame = CalculateCFrame(
+			nextCFrame, 
+			SelectedPart.Size, 
+			CurrentSettings.Direction, 
+			CurrentSettings.Angle, 
+			CurrentSettings.FlipAxis, 
+			CurrentSettings.SwapSides
+		)
+
+		newPart.CFrame = nextCFrame
+		lastRenderedPart = newPart
+
+		table.insert(RenderHistory, {
+			Part = newPart,
+			ParentFolder = ActiveRenderFolder
+		})
+	end
+
+	if lastRenderedPart then
+		SelectedPart = lastRenderedPart
+	end
+
+	UpdatePreview()
+end
+
+-- 3. INTEGRASI BUTTON CLICK EVENT (RENDER & UNDO)
+if renderButton then
+	renderButton.MouseButton1Click:Connect(function()
+		ExecuteRender(false) 
+	end)
+end
+
+if renderAllButton then
+	renderAllButton.MouseButton1Click:Connect(function()
+		ExecuteRender(true)  
+	end)
+end
+
+if undoButton then
+	undoButton.MouseButton1Click:Connect(function()
+		if #RenderHistory > 0 then
+			local lastRenderData = table.remove(RenderHistory, #RenderHistory)
+			local targetPart = lastRenderData.Part
+			local parentFolder = lastRenderData.ParentFolder
+
+			if targetPart and targetPart:IsA("BasePart") then
+				targetPart:Destroy()
+			end
+
+			if parentFolder and #parentFolder:GetChildren() == 0 then
+				parentFolder:Destroy()
+				if ActiveRenderFolder == parentFolder then
+					ActiveRenderFolder = nil
+				end
+				FolderCounter = math.max(1, FolderCounter - 1)
+			end
+
+			if #RenderHistory > 0 then
+				SelectedPart = RenderHistory[#RenderHistory].Part
+				ActiveRenderFolder = RenderHistory[#RenderHistory].ParentFolder
+			else
+				SelectedPart = nil
+				ActiveRenderFolder = nil
+			end
+
+			ClearPreview()
+			UpdatePreview()
+		end
+	end)
+end
+
+-- 4. CLOSE BUTTON SYSTEM (ANIMASI PENUTUPAN & CLEANUP)
+local isClosing = false
+
+CloseButton_59.MouseButton1Click:Connect(function()
+	if isClosing then return end
+	isClosing = true
+
+	-- Disconnect koneksi mouse & bersihkan preview
+	if clickConnection then
+		clickConnection:Disconnect()
+		clickConnection = nil
+	end
+
+	ClearPreview()
+	SelectedPart = nil
+
+	-- Animasi Penutupan
+	local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
+		Size = UDim2.new(0, 0, 0, 0)
+	})
+	closeTween:Play()
+
+	closeTween.Completed:Connect(function()
+		ScreenGui_1:Destroy()
+	end)
+end)
+
 return LMG2L["ScreenGui_1"], require;
