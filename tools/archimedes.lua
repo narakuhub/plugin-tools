@@ -948,7 +948,95 @@ LMG2L["Icon_72"]["Position"] = UDim2.new(0, 3, 0, 3);
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.UICorner
 LMG2L["UICorner_73"] = Instance.new("UICorner", LMG2L["Panel_3"]);
 
+-- Services
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
+-- Reference UI Elements
+local ScreenGui_1 = LMG2L["ScreenGui_1"]
+local Panel_3 = LMG2L["Panel_3"]
+local Header_54 = LMG2L["Header_54"]
+local MinimalButton_56 = LMG2L["MinimalButton_56"]
 
+-- 1. SET PARENT TO COREGUI
+ScreenGui_1.Parent = CoreGui
+
+-- Image Asset IDs
+local ID_NORMAL = "rbxassetid://3533944381010"
+local ID_MINIMAL = "rbxassetid://7863347848901"
+
+-- Dimensions & States
+local NORMAL_SIZE = UDim2.new(0, 258, 0, 294)
+local MINIMAL_SIZE = UDim2.new(0, 258, 0, 30)
+local TARGET_POSITION = UDim2.new(0, 10, 0, 20)
+
+local isMinimized = false
+local tweenInfoFast = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local tweenInfoOpen = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- 2. SYSTEM DRAG PANEL (VIA HEADER)
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function updateDrag(input)
+	local delta = input.Position - dragStart
+	local newPosition = UDim2.new(
+		startPos.X.Scale,
+		startPos.X.Offset + delta.X,
+		startPos.Y.Scale,
+		startPos.Y.Offset + delta.Y
+	)
+	TweenService:Create(Panel_3, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = newPosition
+	}):Play()
+end
+
+Header_54.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = Panel_3.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+Header_54.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		updateDrag(input)
+	end
+end)
+
+-- 3. MINIMIZE & MAXIMIZE SYSTEM
+MinimalButton_56.MouseButton1Click:Connect(function()
+	isMinimized = not isMinimized
+
+	local targetSize = isMinimized and MINIMAL_SIZE or NORMAL_SIZE
+	MinimalButton_56.Image = isMinimized and ID_MINIMAL or ID_NORMAL
+
+	TweenService:Create(Panel_3, tweenInfoFast, { Size = targetSize }):Play()
+end)
+
+-- 4. ENTRY ANIMATION (SPAWN IN PLACE)
+Panel_3.Position = TARGET_POSITION
+Panel_3.Size = UDim2.new(0, 0, 0, 0)
+Panel_3.GroupTransparency = 1 -- Opsional jika menggunakan CanvasGroup, alternatif menggunakan Scale 0
+
+-- Play Animation
+TweenService:Create(Panel_3, tweenInfoOpen, {
+	Size = NORMAL_SIZE,
+	Position = TARGET_POSITION
+}):Play()
 
 return LMG2L["ScreenGui_1"], require;
