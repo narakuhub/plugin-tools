@@ -958,8 +958,9 @@ local ScreenGui_1 = LMG2L["ScreenGui_1"]
 local Panel_3 = LMG2L["Panel_3"]
 local Header_54 = LMG2L["Header_54"]
 local MinimalButton_56 = LMG2L["MinimalButton_56"]
+local CloseButton_59 = LMG2L["CloseButton_59"]
 
--- Reference Child Elements Inside Panel_3
+-- Reference Child Elements
 local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
 local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
 local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
@@ -970,13 +971,16 @@ local BackgroundUndo_5c = LMG2L["BackgroundUndo_5c"]
 local BackgroundRender_6d = LMG2L["BackgroundRender_6d"]
 local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
 
--- 1. SET PARENT TO COREGUI & PREPARE PANEL PROPERTIES
+-- 1. SET PARENT TO COREGUI & PREPARE PROPERTIES
 ScreenGui_1.Parent = CoreGui
 Panel_3.ClipsDescendants = true
 
 -- Image Asset IDs
-local ID_NORMAL = "rbxassetid://3533944381010" -- Icon saat panel ukuran Normal (diklik untuk Minimize)
-local ID_MINIMAL = "rbxassetid://7863347848901" -- Icon saat panel ukuran Minimize (diklik untuk Expand)
+local ID_NORMAL = "rbxassetid://3533944381010"
+local ID_MINIMAL = "rbxassetid://7863347848901"
+
+-- Set Default Image
+MinimalButton_56.Image = ID_NORMAL
 
 -- Dimensions & States
 local NORMAL_SIZE = UDim2.new(0, 258, 0, 294)
@@ -984,8 +988,8 @@ local MINIMAL_SIZE = UDim2.new(0, 258, 0, 30)
 local TARGET_POSITION = UDim2.new(0, 10, 0, 20)
 
 local isMinimized = false
-local tweenInfoFast = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-local tweenInfoOpen = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local tweenInfoFast = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tweenInfoOpen = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
 -- List Child Content
 local childContent = {
@@ -1043,19 +1047,15 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- 3. MINIMIZE & MAXIMIZE SYSTEM (FIXED ICON & CONTENT VISIBILITY)
-MinimalButton_56.Image = ID_NORMAL -- Set icon awal saat panel terbuka
-
+-- 3. MINIMIZE & MAXIMIZE SYSTEM (FIX GLITCH & ICON TOGGLE)
 MinimalButton_56.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 
 	if isMinimized then
-		-- Saat Minimize: Ganti icon ke MINIMAL
+		-- Pindah ke Minimal Mode
 		MinimalButton_56.Image = ID_MINIMAL
 		local tween = TweenService:Create(Panel_3, tweenInfoFast, { Size = MINIMAL_SIZE })
 		tween:Play()
-		
-		-- Sembunyikan konten setelah animasi mengecil selesai
 		tween.Completed:Connect(function()
 			if isMinimized then
 				for _, child in ipairs(childContent) do
@@ -1064,17 +1064,21 @@ MinimalButton_56.MouseButton1Click:Connect(function()
 			end
 		end)
 	else
-		-- Saat Expand (Kembali Normal): Tampilkan konten dulu baru lakukan tween
+		-- Pindah ke Normal Mode
 		MinimalButton_56.Image = ID_NORMAL
 		for _, child in ipairs(childContent) do
 			child.Visible = true
 		end
-		
 		TweenService:Create(Panel_3, tweenInfoFast, { Size = NORMAL_SIZE }):Play()
 	end
 end)
 
--- 4. ENTRY ANIMATION (SPAWN IN PLACE VIA SCALE TWEEN)
+-- 4. CLOSE BUTTON FUNCTION (DESTROY SCREENGUI)
+CloseButton_59.MouseButton1Click:Connect(function()
+	ScreenGui_1:Destroy()
+end)
+
+-- 5. ENTRY ANIMATION (SPAWN IN PLACE VIA SCALE TWEEN)
 Panel_3.Position = TARGET_POSITION
 Panel_3.Size = UDim2.new(0, 0, 0, 0)
 
