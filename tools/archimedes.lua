@@ -1114,6 +1114,12 @@ local Panel_3     = LMG2L["Panel_3"]
 -- Global Control Variables
 local isMinimized = false
 
+-- Color Palette Constants
+local COLOR_AXIS_ACTIVE_BG = Color3.fromRGB(223, 230, 237)
+local COLOR_AXIS_ACTIVE_TXT = Color3.fromRGB(0, 0, 0)
+local COLOR_AXIS_NORMAL_BG = Color3.fromRGB(33, 33, 33)
+local COLOR_AXIS_NORMAL_TXT = Color3.fromRGB(255, 255, 255)
+
 -- Proteksi GUI
 ScreenGui_1.ResetOnSpawn = false
 pcall(function()
@@ -1242,11 +1248,11 @@ local function ClearPreview()
 	end
 end 
 
--- 3. UPDATE PREVIEW SYSTEM (DENGAN SAFE-CHECK PART EXISTENCE)
+-- 3. UPDATE PREVIEW SYSTEM
 local function UpdatePreview()
 	ClearPreview()
 
-	-- Validasi keberadaan SelectedPart di Workspace
+	-- Safe Check keberadaan Part di Workspace
 	if not SelectedPart or not SelectedPart.Parent or not SelectedPart:IsA("BasePart") then
 		SelectedPart = nil
 		return
@@ -1280,7 +1286,77 @@ local function UpdatePreview()
 	PreviewPart.Parent = Workspace
 end
 
--- 4. MOUSE CLICK CONNECTION (DENGAN AUTO-CLEAR SAAT KLIK KOSONG)
+-- 4. VISUAL AXIS SELECTION SYSTEM
+local function updateAxisUI(chosenAxis)
+	CurrentSettings.Direction = chosenAxis
+	for axisName, button in pairs(axisButtons) do
+		if button then
+			local isSelected = (axisName == chosenAxis)
+			button.BackgroundColor3 = isSelected and COLOR_AXIS_ACTIVE_BG or COLOR_AXIS_NORMAL_BG
+			
+			-- Cari TextLabel/TextButton untuk mengubah warna teks
+			if button:IsA("TextButton") then
+				button.TextColor3 = isSelected and COLOR_AXIS_ACTIVE_TXT or COLOR_AXIS_NORMAL_TXT
+			else
+				local label = button:FindFirstChildOfClass("TextLabel")
+				if label then
+					label.TextColor3 = isSelected and COLOR_AXIS_ACTIVE_TXT or COLOR_AXIS_NORMAL_TXT
+				end
+			end
+		end
+	end
+end
+
+for axisName, button in pairs(axisButtons) do
+	if button then
+		button.MouseButton1Click:Connect(function()
+			updateAxisUI(axisName)
+			UpdatePreview()
+		end)
+	end
+end
+updateAxisUI("X")
+
+-- 5. TOGGLE CHECKLIST SYSTEM (IMAGEBUTTON LOGIC)
+local function setupChecklistToggle(checkButton, settingName, defaultState)
+	if not checkButton then return end
+	
+	CurrentSettings[settingName] = defaultState
+	
+	local function refreshToggleVisual()
+		local state = CurrentSettings[settingName]
+		-- Atur visibilitas gambar centang
+		checkButton.Visible = state
+	end
+	
+	-- Inisialisasi awal tampilan tombol
+	refreshToggleVisual()
+	
+	-- Event Klik Toggle
+	local parentClickArea = checkButton.Parent:IsA("GuiButton") and checkButton.Parent or checkButton
+	parentClickArea.MouseButton1Click:Connect(function()
+		CurrentSettings[settingName] = not CurrentSettings[settingName]
+		refreshToggleVisual()
+		
+		if settingName == "Enabled" then
+			if not CurrentSettings.Enabled then
+				ClearPreview()
+				SelectedPart = nil
+				ActiveRenderFolder = nil
+			else
+				UpdatePreview()
+			end
+		else
+			UpdatePreview()
+		end
+	end)
+end
+
+setupChecklistToggle(toggleComponents["FlipAxis"], "FlipAxis", false)
+setupChecklistToggle(toggleComponents["SwapSides"], "SwapSides", false)
+setupChecklistToggle(toggleComponents["Enabled"], "Enabled", true)
+
+-- 6. MOUSE CLICK CONNECTION FOR TARGET SELECTION
 if clickConnection then 
 	clickConnection:Disconnect() 
 end
@@ -1298,7 +1374,7 @@ clickConnection = Mouse.Button1Down:Connect(function()
 			UpdatePreview()
 		end
 	else
-		-- Bersihkan selection & preview jika mengeklik luar part valid
+		-- Reset selection jika mengeklik area kosong/non-BasePart
 		SelectedPart = nil
 		ActiveRenderFolder = nil
 		ClearPreview()
@@ -1306,15 +1382,27 @@ clickConnection = Mouse.Button1Down:Connect(function()
 end)
 
 -- Color Palette Constants
-local COLOR_ACTIVE = Color3.fromRGB(0, 162, 255)     
-local COLOR_NORMAL = Color3.fromRGB(33, 33, 33)      
+local COLOR_AXIS_ACTIVE_BG  = Color3.fromRGB(223, 230, 237)
+local COLOR_AXIS_ACTIVE_TXT = Color3.fromRGB(0, 0, 0)
+local COLOR_AXIS_NORMAL_BG  = Color3.fromRGB(33, 33, 33)
+local COLOR_AXIS_NORMAL_TXT = Color3.fromRGB(255, 255, 255)
 
 -- 1. AXIS BUTTON SELECTION SYSTEM
 local function updateAxisUI(chosenAxis)
 	CurrentSettings.Direction = chosenAxis
 	for axisName, button in pairs(axisButtons) do
 		if button then
-			button.BackgroundColor3 = (axisName == chosenAxis) and COLOR_ACTIVE or COLOR_NORMAL
+			local isSelected = (axisName == chosenAxis)
+			button.BackgroundColor3 = isSelected and COLOR_AXIS_ACTIVE_BG or COLOR_AXIS_NORMAL_BG
+			
+			if button:IsA("TextButton") then
+				button.TextColor3 = isSelected and COLOR_AXIS_ACTIVE_TXT or COLOR_AXIS_NORMAL_TXT
+			else
+				local label = button:FindFirstChildOfClass("TextLabel")
+				if label then
+					label.TextColor3 = isSelected and COLOR_AXIS_ACTIVE_TXT or COLOR_AXIS_NORMAL_TXT
+				end
+			end
 		end
 	end
 end
@@ -1346,7 +1434,8 @@ local function setupChecklistToggle(checkButton, settingName, defaultState)
 	
 	refreshToggleVisual()
 	
-	checkButton.MouseButton1Click:Connect(function()
+	local parentClickArea = checkButton.Parent:IsA("GuiButton") and checkButton.Parent or checkButton
+	parentClickArea.MouseButton1Click:Connect(function()
 		CurrentSettings[settingName] = not CurrentSettings[settingName]
 		refreshToggleVisual()
 		
@@ -1415,7 +1504,7 @@ end
 
 -- 5. EXECUTE RENDER SYSTEM (WITH ANGLE VALIDATION & SAFE-CHECKS)
 local function ExecuteRender(renderAllMode)
-	-- Safe check: Validasi keberadaan SelectedPart di Workspace & Angle != 0
+	-- Safe check: Validasi keberadaan SelectedPart di Workspace
 	if not SelectedPart or not SelectedPart.Parent or not SelectedPart:IsA("BasePart") then
 		SelectedPart = nil
 		ClearPreview()
@@ -1427,7 +1516,7 @@ local function ExecuteRender(renderAllMode)
 	end
 
 	local absAngle = math.abs(CurrentSettings.Angle)
-	if absAngle == 0 then return end -- Guard clause: Cegah infinite loop / duplikasi bertumpuk
+	if absAngle == 0 then return end -- Guard clause: Cegah render bertumpuk tanpa sudut
 
 	ClearPreview()
 	local mainFolder = GetMainFolder()
@@ -1527,26 +1616,29 @@ end
 -- 7. CLOSE BUTTON SYSTEM
 local isClosing = false
 
-closeButton.MouseButton1Click:Connect(function()
-	if isClosing then return end
-	isClosing = true
+if closeButton then
+	closeButton.MouseButton1Click:Connect(function()
+		if isClosing then return end
+		isClosing = true
 
-	if clickConnection then
-		clickConnection:Disconnect()
-		clickConnection = nil
-	end
+		if clickConnection then
+			clickConnection:Disconnect()
+			clickConnection = nil
+		end
 
-	ClearPreview()
-	SelectedPart = nil
+		ClearPreview()
+		SelectedPart = nil
 
-	local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
-		Size = UDim2.new(0, 0, 0, 0)
-	})
-	closeTween:Play()
+		local tweenInfoClose = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
+			Size = UDim2.new(0, 0, 0, 0)
+		})
+		closeTween:Play()
 
-	closeTween.Completed:Connect(function()
-		ScreenGui_1:Destroy()
+		closeTween.Completed:Connect(function()
+			ScreenGui_1:Destroy()
+		end)
 	end)
-end)
+end
 
 return LMG2L["ScreenGui_1"], require;
