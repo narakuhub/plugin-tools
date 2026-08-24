@@ -959,7 +959,7 @@ local Panel_3 = LMG2L["Panel_3"]
 local Header_54 = LMG2L["Header_54"]
 local MinimalButton_56 = LMG2L["MinimalButton_56"]
 
--- Reference Child Elements Inside Panel_3 (Urut Sesuai Hirarki)
+-- Reference Child Elements Inside Panel_3
 local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
 local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
 local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
@@ -972,11 +972,11 @@ local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
 
 -- 1. SET PARENT TO COREGUI & PREPARE PANEL PROPERTIES
 ScreenGui_1.Parent = CoreGui
-Panel_3.ClipsDescendants = true -- Memotong child elemen saat size panel mengecil
+Panel_3.ClipsDescendants = true
 
 -- Image Asset IDs
-local ID_NORMAL = "rbxassetid://3533944381010"
-local ID_MINIMAL = "rbxassetid://7863347848901"
+local ID_NORMAL = "rbxassetid://3533944381010" -- Icon saat panel ukuran Normal (diklik untuk Minimize)
+local ID_MINIMAL = "rbxassetid://7863347848901" -- Icon saat panel ukuran Minimize (diklik untuk Expand)
 
 -- Dimensions & States
 local NORMAL_SIZE = UDim2.new(0, 258, 0, 294)
@@ -987,7 +987,7 @@ local isMinimized = false
 local tweenInfoFast = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local tweenInfoOpen = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
--- Datar Child Elemen yang disembunyikan/ditampilkan saat minimize
+-- List Child Content
 local childContent = {
 	CardAxisButton_28,
 	CardFlipAxis_4,
@@ -1043,19 +1043,35 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- 3. MINIMIZE & MAXIMIZE SYSTEM
+-- 3. MINIMIZE & MAXIMIZE SYSTEM (FIXED ICON & CONTENT VISIBILITY)
+MinimalButton_56.Image = ID_NORMAL -- Set icon awal saat panel terbuka
+
 MinimalButton_56.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 
-	local targetSize = isMinimized and MINIMAL_SIZE or NORMAL_SIZE
-	MinimalButton_56.Image = isMinimized and ID_MINIMAL or ID_NORMAL
-
-	-- Sembunyikan/Tampilkan isi elemen
-	for _, child in ipairs(childContent) do
-		child.Visible = not isMinimized
+	if isMinimized then
+		-- Saat Minimize: Ganti icon ke MINIMAL
+		MinimalButton_56.Image = ID_MINIMAL
+		local tween = TweenService:Create(Panel_3, tweenInfoFast, { Size = MINIMAL_SIZE })
+		tween:Play()
+		
+		-- Sembunyikan konten setelah animasi mengecil selesai
+		tween.Completed:Connect(function()
+			if isMinimized then
+				for _, child in ipairs(childContent) do
+					child.Visible = false
+				end
+			end
+		end)
+	else
+		-- Saat Expand (Kembali Normal): Tampilkan konten dulu baru lakukan tween
+		MinimalButton_56.Image = ID_NORMAL
+		for _, child in ipairs(childContent) do
+			child.Visible = true
+		end
+		
+		TweenService:Create(Panel_3, tweenInfoFast, { Size = NORMAL_SIZE }):Play()
 	end
-
-	TweenService:Create(Panel_3, tweenInfoFast, { Size = targetSize }):Play()
 end)
 
 -- 4. ENTRY ANIMATION (SPAWN IN PLACE VIA SCALE TWEEN)
