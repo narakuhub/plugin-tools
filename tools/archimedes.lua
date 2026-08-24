@@ -975,11 +975,11 @@ local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
 ScreenGui_1.Parent = CoreGui
 Panel_3.ClipsDescendants = true
 
--- Explicit Asset IDs
+-- Fixed Asset IDs untuk Bergantian
 local ID_NORMAL = "rbxassetid://3533944381010"
 local ID_MINIMAL = "rbxassetid://7863347848901"
 
--- Enforce ID Normal saat pertama kali di-load
+-- Set Awal Image
 MinimalButton_56.Image = ID_NORMAL
 
 -- Dimensions & States
@@ -1048,17 +1048,19 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- 3. TOGGLE MINIMIZE / MAXIMIZE SYSTEM (FIXED ICON SWITCHING)
+-- 3. TOGGLE MINIMIZE / MAXIMIZE SYSTEM
 MinimalButton_56.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 
 	if isMinimized then
+		-- Ganti Image ke Icon Minimal saat dikecilkan
 		MinimalButton_56.Image = ID_MINIMAL
 		for _, child in ipairs(childContent) do
 			child.Visible = false
 		end
 		TweenService:Create(Panel_3, tweenInfoFast, { Size = MINIMAL_SIZE }):Play()
 	else
+		-- Ganti Image kembali ke Icon Normal saat dibesarkan
 		MinimalButton_56.Image = ID_NORMAL
 		local tween = TweenService:Create(Panel_3, tweenInfoFast, { Size = NORMAL_SIZE })
 		tween:Play()
