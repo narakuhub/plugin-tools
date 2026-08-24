@@ -732,20 +732,6 @@ local FEATURE_LIST = {
 		Status = "200",
 		Path = "/nars/plugins/main/flygui.lua",
 		Icon = "rbxassetid://126428723702595"
-	},
-	{
-		Name = "INFINITY YEALD",
-		Tag = "GET",
-		Status = "200",
-		Path = "/EdgeIY/infiniteyield/master/source",
-		Icon = "rbxassetid://98186789507879"
-	},
-	{
-		Name = "DEX PLUS PLUS",
-		Tag = "GET",
-		Status = "200",
-		Path = "/AZYsGithub/DexPlusPlus",
-		Icon = "rbxassetid://119977886496737"
 	}
 }
 
