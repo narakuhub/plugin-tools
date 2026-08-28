@@ -1842,17 +1842,38 @@ end
 LoadUserData()
 
 -------------------------------------------------------------------------
--- DIRECT ROBLOX CREATOR STORE API SEARCH ENGINE
+-- ROBLOX CREATOR STORE SEARCH ENGINE (PAGINATION ADAPTED)
 -------------------------------------------------------------------------
-local function SearchRobloxStore(query, category)
+local NextPageCursor = ""
+local CurrentSearchQuery = ""
+local CurrentSearchCategory = ""
+
+local function SearchRobloxStore(query, category, isLoadMore)
     if not requestFunc then
         warn("❌ Executing environment does not support HTTP Requests")
-        return {}
+        return {}, ""
     end
 
-    local encodedQuery = HttpService:UrlEncode(query or "")
-    local searchCategory = category or CurrentCategory or "Model"
+    -- Jika bukan load more, reset cursor dan simpan state query & kategori
+    if not isLoadMore then
+        NextPageCursor = ""
+        CurrentSearchQuery = query or ""
+        CurrentSearchCategory = category or CurrentCategory or "Model"
+    end
+
+    local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
+    if LoadMoreButton and isLoadMore then
+        LoadMoreButton.Text = "LOADING..."
+    end
+
+    local encodedQuery = HttpService:UrlEncode(CurrentSearchQuery)
+    local searchCategory = CurrentSearchCategory
     local url = "https://apis.roblox.com/toolbox-service/v2/assets:search?searchCategoryType=" .. searchCategory .. "&query=" .. encodedQuery
+
+    -- Tambahkan cursor parameter jika ini adalah request load more
+    if isLoadMore and NextPageCursor ~= "" then
+        url = url .. "&cursor=" .. HttpService:UrlEncode(NextPageCursor)
+    end
 
     local success, response = pcall(function()
         return requestFunc({
@@ -1866,7 +1887,7 @@ local function SearchRobloxStore(query, category)
 
     if not success or not response or response.StatusCode ~= 200 then
         warn("❌ Search API Error:", response and response.StatusCode or "No response")
-        return {}
+        return {}, ""
     end
 
     local decodeSuccess, decoded = pcall(function()
@@ -1874,8 +1895,11 @@ local function SearchRobloxStore(query, category)
     end)
 
     if not decodeSuccess or not decoded or not decoded.creatorStoreAssets then
-        return {}
+        return {}, ""
     end
+
+    -- Ambil token/cursor halaman berikutnya dari respons API Creator Store
+    NextPageCursor = decoded.nextPageCursor or decoded.nextPageToken or ""
 
     -- Mapping Format API Roblox ke Format Standard UI
     local results = {}
@@ -1893,20 +1917,32 @@ local function SearchRobloxStore(query, category)
         end
     end
 
-    return results
+    return results, NextPageCursor
 end
 
 -------------------------------------------------------------------------
--- CLEAR LIST HELPER
+-- CLEAR LIST HELPER (PROTECT LOADMORE BUTTON)
 -------------------------------------------------------------------------
 local function ClearList()
     if not ScrollingFrame then return end
     
+    local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
     for _, item in ipairs(ScrollingFrame:GetChildren()) do
-        if item:IsA("Frame") and item ~= TemplateFrame then
+        if item:IsA("Frame") and item ~= TemplateFrame and item ~= LoadMoreButton then
             item:Destroy()
         end
     end
+end
+
+-------------------------------------------------------------------------
+-- EVENT LISTENER LOAD MORE BUTTON
+-------------------------------------------------------------------------
+local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
+if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
+    LoadMoreButton.MouseButton1Click:Connect(function()
+        if LoadMoreButton.Text == "LOADING..." then return end
+        RenderAssets(CurrentSearchQuery, true)
+    end)
 end
 
 -------------------------------------------------------------------------
@@ -2119,6 +2155,7 @@ end
 -- TAHAP 6: DYNAMIC CREATOR STORE RENDER ENGINE
 -------------------------------------------------------------------------
 local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
+local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
 
 -- Update Label Status Header
 local function UpdateAmountAssetDisplay(count, category, isSavedOnly, queryText, isSearching)
@@ -2152,11 +2189,26 @@ local function UpdateCanvas()
     end
 end
 
+-- Helper Hitung Kartu Aset yang Sedang Rendere di UI
+local function GetCurrentRenderedCardCount()
+    if not ScrollingFrame then return 0 end
+    local count = 0
+    for _, child in ipairs(ScrollingFrame:GetChildren()) do
+        if child:IsA("GuiObject") and child ~= LoadMoreButton and child.Name ~= "LoadmoreButton" and child.Visible then
+            count = count + 1
+        end
+    end
+    return count
+end
+
 -- MAIN RENDER FUNCTION
-local function RenderAssets(searchQuery)
-    ClearList()
+local function RenderAssets(searchQuery, isLoadMore)
+    -- Jika BUKAN panggil halaman lanjutan, bersihkan kartu lama & naikkan Session
+    if not isLoadMore then
+        ClearList()
+        CurrentSessionId = CurrentSessionId + 1
+    end
     
-    CurrentSessionId = CurrentSessionId + 1
     local thisSession = CurrentSessionId
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
@@ -2171,6 +2223,8 @@ local function RenderAssets(searchQuery)
     -- CASE A: MODE SAVED ASSETS (DATA PER-KATEGORI DARI SavedAssets)
     ---------------------------------------------------------------------
     if isSavedModeAtCall then
+        if LoadMoreButton then LoadMoreButton.Visible = false end
+
         local categoryList = SavedAssets and SavedAssets[targetCategoryAtCall] or {}
         local targetList = {}
 
@@ -2284,26 +2338,30 @@ local function RenderAssets(searchQuery)
     -- CASE B: MODE ROBLOX API SEARCH
     ---------------------------------------------------------------------
     if query == "" then
+        if LoadMoreButton then LoadMoreButton.Visible = false end
         UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, "", false)
         return
     end
 
-    -- Update UI Status ke Mode Searching
-    UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, query, true)
+    -- Jika Search baru, ubah status ke mode Searching
+    if not isLoadMore then
+        UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, query, true)
+    end
 
     task.spawn(function()
-        local apiResults = SearchRobloxStore(query, targetCategoryAtCall)
+        local apiResults, nextPageToken = SearchRobloxStore(query, targetCategoryAtCall, isLoadMore)
 
         if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly then
             return
         end
 
-        local totalAssetsFound = #apiResults
+        local apiList = type(apiResults) == "table" and apiResults or {}
+        local previousCount = isLoadMore and GetCurrentRenderedCardCount() or 0
+        local totalAssetsFound = previousCount + #apiList
+
         UpdateAmountAssetDisplay(totalAssetsFound, targetCategoryAtCall, false, query, false)
 
-        local renderedCount = 0
-
-        for index, item in ipairs(apiResults) do
+        for index, item in ipairs(apiList) do
             if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly then 
                 return 
             end
@@ -2317,8 +2375,6 @@ local function RenderAssets(searchQuery)
                 card.Visible = true
                 card.Parent = ScrollingFrame
                 card.Name = "Asset_" .. numericId
-
-                renderedCount = renderedCount + 1
 
                 -- Mapping GUI Elements
                 local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
@@ -2364,6 +2420,7 @@ local function RenderAssets(searchQuery)
                             InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
                         end
                         task.wait(1.5)
+
                         InsertBtn.Text = "INSERT"
                     end)
                 end
@@ -2374,6 +2431,18 @@ local function RenderAssets(searchQuery)
             if index % 5 == 0 then
                 task.wait()
             end
+        end
+
+        -- KONTROL TOMBOL LOAD MORE (PAGINATION)
+        if LoadMoreButton then
+            if nextPageToken and nextPageToken ~= "" and #apiList > 0 then
+                LoadMoreButton.Visible = true
+                LoadMoreButton.Text = "LOAD ASSET"
+                LoadMoreButton.LayoutOrder = 999999
+            else
+                LoadMoreButton.Visible = false
+            end
+            UpdateCanvas()
         end
     end)
 end
