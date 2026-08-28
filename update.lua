@@ -1936,17 +1936,6 @@ local function ClearList()
 end
 
 -------------------------------------------------------------------------
--- EVENT LISTENER LOAD MORE BUTTON
--------------------------------------------------------------------------
-local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
-if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
-    LoadMoreButton.MouseButton1Click:Connect(function()
-        if LoadMoreButton.Text == "LOADING..." then return end
-        RenderAssets(CurrentSearchQuery, true)
-    end)
-end
-
--------------------------------------------------------------------------
 -- TAHAP 5: FUNGSI INSERT UTAMA & SAFE STUDIO FALLBACK (FIXED)
 -------------------------------------------------------------------------
 local function InsertAsset(assetId, category, statusTarget)
@@ -2335,6 +2324,28 @@ local function RenderAssets(searchQuery, isLoadMore)
         return
     end
 
+-------------------------------------------------------------------------
+-- EVENT LISTENER LOAD MORE BUTTON (FIXED NULL CHECK & SCOPE)
+-------------------------------------------------------------------------
+local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
+
+if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
+    LoadMoreButton.MouseButton1Click:Connect(function()
+        -- Proteksi agar tidak memicu error jika Text nil / sedang loading
+        if LoadMoreButton.Text == "LOADING..." then 
+            return 
+        end
+        
+        -- Memastikan RenderAssets sudah terdefinisi sebelum dipanggil (Mencegah nil value error)
+        if typeof(RenderAssets) == "function" then
+            local queryToPass = (typeof(CurrentSearchQuery) == "string") and CurrentSearchQuery or ""
+            RenderAssets(queryToPass, true)
+        else
+            warn("❌ RenderAssets function is not defined or placed below this listener!")
+        end
+    end)
+	end
+	
     ---------------------------------------------------------------------
     -- CASE B: MODE ROBLOX API SEARCH
     ---------------------------------------------------------------------
