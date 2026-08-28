@@ -2165,11 +2165,26 @@ local function UpdateCanvas()
     end
 end
 
--- MAIN RENDER FUNCTION
-local function RenderAssets(searchQuery)
-    ClearList()
+-- Helper Hitung Jumlah Kartu Asset Aktif di UI
+local function GetCurrentRenderedCardCount()
+    if not ScrollingFrame then return 0 end
+    local count = 0
+    for _, child in ipairs(ScrollingFrame:GetChildren()) do
+        if child:IsA("GuiObject") and child.Name ~= "LoadMoreButton_Page" and child.Visible then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- MAIN RENDER FUNCTION (DENGAN DUKUNGAN PAGINATION / LOAD MORE)
+local function RenderAssets(searchQuery, isLoadMore)
+    -- Jika BUKAN Load More (Search Baru), bersihkan kartu-kartu lama
+    if not isLoadMore then
+        ClearList()
+        CurrentSessionId = CurrentSessionId + 1
+    end
     
-    CurrentSessionId = CurrentSessionId + 1
     local thisSession = CurrentSessionId
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
@@ -2184,6 +2199,9 @@ local function RenderAssets(searchQuery)
     -- CASE A: MODE SAVED ASSETS (DATA PER-KATEGORI DARI SavedAssets)
     ---------------------------------------------------------------------
     if isSavedModeAtCall then
+        -- Sembunyikan tombol Load More saat berada di Mode Saved Assets
+        if LoadMoreButton then LoadMoreButton.Visible = false end
+
         local categoryList = SavedAssets and SavedAssets[targetCategoryAtCall] or {}
         local targetList = {}
 
@@ -2296,6 +2314,122 @@ local function RenderAssets(searchQuery)
     ---------------------------------------------------------------------
     -- CASE B: MODE ROBLOX API SEARCH
     ---------------------------------------------------------------------
+    if query == "" then
+        if LoadMoreButton then LoadMoreButton.Visible = false end
+        UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, "", false)
+        return
+    end
+
+    -- Jika Search Baru (bukan load more), ubah UI Status ke Mode Searching
+    if not isLoadMore then
+        UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, query, true)
+    end
+
+    task.spawn(function()
+        -- Panggil fungsi Search Roblox Store dengan membawa penanda isLoadMore
+        local apiResults, nextPageToken = SearchRobloxStore(query, targetCategoryAtCall, isLoadMore)
+
+        if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly then
+            return
+        end
+
+        local apiResultsList = type(apiResults) == "table" and apiResults or {}
+        
+        -- Hitung total gabungan kartu yang tampil (kartu lama + kartu baru yang baru diunduh)
+        local previousCount = isLoadMore and GetCurrentRenderedCardCount() or 0
+        local totalAssetsFound = previousCount + #apiResultsList
+        
+        UpdateAmountAssetDisplay(totalAssetsFound, targetCategoryAtCall, false, query, false)
+
+        for index, item in ipairs(apiResultsList) do
+            if thisSession ~= CurrentSessionId or CurrentCategory ~= targetCategoryAtCall or IsShowingSavedOnly then 
+                return 
+            end
+
+            local numericId = tonumber(item.ID or item.Id)
+            local assetName = item.Name or item.name or ("Asset_" .. tostring(numericId))
+            local assetCreator = item.Creator or item.creator or "Unknown"
+
+            if numericId and TemplateFrame then
+                local card = TemplateFrame:Clone()
+                card.Visible = true
+                card.Parent = ScrollingFrame
+                card.Name = "Asset_" .. numericId
+
+                -- Mapping GUI Elements
+                local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
+                local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
+                local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
+                local IDLabel        = card:FindFirstChild("ID_70") or card:FindFirstChild("ID")
+                local IconSaved      = card:FindFirstChild("IconSaved_62") or card:FindFirstChild("IconSaved")
+                
+                local BackgroundCopy   = card:FindFirstChild("BackgroundCopy_63") or card:FindFirstChild("BackgroundCopy")
+                local CopyBtn          = BackgroundCopy and (BackgroundCopy:FindFirstChild("CopyButton_64") or BackgroundCopy:FindFirstChild("CopyButton"))
+                local BackgroundInsert = card:FindFirstChild("BackgroundInsert_69") or card:FindFirstChild("BackgroundInsert")
+                local InsertBtn        = BackgroundInsert and (BackgroundInsert:FindFirstChild("InsertButton_6b") or BackgroundInsert:FindFirstChild("InsertButton"))
+
+                if NameLabel then NameLabel.Text = assetName end
+                if CreatorLabel then CreatorLabel.Text = "By: " .. tostring(assetCreator) end
+                if IDLabel then IDLabel.Text = "ID : " .. tostring(numericId) end
+
+                if ThumbnailAsset and ThumbnailAsset:IsA("ImageLabel") then
+                    if targetCategoryAtCall == "Audio" then
+                        ThumbnailAsset.Image = "rbxassetid://16327318049"
+                    else
+                        ThumbnailAsset.Image = GetAssetThumbnail(numericId, item.AssetTypeId)
+                    end
+                end
+
+                if IconSaved then
+                    IconSaved.Visible = IsAssetSaved(numericId, targetCategoryAtCall)
+                end
+
+                if CopyBtn and CopyBtn:IsA("GuiButton") then
+                    CopyBtn.MouseButton1Click:Connect(function()
+                        if setclipboard then setclipboard(tostring(numericId)) end
+                        local originalText = CopyBtn.Text
+                        CopyBtn.Text = "Copied!"
+                        task.wait(1)
+                        CopyBtn.Text = originalText
+                    end)
+                end
+
+                if InsertBtn and InsertBtn:IsA("GuiButton") then
+                    InsertBtn.MouseButton1Click:Connect(function()
+                        if typeof(InsertAsset) == "function" then
+                            InsertAsset(numericId, targetCategoryAtCall, InsertBtn)
+                        end
+                        task.wait(1.5)
+
+                        InsertBtn.Text = "INSERT"
+                    end)
+                end
+
+                UpdateCanvas()
+            end
+
+            if index % 5 == 0 then
+                task.wait()
+            end
+        end
+
+        -- KONTROL TOMBOL LOAD MORE (PAGE)
+        if LoadMoreButton then
+            if nextPageToken and nextPageToken ~= "" and #apiResultsList > 0 then
+                LoadMoreButton.Visible = true
+                LoadMoreButton.Text = "LOAD MORE ASSETS..."
+                LoadMoreButton.LayoutOrder = 999999 -- Pastikan selalu berada paling bawah
+            else
+                LoadMoreButton.Visible = false
+            end
+            UpdateCanvas()
+        end
+    end)
+end
+
+---------------------------------------------------------------------
+-- CASE B: MODE ROBLOX API SEARCH
+---------------------------------------------------------------------
     if query == "" then
         UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, "", false)
         return
@@ -2504,6 +2638,20 @@ local HeaderIconSaved   = LMG2L and (LMG2L["IconSaved_2e"] or LMG2L["IconSaved"]
 
 local SaveBox    = LMG2L and (LMG2L["SaveBox_24"] or LMG2L["SaveBox"] or LMG2L["SaveIDBox"] or SaveIDBox)
 local SaveButton = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"] or LMG2L["SaveIDButton"])
+
+-------------------------------------------------------------------------
+-- EVENT LISTENER: LOAD MORE BUTTON (PAGINATION)
+-------------------------------------------------------------------------
+local LoadMoreButton = LoadMoreButton or (LMG2L and LMG2L["LoadMoreButton_Page"])
+
+if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
+    LoadMoreButton.MouseButton1Click:Connect(function()
+        if CurrentNextPageToken and typeof(RenderAssets) == "function" then
+            local currentQuery = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
+            RenderAssets(currentQuery, true)
+        end
+    end)
+end
 
 -------------------------------------------------------------------------
 -- 5. TAB NAVIGATION LISTENERS
