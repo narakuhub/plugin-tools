@@ -813,6 +813,37 @@ LMG2L["UIPadding_5b"]["PaddingBottom"] = UDim.new(0, 5);
 LMG2L["UIListLayout_5c"] = Instance.new("UIListLayout", LMG2L["ScrollingFrame_5a"]);
 LMG2L["UIListLayout_5c"]["Padding"] = UDim.new(0, 5);
 
+-- STEP 1: LOAD MORE BUTTON CREATION
+local LoadMoreButton_Page = Instance.new("TextButton")
+local LoadMoreUICorner = Instance.new("UICorner")
+local LoadMoreUIStroke = Instance.new("UIStroke")
+
+LoadMoreButton_Page.Name = "LoadMoreButton_Page"
+LoadMoreButton_Page.Parent = ScrollingFrame_5a
+LoadMoreButton_Page.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+LoadMoreButton_Page.BorderColor3 = Color3.fromRGB(0, 0, 0)
+LoadMoreButton_Page.BorderSizePixel = 0
+LoadMoreButton_Page.Position = UDim2.new(0, 0, 0, 0)
+LoadMoreButton_Page.Size = UDim2.new(1, -10, 0, 35) -- Lebar mengikuti container, tinggi 35px
+LoadMoreButton_Page.AutoButtonColor = true
+LoadMoreButton_Page.Font = Enum.Font.SourceSansBold
+LoadMoreButton_Page.Text = "LOAD MORE ASSETS..."
+LoadMoreButton_Page.TextColor3 = Color3.fromRGB(220, 220, 230)
+LoadMoreButton_Page.TextSize = 14
+LoadMoreButton_Page.TextWrapped = true
+LoadMoreButton_Page.Visible = false -- Sembunyi secara default sampai ada hasil search
+LoadMoreButton_Page.LayoutOrder = 999999 -- Memastikan selalu berada di paling bawah list
+
+LoadMoreUICorner.CornerRadius = UDim.new(0, 6)
+LoadMoreUICorner.Name = "LoadMoreUICorner"
+LoadMoreUICorner.Parent = LoadMoreButton_Page
+
+LoadMoreUIStroke.Name = "LoadMoreUIStroke"
+LoadMoreUIStroke.Parent = LoadMoreButton_Page
+LoadMoreUIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+LoadMoreUIStroke.Color = Color3.fromRGB(55, 55, 68)
+LoadMoreUIStroke.LineJoinMode = Enum.LineJoinMode.Round
+LoadMoreUIStroke.Thickness = 1
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.NarakuPlugin.Panel.ScrollingFrame.Card
 LMG2L["Card_5d"] = Instance.new("Frame", LMG2L["ScrollingFrame_5a"]);
@@ -1139,6 +1170,8 @@ local ScrollingFrame = LMG2L["ScrollingFrame_5a"]
 local ResizeHandle = LMG2L["ResizeHandleButton_2f"]
 local OpenButton = LMG2L["OpenButton_78"]
 
+local LoadMoreButton = LoadMoreButton_Page
+
 -- =========================================================
 -- ORIGINAL VALUES & TRANSFORM CACHE
 -- =========================================================
@@ -1438,6 +1471,7 @@ local SaveIDButton = LMG2L and LMG2L["SaveButton_56"]
 -- List Kontainer dan Item Template
 local ScrollingFrame = LMG2L and LMG2L["ScrollingFrame_5a"]
 local TemplateFrame = LMG2L and LMG2L["Card_5d"]
+local LoadMoreButton = LoadMoreButton_Page
 
 -- Safe Isolation Template Card (mencegah attempt to index nil)
 if TemplateFrame then
