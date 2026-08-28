@@ -1459,6 +1459,7 @@ local SaveIDButton = LMG2L and LMG2L["SaveButton_56"]
 -- List Kontainer dan Item Template
 local ScrollingFrame = LMG2L and LMG2L["ScrollingFrame_5a"]
 local TemplateFrame = LMG2L and LMG2L["Card_5d"]
+local LoadMoreButton = LMG2L["LoadmoreButton_2"]
 
 -- Safe Isolation Template Card (mencegah attempt to index nil)
 if TemplateFrame then
