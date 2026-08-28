@@ -1843,7 +1843,7 @@ end
 LoadUserData()
 
 -------------------------------------------------------------------------
--- ROBLOX CREATOR STORE SEARCH ENGINE (PAGINATION ADAPTED)
+-- ROBLOX CREATOR STORE SEARCH ENGINE (FIXED PAGINATION CURSOR)
 -------------------------------------------------------------------------
 local NextPageCursor = ""
 local CurrentSearchQuery = ""
@@ -1855,11 +1855,11 @@ local function SearchRobloxStore(query, category, isLoadMore)
         return {}, ""
     end
 
-    -- Jika bukan load more, reset cursor dan simpan state query & kategori
+    -- Update atau pertahankan query & kategori secara konsisten
     if not isLoadMore then
         NextPageCursor = ""
-        CurrentSearchQuery = query or ""
-        CurrentSearchCategory = category or CurrentCategory or "Model"
+        CurrentSearchQuery = (query and query ~= "") and query or CurrentSearchQuery
+        CurrentSearchCategory = (category and category ~= "") and category or CurrentCategory or "Model"
     end
 
     local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
@@ -1869,11 +1869,13 @@ local function SearchRobloxStore(query, category, isLoadMore)
 
     local encodedQuery = HttpService:UrlEncode(CurrentSearchQuery)
     local searchCategory = CurrentSearchCategory
+    
+    -- Base URL Search Roblox Creator Store API
     local url = "https://apis.roblox.com/toolbox-service/v2/assets:search?searchCategoryType=" .. searchCategory .. "&query=" .. encodedQuery
 
-    -- Tambahkan cursor parameter jika ini adalah request load more
-    if isLoadMore and NextPageCursor ~= "" then
-        url = url .. "&cursor=" .. HttpService:UrlEncode(NextPageCursor)
+    -- Terapkan parameter pageToken / cursor saat dipanggil via Load More
+    if isLoadMore and NextPageCursor and NextPageCursor ~= "" then
+        url = url .. "&pageToken=" .. HttpService:UrlEncode(NextPageCursor) .. "&cursor=" .. HttpService:UrlEncode(NextPageCursor)
     end
 
     local success, response = pcall(function()
@@ -1899,8 +1901,9 @@ local function SearchRobloxStore(query, category, isLoadMore)
         return {}, ""
     end
 
-    -- Ambil token/cursor halaman berikutnya dari respons API Creator Store
-    NextPageCursor = decoded.nextPageCursor or decoded.nextPageToken or ""
+    -- Tangkap token halaman berikutnya dari semua kemungkinan key API Roblox
+    local rawNextToken = decoded.nextPageToken or decoded.nextPageCursor or decoded.nextCursor or ""
+    NextPageCursor = tostring(rawNextToken)
 
     -- Mapping Format API Roblox ke Format Standard UI
     local results = {}
@@ -1929,7 +1932,7 @@ local function ClearList()
     
     local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
     for _, item in ipairs(ScrollingFrame:GetChildren()) do
-        if item:IsA("Frame") and item ~= TemplateFrame and item ~= LoadMoreButton then
+        if item:IsA("GuiObject") and item ~= TemplateFrame and item ~= LoadMoreButton then
             item:Destroy()
         end
     end
