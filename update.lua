@@ -1042,6 +1042,26 @@ LMG2L["UIStroke_77"] = Instance.new("UIStroke", LMG2L["SearchButton_75"]);
 LMG2L["UIStroke_77"]["Transparency"] = 0.85;
 LMG2L["UIStroke_77"]["Thickness"] = 0.5;
 
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui
+LMG2L["ScreenGui_1"] = Instance.new("ScreenGui", game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"));
+LMG2L["ScreenGui_1"]["ZIndexBehavior"] = Enum.ZIndexBehavior.Sibling;
+
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Panel.ScrollingFrame.LoadmoreButton
+LMG2L["LoadmoreButton_2"] = Instance.new("TextButton", LMG2L["ScrollingFrame_5a"]);
+LMG2L["LoadmoreButton_2"]["BorderSizePixel"] = 0;
+LMG2L["LoadmoreButton_2"]["TextSize"] = 9;
+LMG2L["LoadmoreButton_2"]["TextColor3"] = Color3.fromRGB(155, 160, 164);
+LMG2L["LoadmoreButton_2"]["BackgroundColor3"] = Color3.fromRGB(29, 30, 31);
+LMG2L["LoadmoreButton_2"]["FontFace"] = Font.new([[rbxasset://fonts/families/Arial.json]], Enum.FontWeight.Bold, Enum.FontStyle.Normal);
+LMG2L["LoadmoreButton_2"]["Size"] = UDim2.new(0, 270, 0, 24);
+LMG2L["LoadmoreButton_2"]["Text"] = [[LOAD MORE ASSETS]];
+LMG2L["LoadmoreButton_2"]["Name"] = [[LoadmoreButton]];
+LMG2L["LoadmoreButton_2"]["Visible"] = false; -- Sembunyi default
+LMG2L["LoadmoreButton_2"]["LayoutOrder"] = 999999; -- Agar selalu di paling bawah
+
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Panel.ScrollingFrame.LoadmoreButton.UICorner
+LMG2L["UICorner_3"] = Instance.new("UICorner", LMG2L["LoadmoreButton_2"]);
+LMG2L["UICorner_3"]["CornerRadius"] = UDim.new(0, 5);
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.NarakuPlugin.OpenButton
 LMG2L["OpenButton_78"] = Instance.new("ImageButton", LMG2L["NarakuPlugin_2"]);
@@ -1136,6 +1156,7 @@ local CardMenu = LMG2L["CardMenu_3d"]
 
 local AmountAsset = LMG2L["AmountAsset_4a"]
 local ScrollingFrame = LMG2L["ScrollingFrame_5a"]
+local LoadMoreButton = LMG2L["LoadmoreButton_2"]
 local ResizeHandle = LMG2L["ResizeHandleButton_2f"]
 local OpenButton = LMG2L["OpenButton_78"]
 
