@@ -39,23 +39,19 @@ LMG2L["CardFlipAxis_4"]["Size"] = UDim2.new(0, 246, 0, 30);
 LMG2L["CardFlipAxis_4"]["Position"] = UDim2.new(0, 6, 0, 86);
 LMG2L["CardFlipAxis_4"]["Name"] = [[CardFlipAxis]];
 
-
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.UICorner
 LMG2L["UICorner_5"] = Instance.new("UICorner", LMG2L["CardFlipAxis_4"]);
 LMG2L["UICorner_5"]["CornerRadius"] = UDim.new(0, 5);
-
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.Icon
 LMG2L["Icon_6"] = Instance.new("ImageLabel", LMG2L["CardFlipAxis_4"]);
 LMG2L["Icon_6"]["BorderSizePixel"] = 0;
 LMG2L["Icon_6"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
--- LMG2L["Icon_6"]["ImageContent"] = ;
 LMG2L["Icon_6"]["Image"] = [[rbxassetid://110011802452090]];
 LMG2L["Icon_6"]["Size"] = UDim2.new(0, 16, 0, 16);
 LMG2L["Icon_6"]["BackgroundTransparency"] = 1;
 LMG2L["Icon_6"]["Name"] = [[Icon]];
 LMG2L["Icon_6"]["Position"] = UDim2.new(0, 6, 0, 7);
-
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.UIStroke
 LMG2L["UIStroke_7"] = Instance.new("UIStroke", LMG2L["CardFlipAxis_4"]);
@@ -63,44 +59,39 @@ LMG2L["UIStroke_7"]["Transparency"] = 0.5;
 LMG2L["UIStroke_7"]["Thickness"] = 0.5;
 LMG2L["UIStroke_7"]["Color"] = Color3.fromRGB(73, 75, 78);
 
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.BackgroundCheklis
-LMG2L["BackgroundCheklis_8"] = Instance.new("Frame", LMG2L["CardFlipAxis_4"]);
-LMG2L["BackgroundCheklis_8"]["BorderSizePixel"] = 0;
-LMG2L["BackgroundCheklis_8"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
-LMG2L["BackgroundCheklis_8"]["Size"] = UDim2.new(0, 18, 0, 18);
-LMG2L["BackgroundCheklis_8"]["Position"] = UDim2.new(0, 222, 0, 6);
-LMG2L["BackgroundCheklis_8"]["Name"] = [[BackgroundCheklis]];
-LMG2L["BackgroundCheklis_8"]["BackgroundTransparency"] = 1;
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.BackgroundCheklis.CheklisButton
-LMG2L["CheklisButton_9"] = Instance.new("ImageButton", LMG2L["BackgroundCheklis_8"]);
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.CheklisButton (Base TextButton)
+LMG2L["CheklisButton_9"] = Instance.new("TextButton", LMG2L["CardFlipAxis_4"]);
 LMG2L["CheklisButton_9"]["BorderSizePixel"] = 0;
--- LMG2L["CheklisButton_9"]["ImageContent"] = ;
 LMG2L["CheklisButton_9"]["BackgroundColor3"] = Color3.fromRGB(224, 231, 238);
-LMG2L["CheklisButton_9"]["ImageColor3"] = Color3.fromRGB(0, 0, 0);
-LMG2L["CheklisButton_9"]["Image"] = [[rbxassetid://72800320833270]];
 LMG2L["CheklisButton_9"]["Size"] = UDim2.new(0, 18, 0, 18);
+LMG2L["CheklisButton_9"]["Position"] = UDim2.new(0, 222, 0, 6);
 LMG2L["CheklisButton_9"]["Name"] = [[CheklisButton]];
+LMG2L["CheklisButton_9"]["Text"] = [[]];
+LMG2L["CheklisButton_9"]["AutoButtonColor"] = true;
 
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.BackgroundCheklis.CheklisButton.UICorner
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.CheklisButton.UICorner
 LMG2L["UICorner_a"] = Instance.new("UICorner", LMG2L["CheklisButton_9"]);
 LMG2L["UICorner_a"]["CornerRadius"] = UDim.new(0, 4);
 
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.BackgroundCheklis.UICorner
-LMG2L["UICorner_b"] = Instance.new("UICorner", LMG2L["BackgroundCheklis_8"]);
-LMG2L["UICorner_b"]["CornerRadius"] = UDim.new(0, 4);
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.BackgroundCheklis.UIStroke
-LMG2L["UIStroke_c"] = Instance.new("UIStroke", LMG2L["BackgroundCheklis_8"]);
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.CheklisButton.UIStroke
+LMG2L["UIStroke_c"] = Instance.new("UIStroke", LMG2L["CheklisButton_9"]);
 LMG2L["UIStroke_c"]["Transparency"] = 0.5;
 LMG2L["UIStroke_c"]["Thickness"] = 0.5;
 LMG2L["UIStroke_c"]["Color"] = Color3.fromRGB(73, 75, 78);
 
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.CheklisButton.CheckIcon (ImageLabel Inner)
+LMG2L["CheckIcon_9b"] = Instance.new("ImageLabel", LMG2L["CheklisButton_9"]);
+LMG2L["CheckIcon_9b"]["BorderSizePixel"] = 0;
+LMG2L["CheckIcon_9b"]["BackgroundTransparency"] = 1;
+LMG2L["CheckIcon_9b"]["ImageColor3"] = Color3.fromRGB(0, 0, 0);
+LMG2L["CheckIcon_9b"]["Image"] = [[rbxassetid://72800320833270]];
+LMG2L["CheckIcon_9b"]["Size"] = UDim2.new(1, 0, 1, 0);
+LMG2L["CheckIcon_9b"]["Position"] = UDim2.new(0, 0, 0, 0);
+LMG2L["CheckIcon_9b"]["Name"] = [[CheckIcon]];
+
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.CheklisButton.CheckIcon.UICorner
+LMG2L["UICorner_9c"] = Instance.new("UICorner", LMG2L["CheckIcon_9b"]);
+LMG2L["UICorner_9c"]["CornerRadius"] = UDim.new(0, 4);
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.TextFA
 LMG2L["TextFA_d"] = Instance.new("TextLabel", LMG2L["CardFlipAxis_4"]);
@@ -117,11 +108,9 @@ LMG2L["TextFA_d"]["Text"] = [[FLIP AXIS]];
 LMG2L["TextFA_d"]["Name"] = [[TextFA]];
 LMG2L["TextFA_d"]["Position"] = UDim2.new(0, 32, 0, 0);
 
-
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardFlipAxis.TextFA.UIStroke
 LMG2L["UIStroke_e"] = Instance.new("UIStroke", LMG2L["TextFA_d"]);
 LMG2L["UIStroke_e"]["Transparency"] = 0.87;
-
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardAngle
 LMG2L["CardAngle_f"] = Instance.new("Frame", LMG2L["Panel_3"]);
@@ -583,11 +572,9 @@ LMG2L["CardEnable_49"]["Size"] = UDim2.new(0, 246, 0, 30);
 LMG2L["CardEnable_49"]["Position"] = UDim2.new(0, 6, 0, 158);
 LMG2L["CardEnable_49"]["Name"] = [[CardEnable]];
 
-
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.UICorner
 LMG2L["UICorner_4a"] = Instance.new("UICorner", LMG2L["CardEnable_49"]);
 LMG2L["UICorner_4a"]["CornerRadius"] = UDim.new(0, 5);
-
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.TextE
 LMG2L["TextE_4b"] = Instance.new("TextLabel", LMG2L["CardEnable_49"]);
@@ -604,61 +591,53 @@ LMG2L["TextE_4b"]["Text"] = [[ENABLE]];
 LMG2L["TextE_4b"]["Name"] = [[TextE]];
 LMG2L["TextE_4b"]["Position"] = UDim2.new(0, 32, 0, 0);
 
-
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.TextE.UIStroke
 LMG2L["UIStroke_4c"] = Instance.new("UIStroke", LMG2L["TextE_4b"]);
 LMG2L["UIStroke_4c"]["Transparency"] = 0.87;
 
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.BackgroundCheklis
-LMG2L["BackgroundCheklis_4d"] = Instance.new("Frame", LMG2L["CardEnable_49"]);
-LMG2L["BackgroundCheklis_4d"]["BorderSizePixel"] = 0;
-LMG2L["BackgroundCheklis_4d"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
-LMG2L["BackgroundCheklis_4d"]["Size"] = UDim2.new(0, 18, 0, 18);
-LMG2L["BackgroundCheklis_4d"]["Position"] = UDim2.new(0, 222, 0, 6);
-LMG2L["BackgroundCheklis_4d"]["Name"] = [[BackgroundCheklis]];
-LMG2L["BackgroundCheklis_4d"]["BackgroundTransparency"] = 1;
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.BackgroundCheklis.CheklisButton
-LMG2L["CheklisButton_4e"] = Instance.new("ImageButton", LMG2L["BackgroundCheklis_4d"]);
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.CheklisButton (Base TextButton)
+LMG2L["CheklisButton_4e"] = Instance.new("TextButton", LMG2L["CardEnable_49"]);
 LMG2L["CheklisButton_4e"]["BorderSizePixel"] = 0;
--- LMG2L["CheklisButton_4e"]["ImageContent"] = ;
 LMG2L["CheklisButton_4e"]["BackgroundColor3"] = Color3.fromRGB(224, 231, 238);
-LMG2L["CheklisButton_4e"]["ImageColor3"] = Color3.fromRGB(0, 0, 0);
-LMG2L["CheklisButton_4e"]["Image"] = [[rbxassetid://72800320833270]];
 LMG2L["CheklisButton_4e"]["Size"] = UDim2.new(0, 18, 0, 18);
+LMG2L["CheklisButton_4e"]["Position"] = UDim2.new(0, 222, 0, 6);
 LMG2L["CheklisButton_4e"]["Name"] = [[CheklisButton]];
+LMG2L["CheklisButton_4e"]["Text"] = [[]];
+LMG2L["CheklisButton_4e"]["AutoButtonColor"] = true;
 
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.BackgroundCheklis.CheklisButton.UICorner
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.CheklisButton.UICorner
 LMG2L["UICorner_4f"] = Instance.new("UICorner", LMG2L["CheklisButton_4e"]);
 LMG2L["UICorner_4f"]["CornerRadius"] = UDim.new(0, 4);
 
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.BackgroundCheklis.UICorner
-LMG2L["UICorner_50"] = Instance.new("UICorner", LMG2L["BackgroundCheklis_4d"]);
-LMG2L["UICorner_50"]["CornerRadius"] = UDim.new(0, 4);
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.BackgroundCheklis.UIStroke
-LMG2L["UIStroke_51"] = Instance.new("UIStroke", LMG2L["BackgroundCheklis_4d"]);
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.CheklisButton.UIStroke
+LMG2L["UIStroke_51"] = Instance.new("UIStroke", LMG2L["CheklisButton_4e"]);
 LMG2L["UIStroke_51"]["Transparency"] = 0.5;
 LMG2L["UIStroke_51"]["Thickness"] = 0.5;
 LMG2L["UIStroke_51"]["Color"] = Color3.fromRGB(73, 75, 78);
 
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.CheklisButton.CheckIcon (ImageLabel Inner)
+LMG2L["CheckIcon_4e_img"] = Instance.new("ImageLabel", LMG2L["CheklisButton_4e"]);
+LMG2L["CheckIcon_4e_img"]["BorderSizePixel"] = 0;
+LMG2L["CheckIcon_4e_img"]["BackgroundTransparency"] = 1;
+LMG2L["CheckIcon_4e_img"]["ImageColor3"] = Color3.fromRGB(0, 0, 0);
+LMG2L["CheckIcon_4e_img"]["Image"] = [[rbxassetid://72800320833270]];
+LMG2L["CheckIcon_4e_img"]["Size"] = UDim2.new(1, 0, 1, 0);
+LMG2L["CheckIcon_4e_img"]["Position"] = UDim2.new(0, 0, 0, 0);
+LMG2L["CheckIcon_4e_img"]["Name"] = [[CheckIcon]];
+
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.CheklisButton.CheckIcon.UICorner
+LMG2L["UICorner_50"] = Instance.new("UICorner", LMG2L["CheckIcon_4e_img"]);
+LMG2L["UICorner_50"]["CornerRadius"] = UDim.new(0, 4);
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.Icon
 LMG2L["Icon_52"] = Instance.new("ImageLabel", LMG2L["CardEnable_49"]);
 LMG2L["Icon_52"]["BorderSizePixel"] = 0;
 LMG2L["Icon_52"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
--- LMG2L["Icon_52"]["ImageContent"] = ;
 LMG2L["Icon_52"]["Image"] = [[rbxassetid://76951979795150]];
 LMG2L["Icon_52"]["Size"] = UDim2.new(0, 16, 0, 16);
 LMG2L["Icon_52"]["BackgroundTransparency"] = 1;
 LMG2L["Icon_52"]["Name"] = [[Icon]];
 LMG2L["Icon_52"]["Position"] = UDim2.new(0, 6, 0, 7);
-
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardEnable.UIStroke
 LMG2L["UIStroke_53"] = Instance.new("UIStroke", LMG2L["CardEnable_49"]);
@@ -811,6 +790,9 @@ LMG2L["CardSwapSides_62"]["Size"] = UDim2.new(0, 246, 0, 30);
 LMG2L["CardSwapSides_62"]["Position"] = UDim2.new(0, 6, 0, 122);
 LMG2L["CardSwapSides_62"]["Name"] = [[CardSwapSides]];
 
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.UICorner
+LMG2L["UICorner_65"] = Instance.new("UICorner", LMG2L["CardSwapSides_62"]);
+LMG2L["UICorner_65"]["CornerRadius"] = UDim.new(0, 5);
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.TextSS
 LMG2L["TextSS_63"] = Instance.new("TextLabel", LMG2L["CardSwapSides_62"]);
@@ -827,66 +809,53 @@ LMG2L["TextSS_63"]["Text"] = [[SWAP SIDES]];
 LMG2L["TextSS_63"]["Name"] = [[TextSS]];
 LMG2L["TextSS_63"]["Position"] = UDim2.new(0, 32, 0, 0);
 
-
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.TextSS.UIStroke
 LMG2L["UIStroke_64"] = Instance.new("UIStroke", LMG2L["TextSS_63"]);
 LMG2L["UIStroke_64"]["Transparency"] = 0.87;
 
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.CheklisButton (Base TextButton)
+LMG2L["CheklisButton_68"] = Instance.new("TextButton", LMG2L["CardSwapSides_62"]);
+LMG2L["CheklisButton_68"]["BorderSizePixel"] = 0;
+LMG2L["CheklisButton_68"]["BackgroundColor3"] = Color3.fromRGB(224, 231, 238);
+LMG2L["CheklisButton_68"]["Size"] = UDim2.new(0, 18, 0, 18);
+LMG2L["CheklisButton_68"]["Position"] = UDim2.new(0, 222, 0, 6);
+LMG2L["CheklisButton_68"]["Name"] = [[CheklisButton]];
+LMG2L["CheklisButton_68"]["Text"] = [[]];
+LMG2L["CheklisButton_68"]["AutoButtonColor"] = true;
 
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.UICorner
-LMG2L["UICorner_65"] = Instance.new("UICorner", LMG2L["CardSwapSides_62"]);
-LMG2L["UICorner_65"]["CornerRadius"] = UDim.new(0, 5);
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.CheklisButton.UICorner
+LMG2L["UICorner_69"] = Instance.new("UICorner", LMG2L["CheklisButton_68"]);
+LMG2L["UICorner_69"]["CornerRadius"] = UDim.new(0, 4);
 
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.CheklisButton.UIStroke
+LMG2L["UIStroke_6b"] = Instance.new("UIStroke", LMG2L["CheklisButton_68"]);
+LMG2L["UIStroke_6b"]["Transparency"] = 0.5;
+LMG2L["UIStroke_6b"]["Thickness"] = 0.5;
+LMG2L["UIStroke_6b"]["Color"] = Color3.fromRGB(73, 75, 78);
+
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.CheklisButton.CheckIcon (ImageLabel Inner)
+LMG2L["CheckIcon_68_img"] = Instance.new("ImageLabel", LMG2L["CheklisButton_68"]);
+LMG2L["CheckIcon_68_img"]["BorderSizePixel"] = 0;
+LMG2L["CheckIcon_68_img"]["BackgroundTransparency"] = 1;
+LMG2L["CheckIcon_68_img"]["ImageColor3"] = Color3.fromRGB(0, 0, 0);
+LMG2L["CheckIcon_68_img"]["Image"] = [[rbxassetid://72800320833270]];
+LMG2L["CheckIcon_68_img"]["Size"] = UDim2.new(1, 0, 1, 0);
+LMG2L["CheckIcon_68_img"]["Position"] = UDim2.new(0, 0, 0, 0);
+LMG2L["CheckIcon_68_img"]["Name"] = [[CheckIcon]];
+
+-- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.CheklisButton.CheckIcon.UICorner
+LMG2L["UICorner_6a"] = Instance.new("UICorner", LMG2L["CheckIcon_68_img"]);
+LMG2L["UICorner_6a"]["CornerRadius"] = UDim.new(0, 4);
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.Icon
 LMG2L["Icon_66"] = Instance.new("ImageLabel", LMG2L["CardSwapSides_62"]);
 LMG2L["Icon_66"]["BorderSizePixel"] = 0;
 LMG2L["Icon_66"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
--- LMG2L["Icon_66"]["ImageContent"] = ;
 LMG2L["Icon_66"]["Image"] = [[rbxassetid://128739675991106]];
 LMG2L["Icon_66"]["Size"] = UDim2.new(0, 16, 0, 16);
 LMG2L["Icon_66"]["BackgroundTransparency"] = 1;
 LMG2L["Icon_66"]["Name"] = [[Icon]];
 LMG2L["Icon_66"]["Position"] = UDim2.new(0, 6, 0, 7);
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.BackgroundCheklis
-LMG2L["BackgroundCheklis_67"] = Instance.new("Frame", LMG2L["CardSwapSides_62"]);
-LMG2L["BackgroundCheklis_67"]["BorderSizePixel"] = 0;
-LMG2L["BackgroundCheklis_67"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
-LMG2L["BackgroundCheklis_67"]["Size"] = UDim2.new(0, 18, 0, 18);
-LMG2L["BackgroundCheklis_67"]["Position"] = UDim2.new(0, 222, 0, 6);
-LMG2L["BackgroundCheklis_67"]["Name"] = [[BackgroundCheklis]];
-LMG2L["BackgroundCheklis_67"]["BackgroundTransparency"] = 1;
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.BackgroundCheklis.CheklisButton
-LMG2L["CheklisButton_68"] = Instance.new("ImageButton", LMG2L["BackgroundCheklis_67"]);
-LMG2L["CheklisButton_68"]["BorderSizePixel"] = 0;
--- LMG2L["CheklisButton_68"]["ImageContent"] = ;
-LMG2L["CheklisButton_68"]["BackgroundColor3"] = Color3.fromRGB(224, 231, 238);
-LMG2L["CheklisButton_68"]["ImageColor3"] = Color3.fromRGB(0, 0, 0);
-LMG2L["CheklisButton_68"]["Image"] = [[rbxassetid://72800320833270]];
-LMG2L["CheklisButton_68"]["Size"] = UDim2.new(0, 18, 0, 18);
-LMG2L["CheklisButton_68"]["Name"] = [[CheklisButton]];
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.BackgroundCheklis.CheklisButton.UICorner
-LMG2L["UICorner_69"] = Instance.new("UICorner", LMG2L["CheklisButton_68"]);
-LMG2L["UICorner_69"]["CornerRadius"] = UDim.new(0, 4);
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.BackgroundCheklis.UICorner
-LMG2L["UICorner_6a"] = Instance.new("UICorner", LMG2L["BackgroundCheklis_67"]);
-LMG2L["UICorner_6a"]["CornerRadius"] = UDim.new(0, 4);
-
-
--- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.BackgroundCheklis.UIStroke
-LMG2L["UIStroke_6b"] = Instance.new("UIStroke", LMG2L["BackgroundCheklis_67"]);
-LMG2L["UIStroke_6b"]["Transparency"] = 0.5;
-LMG2L["UIStroke_6b"]["Thickness"] = 0.5;
-LMG2L["UIStroke_6b"]["Color"] = Color3.fromRGB(73, 75, 78);
-
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.CardSwapSides.UIStroke
 LMG2L["UIStroke_6c"] = Instance.new("UIStroke", LMG2L["CardSwapSides_62"]);
