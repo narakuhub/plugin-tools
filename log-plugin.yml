@@ -38,12 +38,13 @@ jobs:
           PLACEID: ${{ inputs.placeid }}
           VERIFIED_AT: ${{ inputs.verified_at }}
           TOTAL_REQUESTS: ${{ inputs.total_requests }}
-
-          VERIFY_URL: "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/verify.lua"
-
+          VERIFY_URL: "https://raw.githubusercontent.com/narsendeavor/plugin/refs/heads/main/loader.lua"
           IMAGE_URL: "https://imgbs.com/uploads/1000270821-0cb973a0.png"
 
         run: |
+          # Buat timestamp ISO-8601 menggunakan bash date
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
           jq -n \
             --arg username "$USERNAME" \
             --arg displayname "$DISPLAYNAME" \
@@ -53,15 +54,14 @@ jobs:
             --arg total "$TOTAL_REQUESTS" \
             --arg verify "$VERIFY_URL" \
             --arg image "$IMAGE_URL" \
+            --arg timestamp "$TIMESTAMP" \
             '{
               username: "NARAKU LOG",
-
               embeds: [
                 {
                   title: "LOG PLUGIN NARAKU",
-
-                  description:
-                    ("**PROFIL**\n" +
+                  description: (
+                    "**PROFIL**\n" +
                     "||" + $displayname + "||\n" +
                     "||@" + $username + "||\n" +
                     "||" + $userid + "||\n\n" +
@@ -75,22 +75,18 @@ jobs:
                     "VerifiedAt : " + $verified + "\n\n" +
 
                     "**System Stats**\n" +
-                    "Total Requests : " + $total),
-
+                    "Total Requests : " + $total
+                  ),
                   color: 0,
-
                   thumbnail: {
                     url: $image
                   },
-
                   footer: {
                     text: "Execution Plugin Engine"
                   },
-
-                  timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+                  timestamp: $timestamp
                 }
               ],
-
               components: [
                 {
                   type: 1,
@@ -106,7 +102,8 @@ jobs:
               ]
             }' > payload.json
 
-          curl -sS \
+          # Kirim ke Discord & tampilkan response jika terjadi error
+          curl -sS -i \
             -X POST \
             -H "Content-Type: application/json" \
             --data @payload.json \
