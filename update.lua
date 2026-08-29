@@ -2942,47 +2942,59 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 3A. FUNGSIONALITAS MANUAL INSERT (InsertBox_38 & InsertButton_34)
+-- 3A. FUNGSIONALITAS MANUAL INSERT (FIX DOUBLE LOAD GUARANTEED)
 -------------------------------------------------------------------------
 local isInsertingManual = false
+local manualInsertConnection = nil
 
 local InsertButton_34 = (LMG2L and LMG2L["InsertButton_34"]) or InsertButton
 local InsertBox_38 = (LMG2L and LMG2L["InsertBox_38"]) or InsertIDBox
 
+-- Bersihkan event listener lama jika pernah terpasang sebelumnya
+if manualInsertConnection then
+    manualInsertConnection:Disconnect()
+    manualInsertConnection = nil
+end
+
 if InsertButton_34 and InsertButton_34:IsA("GuiButton") then
-    InsertButton_34.MouseButton1Click:Connect(function()
+    manualInsertConnection = InsertButton_34.MouseButton1Click:Connect(function()
+        -- Lock Rapat: Jika sedang proses, abaikan klik sama sekali
         if isInsertingManual then return end
         if not InsertBox_38 or not InsertBox_38:IsA("TextBox") then return end
         
         local rawText = InsertBox_38.Text
         local cleanId = tonumber(rawText:match("%d+"))
-        local originalText = InsertButton_34.Text
 
-        if cleanId then
-            isInsertingManual = true
-            
-            InsertBox_38.Text = tostring(cleanId)
-            InsertBox_38.TextTransparency = 0
-            if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
-                InsertBox_38.TextColor3 = COLOR_TEXT_ACTIVE
-            end
-
-            InsertButton_34.Text = "WORKING..."
-            
-            task.spawn(function()
-                if typeof(InsertAsset) == "function" then
-                    InsertAsset(cleanId, CurrentCategory, InsertButton_34)
-                end
-                
-                task.wait(1.5)
-                if InsertButton_34 then InsertButton_34.Text = originalText end
-                isInsertingManual = false
-            end)
-        else
+        if not cleanId then
+            local originalText = InsertButton_34.Text
             InsertButton_34.Text = "Invalid ID!"
             task.wait(1.5)
             if InsertButton_34 then InsertButton_34.Text = originalText end
+            return
         end
+
+        -- Kunci state sebelum task.spawn
+        isInsertingManual = true
+        local originalText = InsertButton_34.Text
+
+        InsertBox_38.Text = tostring(cleanId)
+        InsertBox_38.TextTransparency = 0
+        if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
+            InsertBox_38.TextColor3 = COLOR_TEXT_ACTIVE
+        end
+
+        InsertButton_34.Text = "WORKING..."
+        
+        task.spawn(function()
+            if typeof(InsertAsset) == "function" then
+                -- Kirim nil pada argumen ke-3 agar InsertAsset tidak memicu handler UI lain
+                InsertAsset(cleanId, CurrentCategory, nil)
+            end
+            
+            task.wait(1.5)
+            if InsertButton_34 then InsertButton_34.Text = originalText end
+            isInsertingManual = false
+        end)
     end)
 end
 
