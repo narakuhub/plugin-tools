@@ -2828,7 +2828,7 @@ if SearchBox and SearchBox:IsA("TextBox") then
 end
 
 -------------------------------------------------------------------------
--- 2. FUNGSIONALITAS SAVE BUTTON (SAVE TO SPECIFIC CATEGORY)
+-- 2. FUNGSIONALITAS SAVE BUTTON (INDEPENDENT RENDER STATE)
 -------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
@@ -2914,18 +2914,17 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 SavedAssets[targetCategory] = SavedAssets[targetCategory] or {}
                 table.insert(SavedAssets[targetCategory], newSavedAsset)
                 
-                -- Simpan Permanen ke Storage User (delta/saved_assets.json)
+                -- Simpan Permanen ke Storage User
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
                 
                 SaveButton.Text = "SAVED!"
                 
-                -- Refresh UI jika sedang di mode Saved Assets
+                -- FIX: Hanya refresh UI jika user SEDANG berada di Mode Saved Assets
+                -- Mencegah hasil Search & Load More terhapus saat klik Save ID
                 if IsShowingSavedOnly and typeof(RenderAssets) == "function" then
                     RenderAssets("")
-                elseif typeof(SwitchTab) == "function" then
-                    SwitchTab(targetCategory)
                 end
             else
                 SaveIDBox.Text = "ID Gagal Validasi!"
@@ -2943,11 +2942,17 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 3. FUNGSIONALITAS DIRECT INSERT BUTTON
+-- 3. FUNGSIONALITAS DIRECT INSERT BUTTON (WITH DEBOUNCE FIX)
 -------------------------------------------------------------------------
+local isInsertingManual = false
+
 if InsertButton and InsertButton:IsA("GuiButton") then
     InsertButton.MouseButton1Click:Connect(function()
-        local inputTarget = InsertIDBox or SaveIDBox or SearchBox
+        -- Proteksi Debounce (Mencegah Klik Ganda/Double Load)
+        if isInsertingManual then return end
+
+        -- Utamakan khusus membaca dari InsertIDBox (InsertIDBox_38)
+        local inputTarget = InsertIDBox or (LMG2L and LMG2L["InsertIDBox_38"]) or SaveIDBox
         if not inputTarget or not inputTarget:IsA("TextBox") then return end
         
         local rawText = inputTarget.Text
@@ -2955,12 +2960,16 @@ if InsertButton and InsertButton:IsA("GuiButton") then
         local originalText = InsertButton.Text
 
         if cleanId then
+            isInsertingManual = true
+            
             -- Pertahankan teks ID pada box
             inputTarget.Text = tostring(cleanId)
             inputTarget.TextTransparency = 0
-            inputTarget.TextColor3 = COLOR_TEXT_ACTIVE
+            if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
+                inputTarget.TextColor3 = COLOR_TEXT_ACTIVE
+            end
 
-            InsertButton.Text = "WORKING"
+            InsertButton.Text = "WORKING..."
             
             task.spawn(function()
                 if typeof(InsertAsset) == "function" then
@@ -2969,6 +2978,7 @@ if InsertButton and InsertButton:IsA("GuiButton") then
                 
                 task.wait(1.5)
                 if InsertButton then InsertButton.Text = originalText end
+                isInsertingManual = false
             end)
         else
             InsertButton.Text = "Invalid ID!"
