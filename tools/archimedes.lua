@@ -948,150 +948,190 @@ LMG2L["Icon_72"]["Position"] = UDim2.new(0, 3, 0, 3);
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.Nars'Archimedes.Panel.UICorner
 LMG2L["UICorner_73"] = Instance.new("UICorner", LMG2L["Panel_3"]);
 
--- Services
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
+--------------------------------------------------------------------------------
+-- FIX TAHAP 3: MAIN PANEL UI CONTROLLER (DRAGGING, MINIMIZE & ANIMATION)
+--------------------------------------------------------------------------------
+
+-- Services & References Guard
+local CoreGui          = game:GetService("CoreGui")
+local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- Reference UI Elements
-local ScreenGui_1 = LMG2L["ScreenGui_1"]
-local Panel_3 = LMG2L["Panel_3"]
-local Header_54 = LMG2L["Header_54"]
-local MinimalButton_56 = LMG2L["MinimalButton_56"]
-local CloseButton_59 = LMG2L["CloseButton_59"]
+local getHui = gethui or function() return CoreGui end
+local LMG2L  = (typeof(LMG2L) == "table") and LMG2L or {}
 
--- Reference Child Elements Inside Panel_3
-local CardAxisButton_28 = LMG2L["CardAxisButton_28"]
-local CardFlipAxis_4 = LMG2L["CardFlipAxis_4"]
-local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
-local CardEnable_49 = LMG2L["CardEnable_49"]
-local CardAngle_f = LMG2L["CardAngle_f"]
-local CardAmount_1e = LMG2L["CardAmount_1e"]
-local BackgroundUndo_5c = LMG2L["BackgroundUndo_5c"]
-local BackgroundRender_6d = LMG2L["BackgroundRender_6d"]
-local BackgroundRenderAll_18 = LMG2L["BackgroundRenderAll_18"]
+-- Reference UI Elements (Safe Fallback)
+local ScreenGui_1      = LMG2L["ScreenGui_1"] or CoreGui:FindFirstChild("ScreenGui_1")
+local Panel_3          = LMG2L["Panel_3"] or (ScreenGui_1 and ScreenGui_1:FindFirstChild("Panel_3"))
+local Header_54        = LMG2L["Header_54"] or (Panel_3 and Panel_3:FindFirstChild("Header_54"))
+local MinimalButton_56 = LMG2L["MinimalButton_56"] or (Panel_3 and Panel_3:FindFirstChild("MinimalButton_56"))
+local CloseButton_59   = LMG2L["CloseButton_59"] or (Panel_3 and Panel_3:FindFirstChild("CloseButton_59"))
 
--- 1. PARENT & INITIAL SETUP
-ScreenGui_1.Parent = CoreGui
-Panel_3.ClipsDescendants = true
-
--- Fixed Asset IDs untuk Bergantian
-local ID_NORMAL = "rbxassetid://93533944381010"
-local ID_MINIMAL = "rbxassetid://77863347848901"
-
--- Set Awal Image
-MinimalButton_56.Image = ID_NORMAL
-
--- Dimensions & States
-local NORMAL_SIZE = UDim2.new(0, 258, 0, 294)
-local MINIMAL_SIZE = UDim2.new(0, 258, 0, 26)
-local TARGET_POSITION = UDim2.new(0, 10, 0, 20)
-
-local isMinimized = false
-local tweenInfoFast = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-local tweenInfoOpen = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local tweenInfoClose = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-
--- List Child Content
-local childContent = {
-	CardAxisButton_28,
-	CardFlipAxis_4,
-	CardSwapSides_62,
-	CardEnable_49,
-	CardAngle_f,
-	CardAmount_1e,
-	BackgroundUndo_5c,
-	BackgroundRender_6d,
-	BackgroundRenderAll_18
-}
-
--- 2. SYSTEM DRAG PANEL (VIA PANEL DIRECTLY)
-local dragging = false
-local dragInput, dragStart, startPos
-
-local function updateDrag(input)
-	local delta = input.Position - dragStart
-	local newPosition = UDim2.new(
-		startPos.X.Scale,
-		startPos.X.Offset + delta.X,
-		startPos.Y.Scale,
-		startPos.Y.Offset + delta.Y
-	)
-	TweenService:Create(Panel_3, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = newPosition
-	}):Play()
+-- Setup Parent & Properties
+if ScreenGui_1 then
+	ScreenGui_1.Enabled = true
+	ScreenGui_1.ResetOnSpawn = false
+	pcall(function() ScreenGui_1.Parent = getHui() end)
 end
 
-Panel_3.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = Panel_3.Position
+if Panel_3 then
+	Panel_3.Visible = true
+	Panel_3.ClipsDescendants = true
+end
 
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
+-- Fixed Asset IDs untuk Visual Minimal/Normal
+local ID_NORMAL  = "rbxassetid://93533944381010"
+local ID_MINIMAL = "rbxassetid://77863347848901"
+
+if MinimalButton_56 and MinimalButton_56:IsA("ImageButton") then
+	MinimalButton_56.Image = ID_NORMAL
+end
+
+-- Dimensions & Tween Configs
+local NORMAL_SIZE   = UDim2.new(0, 258, 0, 294)
+local MINIMAL_SIZE  = UDim2.new(0, 258, 0, 26)
+local TARGET_POS    = Panel_3 and Panel_3.Position or UDim2.new(0, 10, 0, 20)
+
+local tweenFast  = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local tweenOpen  = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local tweenClose = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+-- Child Content List (Konten yang disembunyikan saat minimasi)
+local childContent = {
+	LMG2L["CardAxisButton_28"] or (Panel_3 and Panel_3:FindFirstChild("CardAxisButton_28")),
+	LMG2L["CardFlipAxis_4"] or (Panel_3 and Panel_3:FindFirstChild("CardFlipAxis_4")),
+	LMG2L["CardSwapSides_62"] or (Panel_3 and Panel_3:FindFirstChild("CardSwapSides_62")),
+	LMG2L["CardEnable_49"] or (Panel_3 and Panel_3:FindFirstChild("CardEnable_49")),
+	LMG2L["CardAngle_f"] or (Panel_3 and Panel_3:FindFirstChild("CardAngle_f")),
+	LMG2L["CardAmount_1e"] or (Panel_3 and Panel_3:FindFirstChild("CardAmount_1e")),
+	LMG2L["BackgroundUndo_5c"] or (Panel_3 and Panel_3:FindFirstChild("BackgroundUndo_5c")),
+	LMG2L["BackgroundRender_6d"] or (Panel_3 and Panel_3:FindFirstChild("BackgroundRender_6d")),
+	LMG2L["BackgroundRenderAll_18"] or (Panel_3 and Panel_3:FindFirstChild("BackgroundRenderAll_18"))
+}
+
+-- 1. ADVANCED DRAGGING ENGINE (FIXED PANEL & HEADER SUPPORT)
+if Panel_3 then
+	local dragging = false
+	local dragInput, dragStart, startPos
+	local dragHandle = Header_54 or Panel_3
+
+	local function updateDrag(input)
+		local delta = input.Position - dragStart
+		local newPosition = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+		TweenService:Create(Panel_3, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = newPosition
+		}):Play()
 	end
-end)
 
-Panel_3.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
+	dragHandle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = Panel_3.Position
 
-UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		updateDrag(input)
-	end
-end)
-
--- 3. TOGGLE MINIMIZE / MAXIMIZE SYSTEM
-MinimalButton_56.MouseButton1Click:Connect(function()
-	isMinimized = not isMinimized
-
-	if isMinimized then
-		-- Ganti Image ke Icon Minimal saat dikecilkan
-		MinimalButton_56.Image = ID_MINIMAL
-		for _, child in ipairs(childContent) do
-			child.Visible = false
-		end
-		TweenService:Create(Panel_3, tweenInfoFast, { Size = MINIMAL_SIZE }):Play()
-	else
-		-- Ganti Image kembali ke Icon Normal saat dibesarkan
-		MinimalButton_56.Image = ID_NORMAL
-		local tween = TweenService:Create(Panel_3, tweenInfoFast, { Size = NORMAL_SIZE })
-		tween:Play()
-		tween.Completed:Connect(function()
-			if not isMinimized then
-				for _, child in ipairs(childContent) do
-					child.Visible = true
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
 				end
-			end
-		end)
-	end
-end)
-
--- 4. CLOSE BUTTON SYSTEM WITH EXIT ANIMATION
-local isClosing = false
-CloseButton_59.MouseButton1Click:Connect(function()
-	if isClosing then return end
-	isClosing = true
-
-	local closeTween = TweenService:Create(Panel_3, tweenInfoClose, {
-		Size = UDim2.new(0, 0, 0, 0)
-	})
-	closeTween:Play()
-	closeTween.Completed:Connect(function()
-		ScreenGui_1:Destroy()
+			end)
+		end
 	end)
-end)
 
--- 5. ENTRY ANIMATION (SPAWN IN PLACE)
-Panel_3.Position = TARGET_POSITION
-Panel_3.Size = UDim2.new(0, 0, 0, 0)
+	dragHandle.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			updateDrag(input)
+		end
+	end)
+end
+
+-- 2. INTEGRATED MINIMIZE / MAXIMIZE LOGIC
+if MinimalButton_56 then
+	MinimalButton_56.MouseButton1Click:Connect(function()
+		-- Update Global State yang dipakai di Tahap 1 & 2
+		isMinimized = not isMinimized
+
+		if isMinimized then
+			if MinimalButton_56:IsA("ImageButton") then MinimalButton_56.Image = ID_MINIMAL end
+			
+			-- Sembunyikan semua Card Konten
+			for _, child in ipairs(childContent) do
+				if child then child.Visible = false end
+			end
+			
+			-- Hapus Preview Archimedes saat minimasi aktif
+			if ClearPreview then ClearPreview() end
+			
+			TweenService:Create(Panel_3, tweenFast, { Size = MINIMAL_SIZE }):Play()
+		else
+			if MinimalButton_56:IsA("ImageButton") then MinimalButton_56.Image = ID_NORMAL end
+			
+			local tween = TweenService:Create(Panel_3, tweenFast, { Size = NORMAL_SIZE })
+			tween:Play()
+			
+			tween.Completed:Connect(function()
+				if not isMinimized then
+					-- Munculkan kembali Card Konten Utama
+					for _, child in ipairs(childContent) do
+						if child then child.Visible = true end
+					end
+					
+					-- Refresh Visual Toggle Checklist sesuai state di Tahap 2 (Tidak memaksa Visible jika OFF)
+					if toggleComponents then
+						for name, btn in pairs(toggleComponents) do
+							if btn then
+								local state = CurrentSettings and CurrentSettings[name]
+								btn.Visible = (state == true)
+							end
+						end
+					end
+					
+					-- Re-render Preview jika ada objek terpilih
+					if UpdatePreview then UpdatePreview() end
+				end
+			end)
+		end
+	end)
+end
+
+-- 3. ANIMATED CLOSE ENGINE
+if CloseButton_59 then
+	CloseButton_59.MouseButton1Click:Connect(function()
+		if isClosing then return end
+		isClosing = true
+
+		if clickConnection then
+			clickConnection:Disconnect()
+			clickConnection = nil
+		end
+
+		if ClearPreview then ClearPreview() end
+		SelectedPart = nil
+
+		local closeTween = TweenService:Create(Panel_3, tweenClose, { Size = UDim2.new(0, 0, 0, 0) })
+		closeTween:Play()
+		
+		closeTween.Completed:Connect(function()
+			if ScreenGui_1 then ScreenGui_1:Destroy() end
+		end)
+	end)
+end
+
+-- 4. SPAWN ENTRY ANIMATION (SMOOTH POP-IN)
+if Panel_3 then
+	Panel_3.Size = UDim2.new(0, 0, 0, 0)
+	TweenService:Create(Panel_3, tweenOpen, { Size = NORMAL_SIZE }):Play()
+end
 
 -- Services
 local TweenService = game:GetService("TweenService")
