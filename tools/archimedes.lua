@@ -1198,13 +1198,14 @@ end
 local CardAngle_f   = LMG2L["CardAngle_f"] or (Panel_3 and Panel_3:FindFirstChild("CardAngle_f"))
 local CardAmount_1e = LMG2L["CardAmount_1e"] or (Panel_3 and Panel_3:FindFirstChild("CardAmount_1e"))
 
-local angleBox  = LMG2L["AngleBox_b"] or (CardAngle_f and CardAngle_f:FindFirstChildOfClass("TextBox"))
-local amountBox = LMG2L["AmountBox_10"] or (CardAmount_1e and CardAmount_1e:FindFirstChildOfClass("TextBox"))
+local angleBox      = LMG2L["AngleBox_b"] or (CardAngle_f and CardAngle_f:FindFirstChildOfClass("TextBox"))
+local uiStrokeAngle = LMG2L["UIStroke_d"] or (angleBox and angleBox:FindFirstChildOfClass("UIStroke"))
+local amountBox     = LMG2L["AmountBox_10"] or (CardAmount_1e and CardAmount_1e:FindFirstChildOfClass("TextBox"))
 
 -- 3. INTEGRASI TOGGLE COMPONENTS
-local CardFlipAxis_4   = LMG2L["CardFlipAxis_4"]
-local CardSwapSides_62 = LMG2L["CardSwapSides_62"]
-local CardEnable_49    = LMG2L["CardEnable_49"]
+local CardFlipAxis_4   = LMG2L["CardFlipAxis_4"] or (Panel_3 and Panel_3:FindFirstChild("CardFlipAxis_4"))
+local CardSwapSides_62 = LMG2L["CardSwapSides_62"] or (Panel_3 and Panel_3:FindFirstChild("CardSwapSides_62"))
+local CardEnable_49    = LMG2L["CardEnable_49"] or (Panel_3 and Panel_3:FindFirstChild("CardEnable_49"))
 
 local toggleComponents = {
 	["FlipAxis"]  = LMG2L["ChecklisButton_24"] or (CardFlipAxis_4 and CardFlipAxis_4:FindFirstChildWhichIsA("ImageButton", true)),
@@ -1245,7 +1246,7 @@ if amountBox then amountBox.Text = "0" end
 if angleBox then angleBox.Text = "5" end
 
 --------------------------------------------------------------------------------
--- FIX TAHAP 1: ARCHIMEDES CORE LOGIC & HARD-CODED MATH TRANSFORMATIONS
+-- ARCHIMEDES CORE LOGIC & HARD-CODED MATH TRANSFORMATIONS
 --------------------------------------------------------------------------------
 
 -- 1. REFACTORED PERMUTASI PIVOT EDGE MATH LOGIC (ARCHIMEDES COMPATIBLE)
@@ -1256,7 +1257,6 @@ local function CalculateCFrame(baseCFrame, size, direction, angle, flip, swap)
 	local offsetVector = Vector3.zero
 	local rotCFrame = CFrame.identity
 
-	-- Kalkulasi offset pivot titik edge berdasarkan orientasi sumbu Archimedes
 	if direction == "X" or direction == "X²" then
 		local sign = (direction == "X") and 1 or -1
 		local sideMultiplier = swap and -1 or 1
@@ -1276,7 +1276,6 @@ local function CalculateCFrame(baseCFrame, size, direction, angle, flip, swap)
 		rotCFrame = CFrame.Angles(0, 0, radAngle * sign)
 	end
 
-	-- Transformasi: Pindah Pivot -> Rotasi -> Kembalikan Offset
 	return baseCFrame * CFrame.new(offsetVector) * rotCFrame * CFrame.new(-offsetVector)
 end
 
@@ -1330,7 +1329,7 @@ local function UpdatePreview()
 	PreviewPart.Parent = Workspace
 end
 
--- 4. VISUAL AXIS SELECTION ENGINE
+-- 4. VISUAL AXIS SELECTION ENGINE (WITH COLOR 223, 230, 237 ACTIVE INTERACTION)
 local function updateAxisUI(chosenAxis)
 	CurrentSettings.Direction = chosenAxis
 	for axisName, button in pairs(axisButtons) do
@@ -1361,119 +1360,6 @@ end
 updateAxisUI("X")
 
 -- 5. TEXTBOX INPUT SANITIZATION & EVENT BINDINGS
-if angleBox then
-	angleBox:GetPropertyChangedSignal("Text"):Connect(function()
-		local val = tonumber(angleBox.Text)
-		if val then
-			CurrentSettings.Angle = val
-			UpdatePreview()
-		end
-	end)
-	
-	angleBox.FocusLost:Connect(function()
-		local val = tonumber(angleBox.Text)
-		if not val then
-			angleBox.Text = tostring(CurrentSettings.Angle)
-		end
-	end)
-end
-
-if amountBox then
-	amountBox:GetPropertyChangedSignal("Text"):Connect(function()
-		local val = tonumber(amountBox.Text)
-		if val then
-			CurrentSettings.Amount = math.clamp(math.floor(val), 0, 9999)
-		end
-	end)
-
-	amountBox.FocusLost:Connect(function()
-		local val = tonumber(amountBox.Text)
-		if not val then
-			amountBox.Text = tostring(CurrentSettings.Amount)
-		end
-	end)
-end
-
--- 6. TOGGLE EVENT BINDINGS
-for toggleName, btn in pairs(toggleComponents) do
-	if btn then
-		btn.MouseButton1Click:Connect(function()
-			CurrentSettings[toggleName] = not CurrentSettings[toggleName]
-			
-			-- Indicator Visual State (ImageColor3 Feedback)
-			if CurrentSettings[toggleName] then
-				btn.ImageColor3 = Color3.fromRGB(0, 255, 120)
-			else
-				btn.ImageColor3 = Color3.fromRGB(255, 255, 255)
-			end
-			
-			UpdatePreview()
-		end)
-	end
-end
-
--- 7. SELECTION LISTENER (MOUSE TARGETING SYSTEM)
-if clickConnection then clickConnection:Disconnect() end
-clickConnection = Mouse.Button1Down:Connect(function()
-	local target = Mouse.Target
-	if target and target:IsA("BasePart") and target.Name ~= "Archimedes_Preview" then
-		SelectedPart = target
-		UpdatePreview()
-	end
-end)
-
---------------------------------------------------------------------------------
--- FIX TAHAP 2: TOGGLE VISIBLE, RENDER ENGINE, UNDO STACK & CLOSE SYSTEM
---------------------------------------------------------------------------------
-
--- 2. TOGGLE CHECKLIST SYSTEM (HARD-CODED VISIBLE PROPERTY SAFEGUARD)
-local function setupChecklistToggle(checkButton, settingName, defaultState)
-	if not checkButton then return end
-	
-	CurrentSettings[settingName] = defaultState
-	
-	-- Menjamin properti Visible tersedia & diinisialisasi
-	pcall(function()
-		checkButton.Visible = defaultState
-	end)
-	
-	local function refreshToggleVisual()
-		local state = CurrentSettings[settingName]
-		if checkButton:IsA("ImageButton") or checkButton:IsA("ImageLabel") then
-			-- Menggabungkan fallback Visible dan ImageTransparency agar kompatibel 100%
-			checkButton.Visible = state
-			checkButton.ImageTransparency = state and 0 or 1
-		else
-			checkButton.Visible = state
-		end
-	end
-	
-	refreshToggleVisual()
-	
-	local parentClickArea = (checkButton.Parent and checkButton.Parent:IsA("GuiButton")) and checkButton.Parent or checkButton
-	parentClickArea.MouseButton1Click:Connect(function()
-		CurrentSettings[settingName] = not CurrentSettings[settingName]
-		refreshToggleVisual()
-		
-		if settingName == "Enabled" then
-			if not CurrentSettings.Enabled then
-				ClearPreview() 
-				SelectedPart = nil
-				ActiveRenderFolder = nil
-			else
-				UpdatePreview() 
-			end
-		else
-			UpdatePreview() 
-		end
-	end)
-end
-
-setupChecklistToggle(toggleComponents["FlipAxis"], "FlipAxis", false)
-setupChecklistToggle(toggleComponents["SwapSides"], "SwapSides", false)
-setupChecklistToggle(toggleComponents["Enabled"], "Enabled", true)
-
--- 3. INPUT EVENT HANDLING (SANITISASI INPUT ANGLE & AMOUNT)
 if angleBox then
 	angleBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local val = tonumber(angleBox.Text) or 0
@@ -1508,7 +1394,62 @@ if amountBox then
 	end)
 end
 
--- 4. FOLDER MANAGEMENT SYSTEM
+-- 6. TOGGLE CHECKLIST SYSTEM (SAFE VISIBLE & ENABLE STATE ENGINE)
+local function setupChecklistToggle(checkButton, settingName, defaultState)
+	if not checkButton then return end
+	
+	CurrentSettings[settingName] = defaultState
+	
+	pcall(function()
+		checkButton.Visible = defaultState
+	end)
+	
+	local function refreshToggleVisual()
+		local state = CurrentSettings[settingName]
+		if checkButton:IsA("ImageButton") or checkButton:IsA("ImageLabel") then
+			checkButton.Visible = state
+			checkButton.ImageTransparency = state and 0 or 1
+		else
+			checkButton.Visible = state
+		end
+	end
+	
+	refreshToggleVisual()
+	
+	local parentClickArea = (checkButton.Parent and checkButton.Parent:IsA("GuiButton")) and checkButton.Parent or checkButton
+	parentClickArea.MouseButton1Click:Connect(function()
+		CurrentSettings[settingName] = not CurrentSettings[settingName]
+		refreshToggleVisual()
+		
+		if settingName == "Enabled" then
+			if not CurrentSettings.Enabled then
+				ClearPreview() 
+				SelectedPart = nil
+				ActiveRenderFolder = nil
+			else
+				UpdatePreview() 
+			end
+		else
+			UpdatePreview() 
+		end
+	end)
+end
+
+setupChecklistToggle(toggleComponents["FlipAxis"], "FlipAxis", false)
+setupChecklistToggle(toggleComponents["SwapSides"], "SwapSides", false)
+setupChecklistToggle(toggleComponents["Enabled"], "Enabled", true)
+
+-- 7. SELECTION LISTENER (MOUSE TARGETING SYSTEM)
+if clickConnection then clickConnection:Disconnect() end
+clickConnection = Mouse.Button1Down:Connect(function()
+	local target = Mouse.Target
+	if target and target:IsA("BasePart") and target.Name ~= "Archimedes_Preview" then
+		SelectedPart = target
+		UpdatePreview()
+	end
+end)
+
+-- 8. FOLDER MANAGEMENT SYSTEM
 local function GetMainFolder()
 	local mainFolder = Workspace:FindFirstChild("Archimedes By Naraku")
 	if not mainFolder then
@@ -1519,7 +1460,7 @@ local function GetMainFolder()
 	return mainFolder
 end
 
--- 5. EXECUTE RENDER SYSTEM (ACCURATE CHAIN-RENDERING)
+-- 9. EXECUTE RENDER SYSTEM (ACCURATE CHAIN-RENDERING)
 local function ExecuteRender(renderAllMode)
 	if not SelectedPart or not SelectedPart.Parent or not SelectedPart:IsA("BasePart") then
 		SelectedPart = nil
@@ -1544,7 +1485,6 @@ local function ExecuteRender(renderAllMode)
 		FolderCounter = FolderCounter + 1
 	end
 
-	-- Menghitung jumlah loop (Render All: 360 / Angle, Normal: nilai Amount)
 	local targetAmount = (CurrentSettings.Amount == 0 and not renderAllMode) and 1 or CurrentSettings.Amount
 	local loops = renderAllMode and math.floor(360 / absAngle) or math.max(1, targetAmount)
 	
@@ -1582,7 +1522,7 @@ local function ExecuteRender(renderAllMode)
 	UpdatePreview()
 end
 
--- 6. ACTION BUTTONS & UNDO STACK ENGINE
+-- 10. ACTION BUTTONS & UNDO STACK ENGINE
 if renderButton then
 	renderButton.MouseButton1Click:Connect(function()
 		ExecuteRender(false) 
@@ -1628,7 +1568,7 @@ if undoButton then
 	end)
 end
 
--- 7. CLOSE BUTTON SYSTEM (ANIMATION & CLEANUP)
+-- 11. CLOSE BUTTON SYSTEM (ANIMATION & CLEANUP)
 local isClosing = false
 
 if closeButton then
