@@ -1106,5 +1106,89 @@ if Panel_3 then
 	TweenService:Create(Panel_3, tweenOpen, { Size = NORMAL_SIZE }):Play()
 end
 
+-- Services Guard
+local CoreGui = game:GetService("CoreGui")
+local getHui = gethui or function() return CoreGui end
+local LMG2L = (typeof(LMG2L) == "table") and LMG2L or {}
+
+-- Core References
+local ScreenGui_1 = LMG2L["ScreenGui_1"] or CoreGui:FindFirstChild("ScreenGui_1")
+local Panel_3     = LMG2L["Panel_3"] or (ScreenGui_1 and ScreenGui_1:FindFirstChild("Panel_3"))
+local CardAxisButton_28 = LMG2L["CardAxisButton_28"] or (Panel_3 and Panel_3:FindFirstChild("CardAxisButton_28"))
+
+-- Color Constants
+local COLOR_ACTIVE_BG  = Color3.fromRGB(223, 230, 237)
+local COLOR_ACTIVE_TXT = Color3.fromRGB(0, 0, 0)
+local COLOR_NORMAL_BG  = Color3.fromRGB(0, 0, 0)
+local COLOR_NORMAL_TXT = Color3.fromRGB(255, 255, 255)
+
+-- Mapping Axis Buttons
+local axisButtons = {
+	["X"]  = LMG2L["AxisXButton_38"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisXButton_38")),
+	["Y"]  = LMG2L["AxisYButton_36"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisYButton_36")),
+	["Z"]  = LMG2L["AxisZButton_3d"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisZButton_3d")),
+	["X²"] = LMG2L["AxisX²Button_3f"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisX²Button_3f")),
+	["Y²"] = LMG2L["AxisY²Button_33"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisY²Button_33")),
+	["Z²"] = LMG2L["AxisZ²Button_3a"] or (CardAxisButton_28 and CardAxisButton_28:FindFirstChild("AxisZ²Button_3a"))
+}
+
+-- Global Variable untuk Menyimpan Axis Terpilih
+_G.SelectedAxis = _G.SelectedAxis or "X"
+
+-- Function Update Visual UI Axis
+local function updateAxisVisual(chosenAxis)
+	_G.SelectedAxis = chosenAxis
+
+	for axisName, button in pairs(axisButtons) do
+		if button then
+			local isSelected = (axisName == chosenAxis)
+			local targetBgColor  = isSelected and COLOR_ACTIVE_BG or COLOR_NORMAL_BG
+			local targetTxtColor = isSelected and COLOR_ACTIVE_TXT or COLOR_NORMAL_TXT
+
+			-- Update Frame/Button Background Color
+			button.BackgroundColor3 = targetBgColor
+
+			-- Update Text Color (TextButton)
+			if button:IsA("TextButton") then
+				button.TextColor3 = targetTxtColor
+			end
+
+			-- Update Text Color (TextLabel inside Frame/Button)
+			for _, desc in ipairs(button:GetDescendants()) do
+				if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+					desc.TextColor3 = targetTxtColor
+				end
+			end
+		end
+	end
+end
+
+-- Setup Event Click untuk Setiap Tombol Axis
+for axisName, button in pairs(axisButtons) do
+	if button then
+		-- Mencari komponen yang bisa diklik
+		local clickTarget = button:IsA("GuiButton") and button 
+			or button:FindFirstChildOfClass("GuiButton") 
+			or button
+
+		local function onAxisClicked()
+			updateAxisVisual(axisName)
+			print("Axis Terpilih: " .. tostring(axisName))
+		end
+
+		if clickTarget:IsA("GuiButton") then
+			clickTarget.MouseButton1Click:Connect(onAxisClicked)
+		else
+			clickTarget.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					onAxisClicked()
+				end
+			end)
+		end
+	end
+end
+
+-- Default Set Active ke Axis "X" saat Awal
+updateAxisVisual(_G.SelectedAxis)
 
 return LMG2L["ScreenGui_1"], require;
