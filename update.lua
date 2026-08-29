@@ -3010,7 +3010,7 @@ local MenuFeatureList = {
     {
         Name = "TERRAIN",
         Icon = "rbxassetid://129361331543944",
-        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin/refs/heads/main/terrain.lua"
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/terrain.lua"
     },
 	{
         Name = "AUDIO",
