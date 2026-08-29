@@ -693,10 +693,11 @@ exportFrame.ZIndex           = 200
 corner(exportFrame, 10)
 stroke(exportFrame, Color3.fromRGB(60,90,180), 1.5)
 
-local expTitle = mkLabel(exportFrame, "💾 GENERATED CODE", 12, 8, 300, 26, 13, Color3.fromRGB(140,200,255))
+local expTitle = mkLabel(exportFrame, "💾 GENERATED CODE", 12, 8, 180, 26, 13, Color3.fromRGB(140,200,255))
 expTitle.Font = Enum.Font.GothamBold
 expTitle.ZIndex = 201
 
+-- Tombol Close X
 local expClose = Instance.new("TextButton", exportFrame)
 expClose.Size              = UDim2.new(0,30,0,30)
 expClose.Position          = UDim2.new(1,-35,0,5)
@@ -709,8 +710,20 @@ expClose.ZIndex             = 205
 corner(expClose, 6)
 expClose.MouseButton1Click:Connect(function() exportFrame.Visible = false end)
 
+-- Tombol Copy Direct
+local copyExpBtn = Instance.new("TextButton", exportFrame)
+copyExpBtn.Size              = UDim2.new(0,100,0,30)
+copyExpBtn.Position          = UDim2.new(1,-140,0,5)
+copyExpBtn.BackgroundColor3  = Color3.fromRGB(0,140,70)
+copyExpBtn.Text              = "📋 COPY"
+copyExpBtn.TextSize           = 11
+copyExpBtn.TextColor3         = Color3.new(1,1,1)
+copyExpBtn.Font               = Enum.Font.GothamBold
+copyExpBtn.ZIndex             = 205
+corner(copyExpBtn, 6)
+
 local expScroll = Instance.new("ScrollingFrame", exportFrame)
-expScroll.Size              = UDim2.new(1,-8,1,-70)
+expScroll.Size              = UDim2.new(1,-8,1,-80)
 expScroll.Position          = UDim2.new(0,4,0,40)
 expScroll.BackgroundTransparency = 1
 expScroll.ScrollBarThickness = 5
@@ -734,22 +747,69 @@ local charLbl = mkLabel(exportFrame, "0 objek | 0 karakter", 8, -26, 300, 22, 10
 charLbl.Position = UDim2.new(0,8,1,-26)
 charLbl.ZIndex   = 205
 
+-- Logika Copy Aman (Anti Crash)
+copyExpBtn.MouseButton1Click:Connect(function()
+    if tBox.Text == "" then return end
+    
+    local success = pcall(function()
+        if setclipboard then
+            setclipboard(tBox.Text)
+        elseif toclipboard then
+            toclipboard(tBox.Text)
+        else
+            error("No API")
+        end
+    end)
+
+    if success then
+        copyExpBtn.Text = "✓ COPIED!"
+        copyExpBtn.BackgroundColor3 = Color3.fromRGB(28, 180, 58)
+    else
+        tBox:CaptureFocus()
+        copyExpBtn.Text = "SELECT ALL!"
+        copyExpBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+    end
+    
+    task.wait(2)
+    copyExpBtn.Text = "📋 COPY"
+    copyExpBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 70)
+end)
+
+-- Logika Generate Code (Fix Drag Mode & Crash)
 actionBtn("📋  GENERATE CODE", Color3.fromRGB(0,90,160), lo, function(b)
     local code = "-- PRO TERRAIN CODE | Total: "..#savedData.." objek\nlocal t=workspace.Terrain\n"
+    
     for _, d in pairs(savedData) do
-        local line
-        if d.isFlat then
-            line = ("t:FillBlock(CFrame.new(%.1f,%.1f,%.1f),Vector3.new(%.1f,%.1f,%.1f),Enum.Material.%s)\n"):format(
-                d.pos.X,d.pos.Y,d.pos.Z, d.size,d.height,d.size, d.mat.Name)
-        elseif d.shape == "Ball" then
-            line = ("t:FillBall(Vector3.new(%.1f,%.1f,%.1f),%.1f,Enum.Material.%s)\n"):format(
-                d.pos.X,d.pos.Y,d.pos.Z, d.size/2, d.mat.Name)
-        else
-            line = ("t:FillBlock(CFrame.new(%.1f,%.1f,%.1f),Vector3.new(%.1f,%.1f,%.1f),Enum.Material.%s)\n"):format(
-                d.pos.X,d.pos.Y,d.pos.Z, d.size,d.height,d.size, d.mat.Name)
+        if d.isDrag and d.pos and d.pos2 then
+            local p1, p2 = d.pos, d.pos2
+            if d.shape == "Ball" then
+                local dist = (p2-p1).Magnitude
+                local steps = math.max(5, math.floor(dist / math.max(1, d.size/4)))
+                for i=0, steps do
+                    local pos = p1:Lerp(p2, i/steps)
+                    code = code .. string.format("t:FillBall(Vector3.new(%.1f,%.1f,%.1f),%.1f,Enum.Material.%s)\n",
+                        pos.X, pos.Y, pos.Z, d.size/2, d.mat.Name)
+                end
+            else
+                local minX, maxX = math.min(p1.X,p2.X), math.max(p1.X,p2.X)
+                local minZ, maxZ = math.min(p1.Z,p2.Z), math.max(p1.Z,p2.Z)
+                local cen = Vector3.new((minX+maxX)/2, (p1.Y+p2.Y)/2, (minZ+maxZ)/2)
+                local szX, szZ = maxX-minX+d.size, maxZ-minZ+d.size
+                code = code .. string.format("t:FillBlock(CFrame.new(%.1f,%.1f,%.1f),Vector3.new(%.1f,%.1f,%.1f),Enum.Material.%s)\n",
+                    cen.X, cen.Y, cen.Z, szX, d.height, szZ, d.mat.Name)
+            end
+        elseif d.isFlat and d.pos then
+            code = code .. string.format("t:FillBlock(CFrame.new(%.1f,%.1f,%.1f),Vector3.new(%.1f,%.1f,%.1f),Enum.Material.%s)\n",
+                d.pos.X, d.pos.Y, d.pos.Z, d.size, d.height, d.size, d.mat.Name)
+        elseif d.shape == "Ball" and d.pos then
+            code = code .. string.format("t:FillBall(Vector3.new(%.1f,%.1f,%.1f),%.1f,Enum.Material.%s)\n",
+                d.pos.X, d.pos.Y, d.pos.Z, d.size/2, d.mat.Name)
+        elseif d.pos then
+            code = code .. string.format("t:FillBlock(CFrame.new(%.1f,%.1f,%.1f),Vector3.new(%.1f,%.1f,%.1f),Enum.Material.%s)\n",
+                d.pos.X, d.pos.Y, d.pos.Z, d.size, d.height, d.size, d.mat.Name)
         end
-        code = code..line
     end
+    
     tBox.Text    = code
     charLbl.Text = #savedData.." objek | "..#code.." karakter"
     expScroll.CanvasSize = UDim2.new(0,0,0,tBox.TextBounds.Y+50)
