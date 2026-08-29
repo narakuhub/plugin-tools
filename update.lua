@@ -2728,10 +2728,6 @@ if InsertButton and InsertButton:IsA("GuiButton") then
     end)
 end
 
--------------------------------------------------------------------------
--- FIX: LOGIC SEARCH & SAVE SYSTEM (OPTIMIZED, STABLE INPUT & CATEGORY-BASED)
--------------------------------------------------------------------------
-
 -- Color Palette Configuration
 local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
 
@@ -2741,7 +2737,6 @@ local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
 local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     if not textBox or not textBox:IsA("TextBox") then return end
 
-    -- Saat kotak di-klik / fokus
     textBox.Focused:Connect(function()
         if textBox.Text == defaultPlaceholder then
             textBox.Text = ""
@@ -2750,9 +2745,8 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
         textBox.TextColor3 = COLOR_TEXT_ACTIVE
     end)
 
-    -- Saat fokus dilepas dari kotak
     textBox.FocusLost:Connect(function()
-        local currentText = textBox.Text:match("^%s*(.-)%s*$") -- Trim whitespace
+        local currentText = textBox.Text:match("^%s*(.-)%s*$")
         if currentText == "" or currentText == defaultPlaceholder then
             textBox.Text = defaultPlaceholder
             textBox.TextTransparency = 0.5
@@ -2762,7 +2756,6 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
         end
     end)
 
-    -- Deteksi perubahan teks (Visual Real-time Update)
     textBox:GetPropertyChangedSignal("Text"):Connect(function()
         local currentText = textBox.Text
         if currentText ~= "" and currentText ~= defaultPlaceholder then
@@ -2772,7 +2765,6 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     end)
 end
 
--- Menerapkan Efek Visual & Stabilitas Teks ke Seluruh Input Box
 SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
 SetupInputBoxBehavior(SearchBox, "Search asset...")
 SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
@@ -2785,7 +2777,7 @@ local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"])
 local InsertButton = LMG2L and (LMG2L["InsertButton_34"] or LMG2L["InsertButton"])
 
 -------------------------------------------------------------------------
--- 1. FUNGSIONALITAS SEARCH SYSTEM (MANUAL TRIGGER ONLY)
+-- 1. FUNGSIONALITAS SEARCH SYSTEM (PURE CLICK TRIGGER ONLY)
 -------------------------------------------------------------------------
 local function ExecuteSearch()
     local query = ""
@@ -2802,27 +2794,16 @@ local function ExecuteSearch()
     end
 end
 
--- Trigger Search via Tombol Klik Manual
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(function()
         local originalText = SearchButton.Text
         SearchButton.Text = "SEARCH"
         
-        -- Eksekusi pencarian & pembersihan list
         ExecuteSearch()
         
         task.wait(0.3)
         if SearchButton then 
             SearchButton.Text = originalText 
-        end
-    end)
-end
-
--- Trigger Search via Keyboard Enter (Opsional)
-if SearchBox and SearchBox:IsA("TextBox") then
-    SearchBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            ExecuteSearch()
         end
     end)
 end
