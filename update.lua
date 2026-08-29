@@ -2942,49 +2942,75 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 end
 
 -------------------------------------------------------------------------
--- 3. FUNGSIONALITAS DIRECT INSERT BUTTON (WITH DEBOUNCE FIX)
+-- 3A. FUNGSIONALITAS MANUAL INSERT (InsertBox_38 & InsertButton_34)
 -------------------------------------------------------------------------
 local isInsertingManual = false
 
-if InsertButton and InsertButton:IsA("GuiButton") then
-    InsertButton.MouseButton1Click:Connect(function()
-        -- Proteksi Debounce (Mencegah Klik Ganda/Double Load)
-        if isInsertingManual then return end
+local InsertButton_34 = (LMG2L and LMG2L["InsertButton_34"]) or InsertButton
+local InsertBox_38 = (LMG2L and LMG2L["InsertBox_38"]) or InsertIDBox
 
-        -- Utamakan khusus membaca dari InsertIDBox (InsertIDBox_38)
-        local inputTarget = InsertIDBox or (LMG2L and LMG2L["InsertIDBox_38"]) or SaveIDBox
-        if not inputTarget or not inputTarget:IsA("TextBox") then return end
+if InsertButton_34 and InsertButton_34:IsA("GuiButton") then
+    InsertButton_34.MouseButton1Click:Connect(function()
+        if isInsertingManual then return end
+        if not InsertBox_38 or not InsertBox_38:IsA("TextBox") then return end
         
-        local rawText = inputTarget.Text
+        local rawText = InsertBox_38.Text
         local cleanId = tonumber(rawText:match("%d+"))
-        local originalText = InsertButton.Text
+        local originalText = InsertButton_34.Text
 
         if cleanId then
             isInsertingManual = true
             
-            -- Pertahankan teks ID pada box
-            inputTarget.Text = tostring(cleanId)
-            inputTarget.TextTransparency = 0
+            InsertBox_38.Text = tostring(cleanId)
+            InsertBox_38.TextTransparency = 0
             if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
-                inputTarget.TextColor3 = COLOR_TEXT_ACTIVE
+                InsertBox_38.TextColor3 = COLOR_TEXT_ACTIVE
             end
 
-            InsertButton.Text = "WORKING..."
+            InsertButton_34.Text = "WORKING..."
             
             task.spawn(function()
                 if typeof(InsertAsset) == "function" then
-                    InsertAsset(cleanId, CurrentCategory, InsertButton)
+                    InsertAsset(cleanId, CurrentCategory, InsertButton_34)
                 end
                 
                 task.wait(1.5)
-                if InsertButton then InsertButton.Text = originalText end
+                if InsertButton_34 then InsertButton_34.Text = originalText end
                 isInsertingManual = false
             end)
         else
-            InsertButton.Text = "Invalid ID!"
+            InsertButton_34.Text = "Invalid ID!"
             task.wait(1.5)
-            if InsertButton then InsertButton.Text = originalText end
+            if InsertButton_34 then InsertButton_34.Text = originalText end
         end
+    end)
+end
+
+-------------------------------------------------------------------------
+-- 3B. HELPER CARD INSERT (InsertButton_6b Di Dalam Card_5d)
+-------------------------------------------------------------------------
+local function SetupCardInsertButton(cardFrame, assetId)
+    local cardInsertBtn = cardFrame:FindFirstChild("InsertButton_6b", true)
+    if not cardInsertBtn or not cardInsertBtn:IsA("GuiButton") then return end
+
+    local isInsertingCard = false
+
+    cardInsertBtn.MouseButton1Click:Connect(function()
+        if isInsertingCard then return end
+        isInsertingCard = true
+
+        local originalText = cardInsertBtn.Text
+        cardInsertBtn.Text = "LOAD"
+
+        task.spawn(function()
+            if typeof(InsertAsset) == "function" then
+                InsertAsset(assetId, CurrentCategory, cardInsertBtn)
+            end
+
+            task.wait(1.5)
+            if cardInsertBtn then cardInsertBtn.Text = originalText end
+            isInsertingCard = false
+        end)
     end)
 end
 
