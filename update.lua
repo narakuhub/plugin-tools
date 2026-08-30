@@ -2804,6 +2804,11 @@ local MenuFeatureList = {
         Icon = "rbxassetid://136460394404917",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/audio.lua"
     },
+	{
+        Name = "ICONS",
+        Icon = "rbxassetid://114334671982047",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/lucide.lua"
+    },
     {
         Name = "FLY GUI",
         Icon = "rbxassetid://126428723702595",
