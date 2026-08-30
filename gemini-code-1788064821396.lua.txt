@@ -1,0 +1,434 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local PLAYER = Players.LocalPlayer
+local GUI_NAME = "NarakuIcons"
+local ICONS_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/icons.lua"
+
+-- Clean up existing GUI
+local oldGui = CoreGui:FindFirstChild(GUI_NAME)
+if oldGui then
+	oldGui:Destroy()
+end
+
+local function getParent()
+	if gethui then
+		return gethui()
+	end
+	return CoreGui
+end
+
+-- Fetch Icons
+local Icons = loadstring(game:HttpGet(ICONS_URL))()
+local IconList = {}
+
+for name, asset in pairs(Icons) do
+	table.insert(IconList, {
+		Name = name,
+		Asset = asset,
+		ID = tostring(asset):match("(%d+)$") or tostring(asset)
+	})
+end
+
+table.sort(IconList, function(a, b)
+	return a.Name < b.Name
+end)
+
+-- Main GUI Setup
+local Gui = Instance.new("ScreenGui")
+Gui.Name = GUI_NAME
+Gui.ResetOnSpawn = false
+Gui.IgnoreGuiInset = true
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Gui.Parent = getParent()
+
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.fromOffset(270, 300)
+Main.Position = UDim2.new(0.5, -135, 0.5, -150)
+Main.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 13)
+MainCorner.Parent = Main
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(55, 55, 61)
+MainStroke.Transparency = 0.35
+MainStroke.Thickness = 1
+MainStroke.Parent = Main
+
+-- Header Section
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 48)
+Header.BackgroundTransparency = 1
+Header.Parent = Main
+
+local HeaderIcon = Instance.new("ImageLabel")
+HeaderIcon.Name = "Icon"
+HeaderIcon.Size = UDim2.fromOffset(20, 20)
+HeaderIcon.Position = UDim2.fromOffset(15, 14)
+HeaderIcon.BackgroundTransparency = 1
+HeaderIcon.Image = "rbxassetid://85341033903792"
+HeaderIcon.ImageColor3 = Color3.fromRGB(220, 220, 225)
+HeaderIcon.Parent = Header
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -100, 1, 0)
+Title.Position = UDim2.fromOffset(40, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Icons"
+Title.TextColor3 = Color3.fromRGB(220, 220, 225)
+Title.TextSize = 18
+Title.Font = Enum.Font.ArialBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+local MenuButton = Instance.new("TextButton")
+MenuButton.Name = "Menu"
+MenuButton.Size = UDim2.fromOffset(34, 34)
+MenuButton.Position = UDim2.new(1, -78, 0, 7)
+MenuButton.BackgroundTransparency = 1
+MenuButton.Text = "•••"
+MenuButton.TextColor3 = Color3.fromRGB(220, 220, 225)
+MenuButton.TextSize = 20
+MenuButton.Font = Enum.Font.ArialBold
+MenuButton.Parent = Header
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "Close"
+CloseButton.Size = UDim2.fromOffset(34, 34)
+CloseButton.Position = UDim2.new(1, -42, 0, 7)
+CloseButton.BackgroundTransparency = 1
+CloseButton.Text = "×"
+CloseButton.TextColor3 = Color3.fromRGB(220, 220, 225)
+CloseButton.TextSize = 30
+CloseButton.Font = Enum.Font.ArialBold
+CloseButton.Parent = Header
+
+-- Content Section
+local Content = Instance.new("ScrollingFrame")
+Content.Name = "Content"
+Content.Size = UDim2.new(1, -20, 1, -104)
+Content.Position = UDim2.fromOffset(10, 48)
+Content.BackgroundTransparency = 1
+Content.BorderSizePixel = 0
+Content.ScrollBarThickness = 3
+Content.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 88)
+Content.CanvasSize = UDim2.new()
+Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Content.ScrollingDirection = Enum.ScrollingDirection.Y
+Content.Parent = Main
+
+local Grid = Instance.new("UIGridLayout")
+Grid.CellSize = UDim2.fromOffset(42, 42)
+Grid.CellPadding = UDim2.fromOffset(8, 8)
+Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Grid.SortOrder = Enum.SortOrder.LayoutOrder
+Grid.Parent = Content
+
+-- Search Section
+local SearchHolder = Instance.new("Frame")
+SearchHolder.Name = "SearchHolder"
+SearchHolder.Size = UDim2.new(1, -30, 0, 40)
+SearchHolder.Position = UDim2.new(0, 15, 1, -50)
+SearchHolder.BackgroundColor3 = Color3.fromRGB(38, 38, 45)
+SearchHolder.BorderSizePixel = 0
+SearchHolder.Parent = Main
+
+local SearchCorner = Instance.new("UICorner")
+SearchCorner.CornerRadius = UDim.new(0, 11)
+SearchCorner.Parent = SearchHolder
+
+local SearchIcon = Instance.new("ImageLabel")
+SearchIcon.Name = "Icon"
+SearchIcon.Size = UDim2.fromOffset(18, 18)
+SearchIcon.Position = UDim2.fromOffset(11, 11)
+SearchIcon.BackgroundTransparency = 1
+SearchIcon.Image = "rbxassetid://92345384671606"
+SearchIcon.ImageColor3 = Color3.fromRGB(190, 190, 198)
+SearchIcon.Parent = SearchHolder
+
+local SearchBox = Instance.new("TextBox")
+SearchBox.Name = "Search"
+SearchBox.Size = UDim2.new(1, -40, 1, 0)
+SearchBox.Position = UDim2.fromOffset(38, 0)
+SearchBox.BackgroundTransparency = 1
+SearchBox.ClearTextOnFocus = false
+SearchBox.PlaceholderText = "Search Flare Icons..."
+SearchBox.PlaceholderColor3 = Color3.fromRGB(115, 115, 125)
+SearchBox.Text = ""
+SearchBox.TextColor3 = Color3.fromRGB(225, 225, 230)
+SearchBox.TextSize = 14
+SearchBox.Font = Enum.Font.ArialBold
+SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+SearchBox.Parent = SearchHolder
+
+-- Detail View Section
+local Detail = Instance.new("Frame")
+Detail.Name = "Detail"
+Detail.Size = UDim2.new(1, -28, 0, 170)
+Detail.Position = UDim2.new(0, 14, 0.5, -85)
+Detail.BackgroundColor3 = Color3.fromRGB(27, 27, 32)
+Detail.BorderSizePixel = 0
+Detail.Visible = false
+Detail.ZIndex = 20
+Detail.Parent = Main
+
+local DetailCorner = Instance.new("UICorner")
+DetailCorner.CornerRadius = UDim.new(0, 12)
+DetailCorner.Parent = Detail
+
+local DetailStroke = Instance.new("UIStroke")
+DetailStroke.Color = Color3.fromRGB(70, 70, 78)
+DetailStroke.Transparency = 0.25
+DetailStroke.Parent = Detail
+
+local DetailPreview = Instance.new("ImageLabel")
+DetailPreview.Name = "Preview"
+DetailPreview.Size = UDim2.fromOffset(52, 52)
+DetailPreview.Position = UDim2.fromOffset(14, 14)
+DetailPreview.BackgroundTransparency = 1
+DetailPreview.ImageColor3 = Color3.fromRGB(235, 235, 240)
+DetailPreview.ZIndex = 21
+DetailPreview.Parent = Detail
+
+local DetailName = Instance.new("TextLabel")
+DetailName.Name = "Name"
+DetailName.Size = UDim2.new(1, -85, 0, 25)
+DetailName.Position = UDim2.fromOffset(78, 13)
+DetailName.BackgroundTransparency = 1
+DetailName.TextColor3 = Color3.fromRGB(235, 235, 240)
+DetailName.TextSize = 15
+DetailName.Font = Enum.Font.ArialBold
+DetailName.TextXAlignment = Enum.TextXAlignment.Left
+DetailName.TextTruncate = Enum.TextTruncate.AtEnd
+DetailName.ZIndex = 21
+DetailName.Parent = Detail
+
+local DetailID = Instance.new("TextLabel")
+DetailID.Name = "ID"
+DetailID.Size = UDim2.new(1, -85, 0, 22)
+DetailID.Position = UDim2.fromOffset(78, 38)
+DetailID.BackgroundTransparency = 1
+DetailID.TextColor3 = Color3.fromRGB(145, 145, 155)
+DetailID.TextSize = 12
+DetailID.Font = Enum.Font.ArialBold
+DetailID.TextXAlignment = Enum.TextXAlignment.Left
+DetailID.TextTruncate = Enum.TextTruncate.AtEnd
+DetailID.ZIndex = 21
+DetailID.Parent = Detail
+
+local CopyButton = Instance.new("TextButton")
+CopyButton.Name = "CopyID"
+CopyButton.Size = UDim2.new(1, -28, 0, 38)
+CopyButton.Position = UDim2.new(0, 14, 1, -52)
+CopyButton.BackgroundColor3 = Color3.fromRGB(48, 48, 57)
+CopyButton.BorderSizePixel = 0
+CopyButton.Text = "COPY ID"
+CopyButton.TextColor3 = Color3.fromRGB(230, 230, 235)
+CopyButton.TextSize = 13
+CopyButton.Font = Enum.Font.ArialBold
+CopyButton.ZIndex = 21
+CopyButton.Parent = Detail
+
+local CopyCorner = Instance.new("UICorner")
+CopyCorner.CornerRadius = UDim.new(0, 9)
+CopyCorner.Parent = CopyButton
+
+local DetailClose = Instance.new("TextButton")
+DetailClose.Name = "Close"
+DetailClose.Size = UDim2.fromOffset(30, 30)
+DetailClose.Position = UDim2.new(1, -36, 0, 8)
+DetailClose.BackgroundTransparency = 1
+DetailClose.Text = "×"
+DetailClose.TextColor3 = Color3.fromRGB(180, 180, 188)
+DetailClose.TextSize = 24
+DetailClose.Font = Enum.Font.ArialBold
+DetailClose.ZIndex = 21
+DetailClose.Parent = Detail
+
+-- Logic Variables
+local currentIcon = nil
+local filtered = IconList
+local rendered = 0
+local PAGE_SIZE = 60
+local busy = false
+
+local function clearGrid()
+	for _, child in ipairs(Content:GetChildren()) do
+		if child:IsA("ImageButton") then
+			child:Destroy()
+		end
+	end
+end
+
+local function showDetail(icon)
+	currentIcon = icon
+	DetailPreview.Image = icon.Asset
+	DetailName.Text = icon.Name
+	DetailID.Text = icon.ID
+	CopyButton.Text = "COPY ID"
+	Detail.Visible = true
+	Detail.Position = UDim2.new(0, 14, 0.5, -76)
+	
+	TweenService:Create(
+		Detail,
+		TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{Position = UDim2.new(0, 14, 0.5, -85)}
+	):Play()
+end
+
+local function addIcon(icon, order)
+	local Button = Instance.new("ImageButton")
+	Button.Name = icon.Name
+	Button.LayoutOrder = order
+	Button.Size = UDim2.fromOffset(42, 42)
+	Button.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	Button.BackgroundTransparency = 1
+	Button.BorderSizePixel = 0
+	Button.Image = icon.Asset
+	Button.ImageColor3 = Color3.fromRGB(225, 225, 230)
+	Button.AutoButtonColor = false
+	Button.Parent = Content
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 9)
+	Corner.Parent = Button
+
+	Button.MouseEnter:Connect(function()
+		TweenService:Create(Button, TweenInfo.new(0.1), {
+			BackgroundTransparency = 0,
+			BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+		}):Play()
+	end)
+
+	Button.MouseLeave:Connect(function()
+		TweenService:Create(Button, TweenInfo.new(0.1), {
+			BackgroundTransparency = 1
+		}):Play()
+	end)
+
+	Button.MouseButton1Click:Connect(function()
+		showDetail(icon)
+	end)
+end
+
+local function renderNext()
+	if busy or rendered >= #filtered then
+		return
+	end
+
+	busy = true
+	local target = math.min(rendered + PAGE_SIZE, #filtered)
+
+	for i = rendered + 1, target do
+		addIcon(filtered[i], i)
+	end
+
+	rendered = target
+	busy = false
+end
+
+local function applySearch()
+	local query = SearchBox.Text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+	filtered = {}
+
+	if query == "" then
+		filtered = IconList
+	else
+		for _, icon in ipairs(IconList) do
+			if icon.Name:lower():find(query, 1, true) then
+				table.insert(filtered, icon)
+			end
+		end
+	end
+
+	rendered = 0
+	clearGrid()
+	Content.CanvasPosition = Vector2.zero
+	renderNext()
+end
+
+local function dragify(target, handle)
+	local dragging = false
+	local dragStart, startPos
+
+	handle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = target.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			target.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+-- Event Listeners
+SearchBox:GetPropertyChangedSignal("Text"):Connect(applySearch)
+
+Content:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+	local maxY = math.max(0, Content.AbsoluteCanvasSize.Y - Content.AbsoluteSize.Y)
+	if Content.CanvasPosition.Y >= maxY - 100 then
+		renderNext()
+	end
+end)
+
+CopyButton.MouseButton1Click:Connect(function()
+	if currentIcon then
+		if setclipboard then
+			setclipboard(currentIcon.ID)
+		elseif toclipboard then
+			toclipboard(currentIcon.ID)
+		end
+		CopyButton.Text = "COPIED"
+		task.delay(1, function()
+			if CopyButton.Parent then
+				CopyButton.Text = "COPY ID"
+			end
+		end)
+	end
+end)
+
+DetailClose.MouseButton1Click:Connect(function()
+	Detail.Visible = false
+	currentIcon = nil
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+	Gui:Destroy()
+end)
+
+MenuButton.MouseButton1Click:Connect(function()
+	SearchBox:CaptureFocus()
+end)
+
+-- Initialize Drag and Render
+dragify(Main, Header)
+
+task.defer(function()
+	renderNext()
+end)
