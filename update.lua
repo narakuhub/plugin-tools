@@ -2332,18 +2332,20 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     if not textBox or not textBox:IsA("TextBox") then return end
 
     textBox.Focused:Connect(function()
-        textBox.TextTransparency = 0
-        textBox.TextColor3 = COLOR_TEXT_ACTIVE
         if textBox.Text == defaultPlaceholder then
             textBox.Text = ""
         end
+        textBox.TextTransparency = 0
+        textBox.TextColor3 = COLOR_TEXT_ACTIVE
     end)
 
     textBox.FocusLost:Connect(function()
-        if textBox.Text == "" or textBox.Text == defaultPlaceholder then
+        local currentText = textBox.Text:match("^%s*(.-)%s*$")
+        if currentText == "" then
             textBox.Text = defaultPlaceholder
             textBox.TextTransparency = 0.5
         else
+            textBox.Text = currentText
             textBox.TextTransparency = 0
             textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
@@ -2359,28 +2361,23 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
 end
 
 if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...") end
-if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
-if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
+if SearchBox then SetupInputBoxBehavior(SearchBox, "Search store...") end
+if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan id save asset...") end
 
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"] or LMG2L["SearchBtn"])
 
 local function ExecuteSearch()
     if typeof(RenderAssets) == "function" then
         local query = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
+        if query == "Search asset..." then
+            query = ""
+        end
         RenderAssets(query)
     end
 end
 
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(ExecuteSearch)
-end
-
-if SearchBox and SearchBox:IsA("TextBox") then
-    SearchBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            ExecuteSearch()
-        end
-    end)
 end
 
 _G.IsShowingSavedOnly = _G.IsShowingSavedOnly or false
