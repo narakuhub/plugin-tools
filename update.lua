@@ -30,7 +30,7 @@ LMG2L["SearchBox_4"]["BackgroundColor3"] = Color3.fromRGB(0, 0, 0);
 LMG2L["SearchBox_4"]["FontFace"] = Font.new([[rbxasset://fonts/families/Arial.json]], Enum.FontWeight.Bold, Enum.FontStyle.Normal);
 LMG2L["SearchBox_4"]["Size"] = UDim2.new(0, 220, 0, 22);
 LMG2L["SearchBox_4"]["Position"] = UDim2.new(0, 5, 0, 82);
-LMG2L["SearchBox_4"]["Text"] = [[Search asset...]];
+LMG2L["SearchBox_4"]["Text"] = [[]];
 
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.NarakuPlugin.Panel.SearchBox.IconSearch
@@ -303,7 +303,7 @@ LMG2L["SaveBox_24"]["BackgroundColor3"] = Color3.fromRGB(0, 0, 0);
 LMG2L["SaveBox_24"]["FontFace"] = Font.new([[rbxasset://fonts/families/Arial.json]], Enum.FontWeight.Bold, Enum.FontStyle.Normal);
 LMG2L["SaveBox_24"]["Size"] = UDim2.new(0, 220, 0, 22);
 LMG2L["SaveBox_24"]["Position"] = UDim2.new(0, 5, 0, 56);
-LMG2L["SaveBox_24"]["Text"] = [[Save ID asset...]];
+LMG2L["SaveBox_24"]["Text"] = [[]];
 
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.NarakuPlugin.Panel.SaveBox.UIStroke2
@@ -465,7 +465,7 @@ LMG2L["InsertBox_38"]["BackgroundColor3"] = Color3.fromRGB(0, 0, 0);
 LMG2L["InsertBox_38"]["FontFace"] = Font.new([[rbxasset://fonts/families/Arial.json]], Enum.FontWeight.Bold, Enum.FontStyle.Normal);
 LMG2L["InsertBox_38"]["Size"] = UDim2.new(0, 220, 0, 22);
 LMG2L["InsertBox_38"]["Position"] = UDim2.new(0, 5, 0, 30);
-LMG2L["InsertBox_38"]["Text"] = [[Insert ID asset...]];
+LMG2L["InsertBox_38"]["Text"] = [[]];
 
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui.NarakuPlugin.Panel.InsertBox.UIStroke2
@@ -2374,9 +2374,9 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     end)
 end
 
-if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...") end
-if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
-if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
+if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Insert Id asset...") end
+if SearchBox then SetupInputBoxBehavior(SearchBox, "Search store...") end
+if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Save id asset...") end
 
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"] or LMG2L["SearchBtn"])
 
