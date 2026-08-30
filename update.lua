@@ -2331,19 +2331,28 @@ local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
 local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     if not textBox or not textBox:IsA("TextBox") then return end
 
+    -- Memastikan properti dasar awal terpasang
+    textBox.ClearTextOnFocus = false
+    
+    if textBox.Text == "" or textBox.Text == defaultPlaceholder then
+        textBox.Text = defaultPlaceholder
+        textBox.TextTransparency = 0.5
+    else
+        textBox.TextTransparency = 0
+        textBox.TextColor3 = COLOR_TEXT_ACTIVE
+    end
+
     textBox.Focused:Connect(function()
         if textBox.Text == defaultPlaceholder then
             textBox.Text = ""
-            textBox.TextTransparency = 0
-            textBox.TextColor3 = COLOR_TEXT_ACTIVE
-        else
-            textBox.TextTransparency = 0
-            textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
+        textBox.TextTransparency = 0
+        textBox.TextColor3 = COLOR_TEXT_ACTIVE
     end)
 
-    textBox.FocusLost:Connect(function()
+    textBox.FocusLost:Connect(function(enterPressed)
         local cleanText = textBox.Text:match("^%s*(.-)%s*$")
+        
         if cleanText == "" or cleanText == defaultPlaceholder then
             textBox.Text = defaultPlaceholder
             textBox.TextTransparency = 0.5
@@ -2373,8 +2382,13 @@ local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"
 
 local function ExecuteSearch()
     if typeof(RenderAssets) == "function" then
-        local query = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
-        if query == "Search asset..." then query = "" end
+        local query = ""
+        if SearchBox and SearchBox:IsA("TextBox") then
+            query = SearchBox.Text:match("^%s*(.-)%s*$")
+            if query == "Search asset..." then 
+                query = "" 
+            end
+        end
         RenderAssets(query)
     end
 end
