@@ -2336,6 +2336,9 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
             textBox.Text = ""
             textBox.TextTransparency = 0
             textBox.TextColor3 = COLOR_TEXT_ACTIVE
+        else
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
     end)
 
@@ -2353,7 +2356,9 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
 
     textBox:GetPropertyChangedSignal("Text"):Connect(function()
         local currentText = textBox.Text
-        if currentText ~= defaultPlaceholder and currentText ~= "" then
+        if currentText == defaultPlaceholder then
+            textBox.TextTransparency = 0.5
+        elseif currentText ~= "" then
             textBox.TextTransparency = 0
             textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
@@ -2361,8 +2366,8 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
 end
 
 if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...") end
-if SearchBox then SetupInputBoxBehavior(SearchBox, "Search store...") end
-if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan id save asset...") end
+if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
+if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
 
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"] or LMG2L["SearchBtn"])
 
