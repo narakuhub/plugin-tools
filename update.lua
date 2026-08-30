@@ -2334,18 +2334,18 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     textBox.Focused:Connect(function()
         if textBox.Text == defaultPlaceholder then
             textBox.Text = ""
+            textBox.TextTransparency = 0
+            textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
-        textBox.TextTransparency = 0
-        textBox.TextColor3 = COLOR_TEXT_ACTIVE
     end)
 
     textBox.FocusLost:Connect(function()
-        local currentText = textBox.Text:match("^%s*(.-)%s*$")
-        if currentText == "" then
+        local cleanText = textBox.Text:match("^%s*(.-)%s*$")
+        if cleanText == "" or cleanText == defaultPlaceholder then
             textBox.Text = defaultPlaceholder
             textBox.TextTransparency = 0.5
         else
-            textBox.Text = currentText
+            textBox.Text = cleanText
             textBox.TextTransparency = 0
             textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
@@ -2353,7 +2353,7 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
 
     textBox:GetPropertyChangedSignal("Text"):Connect(function()
         local currentText = textBox.Text
-        if currentText ~= "" and currentText ~= defaultPlaceholder then
+        if currentText ~= defaultPlaceholder and currentText ~= "" then
             textBox.TextTransparency = 0
             textBox.TextColor3 = COLOR_TEXT_ACTIVE
         end
@@ -2369,9 +2369,7 @@ local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"
 local function ExecuteSearch()
     if typeof(RenderAssets) == "function" then
         local query = (SearchBox and SearchBox:IsA("TextBox")) and SearchBox.Text or ""
-        if query == "Search asset..." then
-            query = ""
-        end
+        if query == "Search asset..." then query = "" end
         RenderAssets(query)
     end
 end
