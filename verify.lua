@@ -720,6 +720,13 @@ local FEATURE_LIST = {
 		Icon = "rbxassetid://129361331543944"
 	},
 	{
+		Name = "LUCIDE ICONS",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/lucide.lua",
+		Icon = "rbxassetid://114334671982047"
+	},
+	{
 		Name = "AUDIO PLAY",
 		Tag = "GET",
 		Status = "200",
