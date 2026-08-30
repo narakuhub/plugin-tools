@@ -2316,7 +2316,7 @@ local function SwitchTab(tabName)
     end
 
     if SearchBox and SearchBox:IsA("TextBox") then
-        SearchBox.Text = "Search asset..."
+        SearchBox.Text = "Search store..."
         SearchBox.TextTransparency = 0.5
     end
     
@@ -2511,38 +2511,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
     end)
 end
 
-if InsertButton and InsertButton:IsA("GuiButton") then
-    InsertButton.MouseButton1Click:Connect(function()
-        if not InsertIDBox or not InsertIDBox:IsA("TextBox") then return end
-        local rawText = InsertIDBox.Text
-        local cleanId = tonumber(rawText:match("%d+"))
-
-        if cleanId then
-            InsertIDBox.Text = tostring(cleanId)
-            InsertIDBox.TextTransparency = 0
-            if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
-                InsertIDBox.TextColor3 = COLOR_TEXT_ACTIVE
-            end
-
-            InsertButton.Text = "WORKING"
-            if typeof(InsertAsset) == "function" then
-                InsertAsset(cleanId, nil, InsertButton)
-            end
-            task.wait(1.5)
-            if InsertButton then InsertButton.Text = "INSERT" end
-        else
-            InsertIDBox.Text = "Harus ID Angka!"
-            InsertIDBox.TextTransparency = 0
-            task.wait(1.5)
-            
-            if InsertIDBox and InsertIDBox.Text == "Harus ID Angka!" then
-                InsertIDBox.Text = "Insert Id asset..."
-                InsertIDBox.TextTransparency = 0.5
-            end
-        end
-    end)
-end
-
+--- insert
 
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
