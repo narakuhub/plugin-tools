@@ -4,7 +4,7 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
 local PLAYER = Players.LocalPlayer
-local GUI_NAME = "NarakuIcons"
+local GUI_NAME = "LucideXnars Icons"
 local ICONS_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/icons.lua"
 
 -- Clean up existing GUI
