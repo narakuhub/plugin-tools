@@ -1,15 +1,3 @@
---[=[
- d888b  db    db d888888b      .d888b.      db      db    db  .d8b.  
-88' Y8b 88    88   `88'        VP  `8D      88      88    88 d8' `8b 
-88      88    88    88            odD'      88      88    88 88ooo88 
-88  ooo 88    88    88          .88'        88      88    88 88~~~88 
-88. ~8~ 88b  d88   .88.        j88.         88booo. 88b  d88 88   88    @uniquadev
- Y888P  ~Y8888P' Y888888P      888888D      Y88888P ~Y8888P' YP   YP  CONVERTER 
-
-designed using localmaze gui creator
-]=]
-
--- Instances: 120 | Scripts: 0 | Modules: 0 | Tags: 0
 local LMG2L = {};
 
 -- Players.HYUDGKJHBBNFFXXDHBN.PlayerGui.ScreenGui
@@ -1075,17 +1063,11 @@ LMG2L["OpenButton_78"]["Size"] = UDim2.new(0, 20, 0, 20);
 LMG2L["OpenButton_78"]["Name"] = [[OpenButton]];
 LMG2L["OpenButton_78"]["Position"] = UDim2.new(0, 0, 0, -10);
 
--- =========================================================
--- SYSTEM MAIN PANEL
--- =========================================================
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
--- =========================================================
--- CONSTANTS & CONFIGURATION
--- =========================================================
 
 local ARROW_RIGHT = "rbxassetid://138472587694798"
 local ARROW_LEFT = "rbxassetid://82611145930357"
@@ -1094,10 +1076,6 @@ local TWEEN_OPEN_CLOSE = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingD
 local TWEEN_DESTROY = TweenInfo.new(0.20, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
 
 local MAX_HEIGHT = 700
-
--- =========================================================
--- SCREEN GUI INITIALIZATION
--- =========================================================
 
 local ScreenGui = LMG2L["ScreenGui_1"]
 local NarakuPlugin = LMG2L["NarakuPlugin_2"]
@@ -1126,9 +1104,6 @@ end
 
 NarakuPlugin.Parent = ScreenGui
 
--- =========================================================
--- UI ELEMENTS
--- =========================================================
 
 local Panel = LMG2L["Panel_3"]
 local Header = LMG2L["Header_4c"]
@@ -1160,10 +1135,6 @@ local LoadMoreButton = LMG2L["LoadmoreButton_2"]
 local ResizeHandle = LMG2L["ResizeHandleButton_2f"]
 local OpenButton = LMG2L["OpenButton_78"]
 
--- =========================================================
--- ORIGINAL VALUES & TRANSFORM CACHE
--- =========================================================
-
 local ORIGINAL_PANEL_SIZE = Panel.Size
 local ORIGINAL_PANEL_POSITION = Panel.Position
 
@@ -1189,9 +1160,6 @@ local ORIGINAL_BACKGROUND_SEARCH_POSITION = BackgroundSearch.Position
 local ORIGINAL_CARD_SAVED_POSITION = CardSaved.Position
 local ORIGINAL_CARD_MENU_POSITION = CardMenu.Position
 
--- =========================================================
--- PANEL POSITIONS
--- =========================================================
 
 local OPEN_POSITION = ORIGINAL_PANEL_POSITION
 local CLOSE_POSITION = UDim2.new(
@@ -1201,9 +1169,6 @@ local CLOSE_POSITION = UDim2.new(
 	ORIGINAL_PANEL_POSITION.Y.Offset
 )
 
--- =========================================================
--- STATE MANAGEMENT
--- =========================================================
 
 local IsOpen = true
 local IsDestroyed = false
@@ -1212,9 +1177,6 @@ local IsResizing = false
 local StartMouseY = 0
 local StartHeight = ORIGINAL_HEIGHT
 
--- =========================================================
--- HELPER FUNCTIONS
--- =========================================================
 
 local function UpdateOpenButtonIcon()
 	if IsDestroyed or not OpenButton then return end
@@ -1298,10 +1260,6 @@ local function HidePanel()
 	}):Play()
 end
 
--- =========================================================
--- INITIALIZATION
--- =========================================================
-
 Panel.AnchorPoint = Vector2.new(0, 0)
 Panel.Size = ORIGINAL_PANEL_SIZE
 Panel.Position = CLOSE_POSITION
@@ -1314,9 +1272,6 @@ TweenService:Create(Panel, TWEEN_OPEN_CLOSE, {
 	Position = OPEN_POSITION
 }):Play()
 
--- =========================================================
--- EVENT CONNECTIONS
--- =========================================================
 
 OpenButton.MouseButton1Click:Connect(function()
 	if IsDestroyed then return end
@@ -1369,7 +1324,6 @@ UserInputService.InputChanged:Connect(function(Input)
 	UpdatePanelLayout(StartHeight + DeltaY)
 end)
 
--- Dynamic Canvas Updates
 local AssetLayout = ScrollingFrame:FindFirstChildOfClass("UIListLayout")
 if AssetLayout then
 	local function UpdateAssetCanvas()
@@ -1392,16 +1346,9 @@ if TabLayout then
 	TabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateTabCanvas)
 end
 
--- =========================================================
--- FINALIZE SETUP
--- =========================================================
-
 UpdatePanelLayout(ORIGINAL_HEIGHT)
 UpdateOpenButtonIcon()
 
--------------------------------------------------------------------------
--- TAHAP 1: SERVICES & STUDIO LITE BINDINGS
--------------------------------------------------------------------------
 local TweenService = game:GetService("TweenService")	
 local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
@@ -1418,7 +1365,6 @@ local ExplorerPanel = StudioGui and StudioGui:WaitForChild("ExplorerPanel", 3)
 local GetSelection = ExplorerPanel and ExplorerPanel:WaitForChild("GetSelection", 3)
 local SetSelection = ExplorerPanel and ExplorerPanel:WaitForChild("SetSelection", 3)
 
--- Safety File I/O Bindings (mencegah nil value pada executor)
 local writefile = writefile or (io and io.writefile)
 local readfile = readfile or (io and io.readfile)
 local isfile = isfile or (io and io.isfile)
@@ -1426,51 +1372,36 @@ local isfolder = isfolder or (io and io.isfolder)
 local makefolder = makefolder or (io and io.makefolder)
 local setclipboard = setclipboard or toclipboard or print
 
--------------------------------------------------------------------------
--- TAHAP 2: UI MAPPING (REFERENSI HIRARKI LMG2L BARU)
--------------------------------------------------------------------------
--- Memastikan tabel LMG2L ada sebelum di-index
 local Gui = LMG2L and LMG2L["ScreenGui_1"]
 local MainPanel = LMG2L and LMG2L["Panel_3"]
 
--- Tab Filter Buttons (Di dalam ScrollingTab_9)
 local AudioButton = LMG2L and LMG2L["AudioButton_b"]
 local ModelButton = LMG2L and LMG2L["ModelButton_12"]
 local PluginButton = LMG2L and LMG2L["PluginButton_19"]
 local DecalButton = LMG2L and LMG2L["DecalButton_21"]
 
--- Toggle Filter Saved Assets Button
 local CardSaved = LMG2L and LMG2L["CardSaved_2a"]
 local SavedButton = LMG2L and LMG2L["SavedButton_2c"]
 local SavedIconIndicator = LMG2L["IconSaved_2e"]
 
--- Bagian Atas Panel (Fungsi INSERT ID ke Workspace)
 local InsertIDBox = LMG2L and LMG2L["InsertBox_38"]
 local InsertButton = LMG2L and LMG2L["InsertButton_34"]
 
--- Bagian Atas Panel (Fungsi SEARCH)
 local SearchBox = LMG2L and LMG2L["SearchBox_4"]
 local SearchButton = LMG2L and LMG2L["SearchButton_75"]
 
--- Bagian Bawah Panel (Fungsi SAVE)
 local SaveIDBox = LMG2L and LMG2L["SaveBox_24"]
 local SaveIDButton = LMG2L and LMG2L["SaveButton_56"]
 
--- List Kontainer dan Item Template
 local ScrollingFrame = LMG2L and LMG2L["ScrollingFrame_5a"]
 local TemplateFrame = LMG2L and LMG2L["Card_5d"]
 local LoadMoreButton = LMG2L["LoadmoreButton_2"]
 
--- Safe Isolation Template Card (mencegah attempt to index nil)
 if TemplateFrame then
     TemplateFrame.Visible = false
     TemplateFrame.Parent = nil
 end
 
--------------------------------------------------------------------------
--- TAHAP VISUAL: TAB & FILTER COLOR STATE SYSTEM (FIXED TARGET BUTTON)
--------------------------------------------------------------------------
--- Inisialisasi Elemen Tombol dan Ikon berdasarkan Hirarki UI LMG2L
 local ModelButton = LMG2L and LMG2L["ModelButton_12"]
 local DecalButton = LMG2L and LMG2L["DecalButton_21"]
 local AudioButton = LMG2L and LMG2L["AudioButton_b"]
@@ -1481,19 +1412,16 @@ local IconDecal = LMG2L and LMG2L["IconDecal_1f"]
 local IconAudio = LMG2L and LMG2L["IconAudio_f"]
 local IconPlugin = LMG2L and LMG2L["IconPlugin_1d"]
 
--- Inisialisasi Elemen CardSaved Filter
 local CardSaved = LMG2L and LMG2L["CardSaved_2a"]
 local SavedButton = LMG2L and LMG2L["SavedButton_2c"]
 local IconSaved = LMG2L and LMG2L["IconSaved_2e"]
 
--- Skema Warna Spesifik
-local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)          -- Background Button Active State
-local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)            -- Background Button Inactive State
+local COLOR_ACTIVE = Color3.fromRGB(223, 230, 237)
+local COLOR_INACTIVE = Color3.fromRGB(36, 36, 36)
 
-local COLOR_TEXT_ACTIVE = Color3.fromRGB(0, 0, 0)            -- Text & Icon Active State (Hitam)
-local COLOR_TEXT_INACTIVE = Color3.fromRGB(223, 230, 237)      -- Text & Icon Inactive State (Terang)
+local COLOR_TEXT_ACTIVE = Color3.fromRGB(0, 0, 0)
+local COLOR_TEXT_INACTIVE = Color3.fromRGB(223, 230, 237)
 
--- Tabel Pemetaan Elemen Visual Tab
 local TabVisualMap = {
     ["Model"] = { Button = ModelButton, Icon = IconModel },
     ["Decal"] = { Button = DecalButton, Icon = IconDecal },
@@ -1501,7 +1429,6 @@ local TabVisualMap = {
     ["Plugin"] = { Button = PluginButton, Icon = IconPlugin }
 }
 
--- Fungsi Utility untuk Mengubah Warna Visual Tab (Button Background + Text + Icon)
 local function UpdateTabVisualState(category, isActive)
     local visualData = TabVisualMap[category]
     if not visualData then return end
@@ -1509,45 +1436,36 @@ local function UpdateTabVisualState(category, isActive)
     local bgCol = isActive and COLOR_ACTIVE or COLOR_INACTIVE
     local contentCol = isActive and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
 
-    -- Mengubah Warna Background & Text pada TextButton langsung
     if visualData.Button and visualData.Button:IsA("TextButton") then
         visualData.Button.BackgroundColor3 = bgCol
         visualData.Button.TextColor3 = contentCol
     end
     
-    -- Mengubah Warna Image Icon
     if visualData.Icon and (visualData.Icon:IsA("ImageLabel") or visualData.Icon:IsA("ImageButton")) then
         visualData.Icon.ImageColor3 = contentCol
     end
 end
 
--- Fungsi Utility Khusus Visual CardSaved Filter Toggle (SavedButton_2c & IconSaved_2e)
 local function UpdateSavedFilterVisualState(isSavedOnly)
     local bgCol = isSavedOnly and COLOR_ACTIVE or COLOR_INACTIVE
     local contentCol = isSavedOnly and COLOR_TEXT_ACTIVE or COLOR_TEXT_INACTIVE
 
-    -- Ubah Background & Text pada SavedButton_2c
     if SavedButton and SavedButton:IsA("TextButton") then
         SavedButton.BackgroundColor3 = bgCol
         SavedButton.TextColor3 = contentCol
     end
     
-    -- Ubah Warna IconSaved_2e
     if IconSaved and (IconSaved:IsA("ImageLabel") or IconSaved:IsA("ImageButton")) then
         IconSaved.ImageColor3 = contentCol
     end
 end
 
--------------------------------------------------------------------------
--- FIX 1: PENGATURAN URUTAN LAYOUT TAB (STRICT LAYOUTORDER & SORTORDER)
--------------------------------------------------------------------------
 local ScrollingTab = LMG2L and LMG2L["ScrollingTab_9"]
 local BackgroundModel = LMG2L and LMG2L["BackgroundModel_11"]
 local BackgroundDecal = LMG2L and LMG2L["BackgroundDecal_1e"]
 local BackgroundAudio = LMG2L and LMG2L["BackgroundAudio_a"]
 local BackgroundPlugin = LMG2L and LMG2L["BackgroundPlugin_18"]
 
--- Paksa UIListLayout untuk mengurutkan berdasarkan LayoutOrder
 if ScrollingTab then
     local listLayout = ScrollingTab:FindFirstChildOfClass("UIListLayout")
     if listLayout then
@@ -1555,21 +1473,14 @@ if ScrollingTab then
     end
 end
 
--- Atur Urutan Tampilan Secara Presisi: Model (1) -> Decal (2) -> Audio (3) -> Plugin (4)
 if BackgroundModel then BackgroundModel.LayoutOrder = 1 end
 if BackgroundDecal then BackgroundDecal.LayoutOrder = 2 end
 if BackgroundAudio then BackgroundAudio.LayoutOrder = 3 end
 if BackgroundPlugin then BackgroundPlugin.LayoutOrder = 4 end
 
--------------------------------------------------------------------------
--- SERVICES & CONSTANTS
--------------------------------------------------------------------------
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
--------------------------------------------------------------------------
--- HTTP REQUEST HANDLER (EXECUTOR COMPATIBILITY)
--------------------------------------------------------------------------
 local function GetRequestFunction()
     return http_request
         or request
@@ -1579,14 +1490,10 @@ end
 
 local requestFunc = GetRequestFunction()
 
--------------------------------------------------------------------------
--- CONFIGURATION & LOCAL STORAGE SYSTEM
--------------------------------------------------------------------------
 local CurrentCategory = "Model" 
 local CurrentSessionId = 0
-local IsShowingSavedOnly = false -- Status Toggle Filter (False = Roblox API, True = SavedAssets)
+local IsShowingSavedOnly = false
 
--- Nested Table Database Lokal User (Strict Category Partitioning)
 local SavedAssets = {
     Model = {},
     Decal = {},
@@ -1594,11 +1501,8 @@ local SavedAssets = {
     Plugin = {}
 }
 
-local AssetInfoCache = {} -- Cache Metadata MarketplaceService
+local AssetInfoCache = {}
 
--------------------------------------------------------------------------
--- HELPER: CATEGORY CONVERTER
--------------------------------------------------------------------------
 local function GetCategoryFromAssetType(assetTypeId)
     local id = tonumber(assetTypeId)
     if id == 13 or id == 1 or id == 2 or id == 14 then
@@ -1612,9 +1516,6 @@ local function GetCategoryFromAssetType(assetTypeId)
     end
 end
 
--------------------------------------------------------------------------
--- HELPER: FETCH REAL METADATA FROM ROBLOX MARKETPLACE
--------------------------------------------------------------------------
 local function FetchAssetMetadata(assetId)
     local numericId = tonumber(assetId)
     if not numericId then return nil end
@@ -1651,9 +1552,6 @@ local function FetchAssetMetadata(assetId)
     return nil
 end
 
--------------------------------------------------------------------------
--- HELPER: ROBLOX STORE THUMBNAIL GENERATOR
--------------------------------------------------------------------------
 local function GetAssetThumbnail(assetId, assetTypeId)
     local numericId = tonumber(assetId)
     if not numericId then return "" end
@@ -1670,9 +1568,6 @@ local function GetAssetThumbnail(assetId, assetTypeId)
     end
 end
 
--------------------------------------------------------------------------
--- HELPER: PRETTY PRINT JSON ENCODER
--------------------------------------------------------------------------
 local function FormatPrettyJSON(data, indent)
     indent = indent or "  "
     local function Pretty(obj, level)
@@ -1706,11 +1601,6 @@ local function FormatPrettyJSON(data, indent)
     return Pretty(data, 0)
 end
 
--------------------------------------------------------------------------
--- LOCAL DATA MANAGEMENT (CATEGORY-BASED SAVED ASSETS SYSTEM)
--------------------------------------------------------------------------
-
--- 1. Menyimpan Data User ke File delta/saved_assets.json (Strict Nested Category + Pretty Print)
 local function SaveUserData()
     if not writefile then return false end
     local success = pcall(function()
@@ -1723,7 +1613,6 @@ local function SaveUserData()
     return success
 end
 
--- 2. Memuat Data Saved User dengan Dukungan Retro-Compatibility & Auto Migration
 local function LoadUserData()
     if not (readfile and isfile and HttpService) then return end
     
@@ -1740,10 +1629,9 @@ local function LoadUserData()
                 end)
                 
                 if decodeSuccess and type(decoded) == "table" then
-                    -- Reset struktur tabel agar selalu bersih
+						
                     SavedAssets = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
 
-                    -- KASUS A: Format Baru (Nested Category Object)
                     if decoded.Model or decoded.Decal or decoded.Audio or decoded.Plugin then
                         for catName, catList in pairs(decoded) do
                             if SavedAssets[catName] and type(catList) == "table" then
@@ -1765,7 +1653,7 @@ local function LoadUserData()
                                 end
                             end
                         end
-                    -- KASUS B: Format Lama (Flat Array) -> Otomatis Tampung Sementara di Model
+                    
                     elseif #decoded > 0 then
                         for _, item in ipairs(decoded) do
                             local targetId = type(item) == "table" and item.ID or item
@@ -1781,8 +1669,6 @@ local function LoadUserData()
                         end
                     end
 
-                    -- Async Migration & Metadata Fetching:
-                    -- Memperbarui metadata sekaligus memindahkan asset ke kategori yang TEPAT berdasarkan AssetTypeId
                     task.spawn(function()
                         local needsReSave = false
                         local tempMigrated = { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
@@ -1821,7 +1707,6 @@ local function LoadUserData()
     end)
 end
 
--- 3. Helper Checking: Status Apakah ID Terdaftar di Kategori Spesifik
 local function IsAssetSaved(assetId, category)
     local numericId = tonumber(assetId)
     if not numericId or type(SavedAssets) ~= "table" then return false end
@@ -1839,23 +1724,18 @@ local function IsAssetSaved(assetId, category)
     return false
 end
 
--- Inisialisasi Memuat Database Lokal
 LoadUserData()
 
--------------------------------------------------------------------------
--- ROBLOX CREATOR STORE SEARCH ENGINE (FIXED PAGINATION CURSOR)
--------------------------------------------------------------------------
 local NextPageCursor = ""
 local CurrentSearchQuery = ""
 local CurrentSearchCategory = ""
 
 local function SearchRobloxStore(query, category, isLoadMore)
     if not requestFunc then
-        warn("❌ Executing environment does not support HTTP Requests")
+        warn("Executing environment does not support HTTP Requests")
         return {}, ""
     end
 
-    -- Update atau pertahankan query & kategori secara konsisten
     if not isLoadMore then
         NextPageCursor = ""
         CurrentSearchQuery = (query and query ~= "") and query or CurrentSearchQuery
@@ -1870,10 +1750,8 @@ local function SearchRobloxStore(query, category, isLoadMore)
     local encodedQuery = HttpService:UrlEncode(CurrentSearchQuery)
     local searchCategory = CurrentSearchCategory
     
-    -- Base URL Search Roblox Creator Store API
     local url = "https://apis.roblox.com/toolbox-service/v2/assets:search?searchCategoryType=" .. searchCategory .. "&query=" .. encodedQuery
 
-    -- Terapkan parameter pageToken / cursor saat dipanggil via Load More
     if isLoadMore and NextPageCursor and NextPageCursor ~= "" then
         url = url .. "&pageToken=" .. HttpService:UrlEncode(NextPageCursor) .. "&cursor=" .. HttpService:UrlEncode(NextPageCursor)
     end
@@ -1889,7 +1767,7 @@ local function SearchRobloxStore(query, category, isLoadMore)
     end)
 
     if not success or not response or response.StatusCode ~= 200 then
-        warn("❌ Search API Error:", response and response.StatusCode or "No response")
+        warn("Search API Error:", response and response.StatusCode or "No response")
         return {}, ""
     end
 
@@ -1901,11 +1779,9 @@ local function SearchRobloxStore(query, category, isLoadMore)
         return {}, ""
     end
 
-    -- Tangkap token halaman berikutnya dari semua kemungkinan key API Roblox
     local rawNextToken = decoded.nextPageToken or decoded.nextPageCursor or decoded.nextCursor or ""
     NextPageCursor = tostring(rawNextToken)
 
-    -- Mapping Format API Roblox ke Format Standard UI
     local results = {}
     for _, item in ipairs(decoded.creatorStoreAssets) do
         local asset = item.asset or {}
@@ -1924,9 +1800,6 @@ local function SearchRobloxStore(query, category, isLoadMore)
     return results, NextPageCursor
 end
 
--------------------------------------------------------------------------
--- CLEAR LIST HELPER (PROTECT LOADMORE BUTTON)
--------------------------------------------------------------------------
 local function ClearList()
     if not ScrollingFrame then return end
     
@@ -1938,11 +1811,8 @@ local function ClearList()
     end
 end
 
--------------------------------------------------------------------------
--- TAHAP 5: FUNGSI INSERT UTAMA & SAFE STUDIO FALLBACK (FIXED)
--------------------------------------------------------------------------
 local function InsertAsset(assetId, category, statusTarget)
-    -- Safe Check Status Target (TextLabel / TextButton)
+
     local function SetStatus(msg)
         if statusTarget and typeof(statusTarget) == "Instance" then
             if statusTarget:IsA("TextLabel") or statusTarget:IsA("TextButton") then
@@ -1960,7 +1830,6 @@ local function InsertAsset(assetId, category, statusTarget)
         return
     end
 
-    -- Attempt to verify category via MarketplaceService safely
     local successInfo, info = pcall(function() 
         return MarketplaceService:GetProductInfo(numericId) 
     end)
@@ -1976,7 +1845,6 @@ local function InsertAsset(assetId, category, statusTarget)
         category = "Model" 
     end
 
-    -- Handler kalkulasi posisi Kamera Workspace
     local function SafeStudioFallback(obj)
         if not obj then return end
         local targetModel, isTemporary, tempContainer
@@ -2022,7 +1890,6 @@ local function InsertAsset(assetId, category, statusTarget)
         end
     end
 
-    -- JIKA ASSET ADALAH AUDIO
     if category == "Audio" then
         local sound = Instance.new("Sound")
         sound.Name = (successInfo and info and info.Name) or ("SoundAsset_" .. stringId)
@@ -2033,7 +1900,6 @@ local function InsertAsset(assetId, category, statusTarget)
         return
     end
 
-    -- JIKA ASSET ADALAH DECAL
     if category == "Decal" then
         if GetSelection and SetSelection then
             local currentSelection = nil
@@ -2061,7 +1927,6 @@ local function InsertAsset(assetId, category, statusTarget)
         return
     end
 
-    -- JIKA ASSET ADALAH MODEL ATAU PLUGIN
     if LoadAssetRemote and LoadAssetRemote:IsA("RemoteFunction") then
         local loadSuccess = false
         pcall(function()
@@ -2144,13 +2009,9 @@ local function InsertAsset(assetId, category, statusTarget)
     end
 end
 
--------------------------------------------------------------------------
--- TAHAP 6: DYNAMIC CREATOR STORE RENDER ENGINE
--------------------------------------------------------------------------
 local AmountAssetLabel = LMG2L and LMG2L["AmountAsset_4a"]
 local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
 
--- Update Label Status Header
 local function UpdateAmountAssetDisplay(count, category, isSavedOnly, queryText, isSearching)
     if not AmountAssetLabel or not AmountAssetLabel:IsA("TextLabel") then return end
     
@@ -2173,7 +2034,6 @@ local function UpdateAmountAssetDisplay(count, category, isSavedOnly, queryText,
     end
 end
 
--- Helper Penyesuaian Canvas UI
 local function UpdateCanvas()
     if not ScrollingFrame then return end
     local layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
@@ -2182,7 +2042,6 @@ local function UpdateCanvas()
     end
 end
 
--- Helper Hitung Kartu Aset yang Sedang Rendere di UI
 local function GetCurrentRenderedCardCount()
     if not ScrollingFrame then return 0 end
     local count = 0
@@ -2194,9 +2053,8 @@ local function GetCurrentRenderedCardCount()
     return count
 end
 
--- MAIN RENDER FUNCTION
 local function RenderAssets(searchQuery, isLoadMore)
-    -- Jika BUKAN panggil halaman lanjutan, bersihkan kartu lama & naikkan Session
+
     if not isLoadMore then
         ClearList()
         CurrentSessionId = CurrentSessionId + 1
@@ -2206,22 +2064,17 @@ local function RenderAssets(searchQuery, isLoadMore)
     local targetCategoryAtCall = CurrentCategory
     local isSavedModeAtCall = IsShowingSavedOnly
 
-    -- Normalisasi Clean String Query
     local query = ""
     if searchQuery and searchQuery ~= "Search asset..." then
         query = searchQuery:lower():match("^%s*(.-)%s*$") or ""
     end
 
-    ---------------------------------------------------------------------
-    -- CASE A: MODE SAVED ASSETS (DATA PER-KATEGORI DARI SavedAssets)
-    ---------------------------------------------------------------------
     if isSavedModeAtCall then
         if LoadMoreButton then LoadMoreButton.Visible = false end
 
         local categoryList = SavedAssets and SavedAssets[targetCategoryAtCall] or {}
         local targetList = {}
 
-        -- Saring data berdasarkan query pencarian lokal
         for _, entry in ipairs(categoryList) do
             local assetId = typeof(entry) == "table" and (entry.ID or entry.Id) or entry
             local assetName = typeof(entry) == "table" and (entry.Name or entry.name) or ("Asset_" .. tostring(assetId))
@@ -2271,7 +2124,6 @@ local function RenderAssets(searchQuery, isLoadMore)
 
                     renderedCount = renderedCount + 1
 
-                    -- Mapping GUI Elements
                     local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
                     local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
                     local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
@@ -2297,7 +2149,6 @@ local function RenderAssets(searchQuery, isLoadMore)
 
                     if IconSaved then IconSaved.Visible = true end
 
-                    -- Event Listeners
                     if CopyBtn and CopyBtn:IsA("GuiButton") then
                         CopyBtn.MouseButton1Click:Connect(function()
                             if setclipboard then setclipboard(tostring(numericId)) end
@@ -2327,38 +2178,30 @@ local function RenderAssets(searchQuery, isLoadMore)
         return
     end
 
--------------------------------------------------------------------------
--- EVENT LISTENER LOAD MORE BUTTON (FIXED NULL CHECK & SCOPE)
--------------------------------------------------------------------------
 local LoadMoreButton = LMG2L and LMG2L["LoadmoreButton_2"]
 
 if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
     LoadMoreButton.MouseButton1Click:Connect(function()
-        -- Proteksi agar tidak memicu error jika Text nil / sedang loading
+				
         if LoadMoreButton.Text == "LOADING..." then 
             return 
         end
         
-        -- Memastikan RenderAssets sudah terdefinisi sebelum dipanggil (Mencegah nil value error)
         if typeof(RenderAssets) == "function" then
             local queryToPass = (typeof(CurrentSearchQuery) == "string") and CurrentSearchQuery or ""
             RenderAssets(queryToPass, true)
         else
-            warn("❌ RenderAssets function is not defined or placed below this listener!")
+            warn("RenderAssets function is not defined or placed below this listener!")
         end
     end)
 	end
-	
-    ---------------------------------------------------------------------
-    -- CASE B: MODE ROBLOX API SEARCH
-    ---------------------------------------------------------------------
+ 
     if query == "" then
         if LoadMoreButton then LoadMoreButton.Visible = false end
         UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, "", false)
         return
     end
 
-    -- Jika Search baru, ubah status ke mode Searching
     if not isLoadMore then
         UpdateAmountAssetDisplay(0, targetCategoryAtCall, false, query, true)
     end
@@ -2391,7 +2234,6 @@ if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
                 card.Parent = ScrollingFrame
                 card.Name = "Asset_" .. numericId
 
-                -- Mapping GUI Elements
                 local ThumbnailAsset = card:FindFirstChild("ThumbnailAsset_5e") or card:FindFirstChild("ThumbnailAsset")
                 local NameLabel      = card:FindFirstChild("Name_6e") or card:FindFirstChild("Name")
                 local CreatorLabel   = card:FindFirstChild("Creator_60") or card:FindFirstChild("Creator")
@@ -2447,12 +2289,11 @@ if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
                 task.wait()
             end
         end
-
-        -- KONTROL TOMBOL LOAD MORE (PAGINATION)
+			
         if LoadMoreButton then
             if nextPageToken and nextPageToken ~= "" and #apiList > 0 then
                 LoadMoreButton.Visible = true
-                LoadMoreButton.Text = "LOAD ASSET"
+                LoadMoreButton.Text = "LOAD MORE"
                 LoadMoreButton.LayoutOrder = 999999
             else
                 LoadMoreButton.Visible = false
@@ -2462,12 +2303,9 @@ if LoadMoreButton and LoadMoreButton:IsA("GuiButton") then
     end)
 end
 
--- 1. TAB SWITCHING SYSTEM (SAVED STATE & VISUAL PERSISTENT)
--------------------------------------------------------------------------
 local function SwitchTab(tabName)
     CurrentCategory = tabName
 
-    -- Reset & Aktifkan Visual State Tab Kategori yang Dipilih
     if typeof(UpdateTabVisualState) == "function" then
         UpdateTabVisualState("Model", false)
         UpdateTabVisualState("Decal", false)
@@ -2477,9 +2315,6 @@ local function SwitchTab(tabName)
         UpdateTabVisualState(tabName, true)
     end
 
-    -- Visual dan State Saved Button TETAP AKTIF mengikuti nilai IsShowingSavedOnly saat ini.
-
-    -- Reset Search Box
     if SearchBox and SearchBox:IsA("TextBox") then
         SearchBox.Text = "Search asset..."
         SearchBox.TextTransparency = 0.5
@@ -2491,15 +2326,11 @@ local function SwitchTab(tabName)
     end
 end
 
--------------------------------------------------------------------------
--- 2. HELPER: EFEK FOKUS & TRANSPARANSI INPUT BOX
--------------------------------------------------------------------------
 local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
 
 local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     if not textBox or not textBox:IsA("TextBox") then return end
 
-    -- Saat kotak di-klik / mulai diketik
     textBox.Focused:Connect(function()
         textBox.TextTransparency = 0
         textBox.TextColor3 = COLOR_TEXT_ACTIVE
@@ -2508,7 +2339,6 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
         end
     end)
 
-    -- Saat fokus dilepas dari kotak
     textBox.FocusLost:Connect(function()
         if textBox.Text == "" or textBox.Text == defaultPlaceholder then
             textBox.Text = defaultPlaceholder
@@ -2519,7 +2349,6 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
         end
     end)
 
-    -- Deteksi perubahan teks (Hanya untuk efek transparansi & warna visual input)
     textBox:GetPropertyChangedSignal("Text"):Connect(function()
         local currentText = textBox.Text
         if currentText ~= "" and currentText ~= defaultPlaceholder then
@@ -2529,15 +2358,10 @@ local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     end)
 end
 
--- Menerapkan Efek Visual ke Seluruh Input Box
 if InsertIDBox then SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...") end
 if SearchBox then SetupInputBoxBehavior(SearchBox, "Search asset...") end
 if SaveIDBox then SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...") end
 
--------------------------------------------------------------------------
--- 3. SEARCH SYSTEM: MANUAL BUTTON CLICK ONLY (FIXED NO LIVE SEARCH)
--------------------------------------------------------------------------
--- Inisialisasi Referensi Tombol Search
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"] or LMG2L["SearchBtn"])
 
 local function ExecuteSearch()
@@ -2547,12 +2371,10 @@ local function ExecuteSearch()
     end
 end
 
--- Listener Tombol Search (Pencarian HANYA diproses saat tombol diklik)
 if SearchButton and SearchButton:IsA("GuiButton") then
     SearchButton.MouseButton1Click:Connect(ExecuteSearch)
 end
 
--- Listener Enter Key pada SearchBox (Opsional bila user menekan Enter di Keyboard)
 if SearchBox and SearchBox:IsA("TextBox") then
     SearchBox.FocusLost:Connect(function(enterPressed)
         if enterPressed then
@@ -2561,24 +2383,15 @@ if SearchBox and SearchBox:IsA("TextBox") then
     end)
 end
 
--------------------------------------------------------------------------
--- 4. ACTION LISTENERS & EVENT HANDLERS
--------------------------------------------------------------------------
-
--- Referensi State Global Sync
 _G.IsShowingSavedOnly = _G.IsShowingSavedOnly or false
 IsShowingSavedOnly = _G.IsShowingSavedOnly
 
--- Referensi UI
 local HeaderSavedButton = LMG2L and (LMG2L["SavedButton_2c"] or LMG2L["SavedButton"])
 local HeaderIconSaved   = LMG2L and (LMG2L["IconSaved_2e"] or LMG2L["IconSaved"])
 
 local SaveBox    = LMG2L and (LMG2L["SaveBox_24"] or LMG2L["SaveBox"] or LMG2L["SaveIDBox"] or SaveIDBox)
 local SaveButton = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"] or LMG2L["SaveIDButton"])
 
--------------------------------------------------------------------------
--- 5. TAB NAVIGATION LISTENERS
--------------------------------------------------------------------------
 if ModelButton and ModelButton:IsA("GuiButton") then
     ModelButton.MouseButton1Click:Connect(function() SwitchTab("Model") end)
 end
@@ -2595,15 +2408,11 @@ if PluginButton and PluginButton:IsA("GuiButton") then
     PluginButton.MouseButton1Click:Connect(function() SwitchTab("Plugin") end)
 end
 
--------------------------------------------------------------------------
--- 6. TOGGLE FILTER SAVED ASSETS (MANUAL CLICK ONLY)
--------------------------------------------------------------------------
 local function ToggleSavedFilter()
-    -- Hanya fungsi ini yang berhak mengubah status IsShowingSavedOnly & Visual Button
+
     IsShowingSavedOnly = not IsShowingSavedOnly
     _G.IsShowingSavedOnly = IsShowingSavedOnly
 
-    -- Update Visual Highlight Tombol Header
     if typeof(UpdateSavedFilterVisualState) == "function" then
         UpdateSavedFilterVisualState(IsShowingSavedOnly)
     end
@@ -2621,9 +2430,6 @@ elseif HeaderIconSaved and HeaderIconSaved:IsA("GuiButton") then
     HeaderIconSaved.MouseButton1Click:Connect(ToggleSavedFilter)
 end
 
--------------------------------------------------------------------------
--- 7. MANUAL SAVE ID ACTION (SaveBox & SaveButton) + INSTANT RE-RENDER
--------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
         if not SaveBox or not SaveBox:IsA("TextBox") then return end
@@ -2645,7 +2451,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         SaveButton.Text = "SAVE"
 
         task.spawn(function()
-            -- Fetch Metadata Real dari Store via Helper Tahap 3
+					
             local meta = nil
             if typeof(FetchAssetMetadata) == "function" then
                 meta = FetchAssetMetadata(numericId)
@@ -2653,7 +2459,6 @@ if SaveButton and SaveButton:IsA("GuiButton") then
 
             local targetCategory = (meta and meta.Category) or CurrentCategory or "Model"
 
-            -- Cek Penambahan / Duplikasi di Memori SavedAssets Key-Array
             local isAlreadySaved = false
             if typeof(IsAssetSaved) == "function" then
                 isAlreadySaved = IsAssetSaved(numericId, targetCategory)
@@ -2667,7 +2472,6 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                 SavedAssets[targetCategory] = SavedAssets[targetCategory] or {}
                 table.insert(SavedAssets[targetCategory], numericId)
                 
-                -- Simpan Permanen ke File Data User (delta/saved_assets.json)
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
@@ -2693,9 +2497,6 @@ if SaveButton and SaveButton:IsA("GuiButton") then
     end)
 end
 
--------------------------------------------------------------------------
--- 8. DIRECT INSERT ACTION BUTTON
--------------------------------------------------------------------------
 if InsertButton and InsertButton:IsA("GuiButton") then
     InsertButton.MouseButton1Click:Connect(function()
         if not InsertIDBox or not InsertIDBox:IsA("TextBox") then return end
@@ -2728,12 +2529,8 @@ if InsertButton and InsertButton:IsA("GuiButton") then
     end)
 end
 
--- Color Palette Configuration
 local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
 
--------------------------------------------------------------------------
--- HELPER: STABLE INPUT BOX BEHAVIOR (PREVENT AUTO-DELETE ON RE-CLICK)
--------------------------------------------------------------------------
 local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
     if not textBox or not textBox:IsA("TextBox") then return end
 
@@ -2769,16 +2566,10 @@ SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
 SetupInputBoxBehavior(SearchBox, "Search asset...")
 SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
 
--------------------------------------------------------------------------
--- REFERENSI TOMBOL & INPUT UTAMA
--------------------------------------------------------------------------
 local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"])
 local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"])
 local InsertButton = LMG2L and (LMG2L["InsertButton_34"] or LMG2L["InsertButton"])
 
--------------------------------------------------------------------------
--- 1. FUNGSIONALITAS SEARCH SYSTEM (PURE CLICK TRIGGER ONLY)
--------------------------------------------------------------------------
 local function ExecuteSearch()
     local query = ""
     if SearchBox and SearchBox:IsA("TextBox") then
@@ -2808,9 +2599,6 @@ if SearchButton and SearchButton:IsA("GuiButton") then
     end)
 end
 
--------------------------------------------------------------------------
--- 2. FUNGSIONALITAS SAVE BUTTON (INDEPENDENT RENDER STATE)
--------------------------------------------------------------------------
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
         if not SaveIDBox or not SaveIDBox:IsA("TextBox") then return end
@@ -2818,7 +2606,6 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         local rawText = SaveIDBox.Text
         local cleanId = tonumber(rawText:match("%d+"))
 
-        -- Validasi Input Harus Angka
         if not cleanId then
             SaveIDBox.Text = "Harus ID Angka!"
             SaveIDBox.TextTransparency = 0
@@ -2830,7 +2617,6 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             return
         end
 
-        -- Pertahankan Teks Angka yang Valid di Box
         SaveIDBox.Text = tostring(cleanId)
         SaveIDBox.TextTransparency = 0
         if typeof(COLOR_TEXT_ACTIVE) == "Color3" then
@@ -2840,21 +2626,19 @@ if SaveButton and SaveButton:IsA("GuiButton") then
         local originalBtnText = SaveButton.Text
         SaveButton.Text = "SAVE"
 
-        -- Eksekusi Asynchronous (Mencegah UI Freezing)
         task.spawn(function()
-            -- 1. VALIDASI KEBERADAAN ASSET & FETCH METADATA VIA MARKETPLACESERVICE
+
             local success, info = pcall(function() 
                 return MarketplaceService:GetProductInfo(cleanId) 
             end)
 
             if success and info and info.Name then
-                -- Tentukan Kategori Berdasarkan AssetTypeId
+						
                 local targetCategory = CurrentCategory or "Model"
                 if typeof(GetCategoryFromAssetType) == "function" and info.AssetTypeId then
                     targetCategory = GetCategoryFromAssetType(info.AssetTypeId) or targetCategory
                 end
 
-                -- CEGAH DUPLIKASI ID DI KATEGORI TERSEBUT
                 local isDuplicate = false
                 if typeof(IsAssetSaved) == "function" then
                     isDuplicate = IsAssetSaved(cleanId, targetCategory)
@@ -2882,7 +2666,6 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                     creatorName = tostring(info.CreatorName)
                 end
 
-                -- Object Asset Baru
                 local newSavedAsset = {
                     Name = assetName,
                     Creator = creatorName,
@@ -2890,20 +2673,16 @@ if SaveButton and SaveButton:IsA("GuiButton") then
                     AssetTypeId = info.AssetTypeId
                 }
 
-                -- Simpan ke Category Target di SavedAssets
                 SavedAssets = SavedAssets or { Model = {}, Decal = {}, Audio = {}, Plugin = {} }
                 SavedAssets[targetCategory] = SavedAssets[targetCategory] or {}
                 table.insert(SavedAssets[targetCategory], newSavedAsset)
                 
-                -- Simpan Permanen ke Storage User
                 if typeof(SaveUserData) == "function" then
                     SaveUserData()
                 end
                 
                 SaveButton.Text = "SAVED!"
                 
-                -- FIX: Hanya refresh UI jika user SEDANG berada di Mode Saved Assets
-                -- Mencegah hasil Search & Load More terhapus saat klik Save ID
                 if IsShowingSavedOnly and typeof(RenderAssets) == "function" then
                     RenderAssets("")
                 end
@@ -2922,16 +2701,12 @@ if SaveButton and SaveButton:IsA("GuiButton") then
     end)
 end
 
--------------------------------------------------------------------------
--- 3A. FUNGSIONALITAS MANUAL INSERT (FIX DOUBLE LOAD GUARANTEED)
--------------------------------------------------------------------------
 local isInsertingManual = false
 local manualInsertConnection = nil
 
 local InsertButton_34 = (LMG2L and LMG2L["InsertButton_34"]) or InsertButton
 local InsertBox_38 = (LMG2L and LMG2L["InsertBox_38"]) or InsertIDBox
 
--- Bersihkan event listener lama jika pernah terpasang sebelumnya
 if manualInsertConnection then
     manualInsertConnection:Disconnect()
     manualInsertConnection = nil
@@ -2954,7 +2729,6 @@ if InsertButton_34 and InsertButton_34:IsA("GuiButton") then
             return
         end
 
-        -- Kunci state sebelum task.spawn
         isInsertingManual = true
         local originalText = InsertButton_34.Text
 
@@ -2968,7 +2742,7 @@ if InsertButton_34 and InsertButton_34:IsA("GuiButton") then
         
         task.spawn(function()
             if typeof(InsertAsset) == "function" then
-                -- Kirim nil pada argumen ke-3 agar InsertAsset tidak memicu handler UI lain
+
                 InsertAsset(cleanId, CurrentCategory, nil)
             end
             
@@ -2979,9 +2753,6 @@ if InsertButton_34 and InsertButton_34:IsA("GuiButton") then
     end)
 end
 
--------------------------------------------------------------------------
--- 3B. HELPER CARD INSERT (InsertButton_6b Di Dalam Card_5d)
--------------------------------------------------------------------------
 local function SetupCardInsertButton(cardFrame, assetId)
     local cardInsertBtn = cardFrame:FindFirstChild("InsertButton_6b", true)
     if not cardInsertBtn or not cardInsertBtn:IsA("GuiButton") then return end
@@ -3007,34 +2778,21 @@ local function SetupCardInsertButton(cardFrame, assetId)
     end)
 end
 
--------------------------------------------------------------------------
--- INITIALIZATION RUN
--------------------------------------------------------------------------
 if typeof(SwitchTab) == "function" then
     SwitchTab("Model")
 end
 
--------------------------------------------------------------------------
--- TAHAP 7: DYNAMIC MENU SYSTEM & RAW LINK EXECUTOR (FIXED FINAL)
--------------------------------------------------------------------------
-
--- Referensi UI LMG2L
 local MenuButton = LMG2L and (LMG2L["MenuButton_54"] or LMG2L["MenuButton"])
 local CardMenu   = LMG2L and (LMG2L["CardMenu_3d"] or LMG2L["CardMenu"])
 
 local ScrollingButton  = CardMenu and (CardMenu:FindFirstChild("ScrollingButton_3f") or CardMenu:FindFirstChild("ScrollingButton"))
 local TemplateBgButton = ScrollingButton and (ScrollingButton:FindFirstChild("BackgroundButton_42") or ScrollingButton:FindFirstChild("BackgroundButton"))
 
--- Icon ID Config
 local ICON_CLOSED = "rbxassetid://76007989326576"
 local ICON_OPENED = "rbxassetid://86595679119304"
 
--- State Menu Tracker
 local IsMenuOpen = false
 
--------------------------------------------------------------------------
--- 1. DATABASE LIST FEATURE BUTTONS (NAMA, ICON, & RAW LINK)
--------------------------------------------------------------------------
 local MenuFeatureList = {
     {
         Name = "TERRAIN",
@@ -3053,9 +2811,6 @@ local MenuFeatureList = {
     }
 }
 
--------------------------------------------------------------------------
--- 2. SETUP TEMPLATE & BUILD MENU LIST
--------------------------------------------------------------------------
 if TemplateBgButton then
     TemplateBgButton.Visible = false -- Sembunyikan Template Acuan
 end
@@ -3063,30 +2818,25 @@ end
 local function BuildMenuItems()
     if not ScrollingButton or not TemplateBgButton then return end
 
-    -- Clear Button Hasil Clone Sebelumnya (Kecuali Template Default)
     for _, child in ipairs(ScrollingButton:GetChildren()) do
         if child:IsA("GuiObject") and child ~= TemplateBgButton then
             child:Destroy()
         end
     end
 
-    -- Loop Data Feature untuk Cloning
     for index, featureData in ipairs(MenuFeatureList) do
         local buttonCard = TemplateBgButton:Clone()
         buttonCard.Name = "MenuCard_" .. tostring(index)
         buttonCard.Visible = true
         buttonCard.Parent = ScrollingButton
 
-        -- Referensi Elemen UI Dalam Clone
         local IconButton = buttonCard:FindFirstChild("IconButton_43") or buttonCard:FindFirstChild("IconButton")
         local ExecButton = buttonCard:FindFirstChild("Button_45") or buttonCard:FindFirstChild("Button")
 
-        -- Assign Custom Icon ImageLabel
         if IconButton and IconButton:IsA("ImageLabel") then
             IconButton.Image = featureData.Icon or ICON_CLOSED
         end
 
-        -- Assign Text & Execute Event pada Button_45
         if ExecButton then
             local textTarget = ExecButton:IsA("TextButton") and ExecButton or ExecButton:FindFirstChildOfClass("TextLabel")
             if textTarget then
@@ -3095,13 +2845,11 @@ local function BuildMenuItems()
                 ExecButton.Text = featureData.Name
             end
 
-            -- Event Click Execute Raw Link
             local clickTarget = ExecButton:IsA("GuiButton") and ExecButton or ExecButton:FindFirstChildOfClass("GuiButton")
             if clickTarget then
                 clickTarget.MouseButton1Click:Connect(function()
                     if not featureData.RawLink or featureData.RawLink == "" then return end
 
-                    -- Visual Feedback Saat Tombol Ditekan
                     local originalText = clickTarget.Text
                     clickTarget.Text = "EXECUTING..."
 
@@ -3127,46 +2875,36 @@ local function BuildMenuItems()
         end
     end
 
-    -- Auto Adjust Canvas Scrolling Frame Menu
     local layout = ScrollingButton:FindFirstChildOfClass("UIListLayout")
     if layout then
         ScrollingButton.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
     end
 end
 
--------------------------------------------------------------------------
--- 3. TOGGLE VISIBILITY & DIRECT IMAGEBUTTON ICON SWAP LISTENER
--------------------------------------------------------------------------
 if MenuButton then
     MenuButton.MouseButton1Click:Connect(function()
         IsMenuOpen = not IsMenuOpen
 
-        -- Toggle Visible CardMenu_3d
         if CardMenu then
             CardMenu.Visible = IsMenuOpen
         end
 
-        -- TEPAT: SWAP ICON LANGSUNG KEPADA MenuButton_54 (ImageButton / ImageLabel Fallback)
         if MenuButton:IsA("ImageButton") or MenuButton:IsA("ImageLabel") then
             MenuButton.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
         else
-            -- Fallback jika ada child ImageLabel di dalamnya
+
             local childIcon = MenuButton:FindFirstChildOfClass("ImageLabel")
             if childIcon then
                 childIcon.Image = IsMenuOpen and ICON_OPENED or ICON_CLOSED
             end
         end
 
-        -- Render/Build Tombol Menu saat Pertama Kali Dibuka
         if IsMenuOpen then
             BuildMenuItems()
         end
     end)
 end
 
--------------------------------------------------------------------------
--- INITIAL STATE SETUP
--------------------------------------------------------------------------
 if CardMenu then 
     CardMenu.Visible = false 
 end
