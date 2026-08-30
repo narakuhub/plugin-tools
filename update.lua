@@ -2455,7 +2455,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             SaveBox.Text = "Harus ID Angka!"
             task.wait(1.2)
             if SaveBox then 
-                SaveBox.Text = "Masukan ID save asset..." 
+                SaveBox.Text = "Save id asset..." 
                 SaveBox.TextTransparency = 0.5
             end
             return
@@ -2495,7 +2495,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             
             -- Reset Input Box setelah berhasil
             if SaveBox then
-                SaveBox.Text = "Masukan ID save asset..."
+                SaveBox.Text = "Save id asset..."
                 SaveBox.TextTransparency = 0.5
             end
             
@@ -2536,82 +2536,13 @@ if InsertButton and InsertButton:IsA("GuiButton") then
             task.wait(1.5)
             
             if InsertIDBox and InsertIDBox.Text == "Harus ID Angka!" then
-                InsertIDBox.Text = "Masukan Id asset..."
+                InsertIDBox.Text = "Insert Id asset..."
                 InsertIDBox.TextTransparency = 0.5
             end
         end
     end)
 end
 
-local COLOR_TEXT_ACTIVE = Color3.fromRGB(223, 230, 237)
-
-local function SetupInputBoxBehavior(textBox, defaultPlaceholder)
-    if not textBox or not textBox:IsA("TextBox") then return end
-
-    textBox.Focused:Connect(function()
-        if textBox.Text == defaultPlaceholder then
-            textBox.Text = ""
-        end
-        textBox.TextTransparency = 0
-        textBox.TextColor3 = COLOR_TEXT_ACTIVE
-    end)
-
-    textBox.FocusLost:Connect(function()
-        local currentText = textBox.Text:match("^%s*(.-)%s*$")
-        if currentText == "" or currentText == defaultPlaceholder then
-            textBox.Text = defaultPlaceholder
-            textBox.TextTransparency = 0.5
-        else
-            textBox.TextTransparency = 0
-            textBox.TextColor3 = COLOR_TEXT_ACTIVE
-        end
-    end)
-
-    textBox:GetPropertyChangedSignal("Text"):Connect(function()
-        local currentText = textBox.Text
-        if currentText ~= "" and currentText ~= defaultPlaceholder then
-            textBox.TextTransparency = 0
-            textBox.TextColor3 = COLOR_TEXT_ACTIVE
-        end
-    end)
-end
-
-SetupInputBoxBehavior(InsertIDBox, "Masukan Id asset...")
-SetupInputBoxBehavior(SearchBox, "Search asset...")
-SetupInputBoxBehavior(SaveIDBox, "Masukan ID save asset...")
-
-local SearchButton = LMG2L and (LMG2L["SearchButton_75"] or LMG2L["SearchButton"])
-local SaveButton   = LMG2L and (LMG2L["SaveButton_56"] or LMG2L["SaveButton"])
-local InsertButton = LMG2L and (LMG2L["InsertButton_34"] or LMG2L["InsertButton"])
-
-local function ExecuteSearch()
-    local query = ""
-    if SearchBox and SearchBox:IsA("TextBox") then
-        query = SearchBox.Text:match("^%s*(.-)%s*$")
-    end
-
-    if typeof(RenderAssets) == "function" then
-        if query == "Search asset..." then
-            RenderAssets("")
-        else
-            RenderAssets(query)
-        end
-    end
-end
-
-if SearchButton and SearchButton:IsA("GuiButton") then
-    SearchButton.MouseButton1Click:Connect(function()
-        local originalText = SearchButton.Text
-        SearchButton.Text = "SEARCH"
-        
-        ExecuteSearch()
-        
-        task.wait(0.3)
-        if SearchButton then 
-            SearchButton.Text = originalText 
-        end
-    end)
-end
 
 if SaveButton and SaveButton:IsA("GuiButton") then
     SaveButton.MouseButton1Click:Connect(function()
@@ -2625,7 +2556,7 @@ if SaveButton and SaveButton:IsA("GuiButton") then
             SaveIDBox.TextTransparency = 0
             task.wait(1.5)
             if SaveIDBox and SaveIDBox.Text == "Harus ID Angka!" then
-                SaveIDBox.Text = "Masukan ID save asset..."
+                SaveIDBox.Text = "Save id asset..."
                 SaveIDBox.TextTransparency = 0.5
             end
             return
