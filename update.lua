@@ -2719,6 +2719,11 @@ local MenuFeatureList = {
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/audio.lua"
     },
 	{
+        Name = "ARCHIMEDES",
+        Icon = "rbxassetid://87188567501065",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/ArchSementara.lua"
+    },
+	{
         Name = "ICONS",
         Icon = "rbxassetid://114334671982047",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/lucide.lua"
@@ -2726,7 +2731,7 @@ local MenuFeatureList = {
     {
         Name = "FLY GUI",
         Icon = "rbxassetid://126428723702595",
-        RawLink = "https://raw.githubusercontent.com/narakuhub/narakuhub/refs/heads/main/FlyV3.lua"
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/flygui.lua"
     }
 }
 
