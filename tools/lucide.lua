@@ -7,7 +7,7 @@ local CoreGui = game:GetService("CoreGui")
 local GUI_NAME = "LucideXnars Icons"
 local ICONS_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/icons.lua"
 
--- Clear 
+-- Clear existing GUI
 local oldGui = CoreGui:FindFirstChild(GUI_NAME)
 if oldGui then
 	oldGui:Destroy()
@@ -278,7 +278,6 @@ CopyStroke.Transparency = 0.94
 CopyStroke.Thickness = 1
 CopyStroke.Parent = CopyButton
 
--- Copy Icon inside CopyButton (Placed on Left Side)
 local CopyBtnIcon = Instance.new("ImageLabel")
 CopyBtnIcon.Name = "CopyIcon"
 CopyBtnIcon.Size = UDim2.fromOffset(14, 14)
@@ -299,7 +298,7 @@ DetailClose.ImageColor3 = Color3.fromRGB(140, 145, 155)
 DetailClose.ZIndex = 21
 DetailClose.Parent = Detail
 
--- Side Card Menu Section (Inside Panel - Width 50%)
+-- Side Card Menu Section (Width 50%)
 local MenuCard = Instance.new("Frame")
 MenuCard.Name = "MenuCard"
 MenuCard.Size = UDim2.new(0.5, 0, 1, 0)
@@ -362,7 +361,7 @@ MenuListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 MenuListLayout.Padding = UDim.new(0, 3)
 MenuListLayout.Parent = MenuListFrame
 
--- Base Name TextButton Template (Cloneable & Clickable)
+-- Base Name TextButton Template
 local NameButtonTemplate = Instance.new("TextButton")
 NameButtonTemplate.Name = "IconNameButton"
 NameButtonTemplate.Size = UDim2.new(1, -4, 0, 22)
@@ -385,45 +384,6 @@ local TemplatePadding = Instance.new("UIPadding")
 TemplatePadding.PaddingLeft = UDim.new(0, 6)
 TemplatePadding.Parent = NameButtonTemplate
 
--- Populate Side Card Menu with Cloned TextButtons
-for _, icon in ipairs(IconList) do
-	local nameBtn = NameButtonTemplate:Clone()
-	nameBtn.Text = icon.Name
-	nameBtn.Parent = MenuListFrame
-
-	nameBtn.MouseEnter:Connect(function()
-		TweenService:Create(nameBtn, TweenInfo.new(0.1), {
-			BackgroundTransparency = 0,
-			TextColor3 = Color3.fromRGB(223, 230, 237)
-		}):Play()
-	end)
-
-	nameBtn.MouseLeave:Connect(function()
-		TweenService:Create(nameBtn, TweenInfo.new(0.1), {
-			BackgroundTransparency = 1,
-			TextColor3 = Color3.fromRGB(180, 185, 195)
-		}):Play()
-	end)
-
-	nameBtn.MouseButton1Click:Connect(function()
-		if setclipboard then
-			setclipboard(icon.Name)
-		elseif toclipboard then
-			toclipboard(icon.Name)
-		end
-		
-		local origText = icon.Name
-		nameBtn.Text = "COPIED"
-		nameBtn.TextColor3 = Color3.fromRGB(100, 220, 130)
-		task.delay(0.8, function()
-			if nameBtn.Parent then
-				nameBtn.Text = origText
-				nameBtn.TextColor3 = Color3.fromRGB(180, 185, 195)
-			end
-		end)
-	end)
-end
-
 -- Corner Resize Handle Section
 local ResizeHandle = Instance.new("ImageButton")
 ResizeHandle.Name = "CornerResizeHandle"
@@ -442,6 +402,7 @@ local filtered = IconList
 local rendered = 0
 local PAGE_SIZE = 60
 local busy = false
+local selectedMenuBtn = nil
 
 local function clearGrid()
 	for _, child in ipairs(Content:GetChildren()) do
@@ -536,6 +497,68 @@ local function applySearch()
 	clearGrid()
 	Content.CanvasPosition = Vector2.zero
 	renderNext()
+end
+
+local function hideMenuCard()
+	TweenService:Create(
+		MenuCard,
+		TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{Position = UDim2.new(-0.5, 0, 0, 0)}
+	):Play()
+end
+
+-- Populate Side Card Menu with Active State Persistence
+for _, icon in ipairs(IconList) do
+	local nameBtn = NameButtonTemplate:Clone()
+	nameBtn.Text = icon.Name
+	nameBtn.Parent = MenuListFrame
+
+	nameBtn.MouseEnter:Connect(function()
+		if selectedMenuBtn ~= nameBtn then
+			TweenService:Create(nameBtn, TweenInfo.new(0.1), {
+				BackgroundTransparency = 0,
+				BackgroundColor3 = Color3.fromRGB(15, 15, 18),
+				TextColor3 = Color3.fromRGB(223, 230, 237)
+			}):Play()
+		end
+	end)
+
+	nameBtn.MouseLeave:Connect(function()
+		if selectedMenuBtn ~= nameBtn then
+			TweenService:Create(nameBtn, TweenInfo.new(0.1), {
+				BackgroundTransparency = 1,
+				TextColor3 = Color3.fromRGB(180, 185, 195)
+			}):Play()
+		end
+	end)
+
+	nameBtn.MouseButton1Click:Connect(function()
+		-- Reset tombol aktif sebelumnya jika ada
+		if selectedMenuBtn and selectedMenuBtn ~= nameBtn then
+			TweenService:Create(selectedMenuBtn, TweenInfo.new(0.1), {
+				BackgroundTransparency = 1,
+				TextColor3 = Color3.fromRGB(180, 185, 195)
+			}):Play()
+		end
+
+		-- Setel tombol baru menjadi aktif (tidak transparan)
+		selectedMenuBtn = nameBtn
+		TweenService:Create(nameBtn, TweenInfo.new(0.1), {
+			BackgroundTransparency = 0,
+			BackgroundColor3 = Color3.fromRGB(25, 25, 30),
+			TextColor3 = Color3.fromRGB(255, 255, 255)
+		}):Play()
+
+		-- 1. Tutup Menu Card secara otomatis dengan animasi
+		hideMenuCard()
+
+		-- 2. Tampilkan hanya ikon yang dipilih ke Content Grid
+		filtered = { icon }
+		rendered = 0
+		clearGrid()
+		Content.CanvasPosition = Vector2.zero
+		renderNext()
+	end)
 end
 
 -- Dragify Window Logic
@@ -643,13 +666,7 @@ MenuButton.MouseButton1Click:Connect(function()
 	):Play()
 end)
 
-BackButton.MouseButton1Click:Connect(function()
-	TweenService:Create(
-		MenuCard,
-		TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-		{Position = UDim2.new(-0.5, 0, 0, 0)}
-	):Play()
-end)
+BackButton.MouseButton1Click:Connect(hideMenuCard)
 
 -- Initialize Drag, Resize and Render
 dragify(Main, Header)
