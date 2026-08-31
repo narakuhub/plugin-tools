@@ -5,7 +5,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Configuration
-local CHANNEL_LINK = "https://whatsapp.com/channel/example" -- Ganti dengan link channel Anda
+local CHANNEL_LINK = "https://whatsapp.com/channel/0029VbDKXKa9MF93nmcwnV0n" -- Ganti dengan link channel Anda
 
 -- Prevent Duplicate GUI
 if PlayerGui:FindFirstChild("MaintenanceGui") then
