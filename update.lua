@@ -2714,7 +2714,7 @@ local MenuFeatureList = {
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/terrain.lua"
     },
 	{
-        Name = "AUDIO",
+        Name = "AUDIO PLAY",
         Icon = "rbxassetid://136460394404917",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/audio.lua"
     },
@@ -2724,8 +2724,8 @@ local MenuFeatureList = {
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/ArchSementara.lua"
     },
 	{
-        Name = "ICONS",
-        Icon = "rbxassetid://114334671982047",
+        Name = "LUCIDE ICONS",
+        Icon = "rbxassetid://126610009605241",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/lucide.lua"
     },
     {
