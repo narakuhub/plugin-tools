@@ -546,7 +546,7 @@ local IconVerify = LMG2L["IconVerify_8"]
 -- CONSTANTS & CONFIGURATION
 local TARGET_PLACE_ID = 10959918411
 local SAVE_FILE_PATH = "Delta/saved_verify.json"
-local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/update.lua"
+local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/maintenance.lua"
 
 local ICON_NORMAL = "rbxassetid://107077233630749"
 local ICON_LOADING = "rbxassetid://93961794643171"
