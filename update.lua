@@ -2728,6 +2728,11 @@ local MenuFeatureList = {
         Icon = "rbxassetid://126610009605241",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/lucide.lua"
     },
+	{
+        Name = "FLY CAMERA SPEED",
+        Icon = "rbxassetid://80451686744860",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/FlyCamera.lua"
+    },
     {
         Name = "FLY GUI",
         Icon = "rbxassetid://126428723702595",
