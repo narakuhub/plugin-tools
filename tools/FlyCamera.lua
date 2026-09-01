@@ -162,7 +162,7 @@ DescRow.Parent = Body
 local DescText = Instance.new("TextLabel")
 DescText.Size = UDim2.new(1, -44, 1, 0)
 DescText.BackgroundTransparency = 1
-DescText.Text = "Aktifkan untuk ubah speed kamera."
+DescText.Text = "Aktifkan toggle untuk ubah speed Fly camera."
 DescText.TextColor3 = Color3.fromRGB(140, 145, 155)
 DescText.TextSize = 10
 DescText.Font = Enum.Font.Arial
@@ -400,7 +400,7 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Window Resize Logic
+-- Window Resize Logic (MINIMUM FIXED TO NORMAL CARD SIZE: 250 x 150)
 local isResizing = false
 local resizeStartPos, resizeStartSize
 ResizeHandle.InputBegan:Connect(function(input)
@@ -414,8 +414,9 @@ end)
 UserInputService.InputChanged:Connect(function(input)
 	if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - resizeStartPos
-		local newX = math.clamp(resizeStartSize.X.Offset + delta.X, 200, 450)
-		local newY = math.clamp(resizeStartSize.Y.Offset + delta.Y, 130, 300)
+		-- Batas minimum di-set ke 250 (X) dan 150 (Y) sesuai ukuran normal Card
+		local newX = math.clamp(resizeStartSize.X.Offset + delta.X, 250, 600)
+		local newY = math.clamp(resizeStartSize.Y.Offset + delta.Y, 150, 400)
 		Card.Size = UDim2.fromOffset(newX, newY)
 	end
 end)
