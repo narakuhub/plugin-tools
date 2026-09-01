@@ -6,6 +6,8 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local GUI_NAME = "FlyCameraUI"
 local oldGui = CoreGui:FindFirstChild(GUI_NAME)
@@ -22,7 +24,6 @@ Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
 Gui.Parent = getParent()
 
--- Main Panel (Card) - Size Fixed: Scale 0, Offset 250 (X) | Scale 0, Offset 150 (Y)
 local Card = Instance.new("Frame")
 Card.Name = "CardPanel"
 Card.Size = UDim2.new(0, 250, 0, 150)
@@ -42,7 +43,6 @@ CardStroke.Transparency = 0.94
 CardStroke.Thickness = 2
 CardStroke.Parent = Card
 
--- Header Section - Size Fixed: Scale 1, Offset 0 (X) | Scale 0, Offset 30 (Y)
 local Header = Instance.new("Frame")
 Header.Name = "Header"
 Header.Size = UDim2.new(1, 0, 0, 30)
@@ -61,7 +61,6 @@ HeaderFix.BackgroundColor3 = Color3.fromRGB(223, 230, 237)
 HeaderFix.BorderSizePixel = 0
 HeaderFix.Parent = Header
 
--- Title Icon
 local TitleIcon = Instance.new("ImageLabel")
 TitleIcon.Name = "TitleIcon"
 TitleIcon.Size = UDim2.fromOffset(14, 14)
@@ -71,7 +70,6 @@ TitleIcon.Image = "rbxassetid://80451686744860"
 TitleIcon.ImageColor3 = Color3.fromRGB(0, 0, 0)
 TitleIcon.Parent = Header
 
--- Container Box (Title + Subtitle)
 local TitleContainer = Instance.new("Frame")
 TitleContainer.Size = UDim2.new(1, -70, 1, 0)
 TitleContainer.Position = UDim2.fromOffset(30, 0)
@@ -124,7 +122,6 @@ CloseBtn.Image = "rbxassetid://110786993356448"
 CloseBtn.ImageColor3 = Color3.fromRGB(15, 15, 18)
 CloseBtn.Parent = Header
 
--- Open Floating Button (UICorner: 5)
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Name = "OpenFlyCamBtn"
 OpenBtn.Size = UDim2.new(0, 80, 0, 20)
@@ -147,7 +144,6 @@ OpenBtnStroke.Transparency = 0.94
 OpenBtnStroke.Thickness = 2
 OpenBtnStroke.Parent = OpenBtn
 
--- Body Container
 local Body = Instance.new("Frame")
 Body.Size = UDim2.new(1, -24, 1, -38)
 Body.Position = UDim2.fromOffset(12, 34)
@@ -199,7 +195,6 @@ local ToggleCircleCorner = Instance.new("UICorner")
 ToggleCircleCorner.CornerRadius = UDim.new(1, 0)
 ToggleCircleCorner.Parent = ToggleCircle
 
--- Slider Row (Speed: 10 - 500)
 local SliderRow = Instance.new("Frame")
 SliderRow.Size = UDim2.new(1, 0, 0, 42)
 SliderRow.Position = UDim2.fromOffset(0, 28)
@@ -241,7 +236,6 @@ TrackCorner.CornerRadius = UDim.new(1, 0)
 TrackCorner.Parent = SliderTrack
 
 local SliderFill = Instance.new("Frame")
--- Posisi awal slider disesuaikan dengan nilai Speed awal 50 (Range 10-500)
 SliderFill.Size = UDim2.new((50 - 10) / (500 - 10), 0, 1, 0)
 SliderFill.BackgroundColor3 = Color3.fromRGB(223, 230, 237)
 SliderFill.BorderSizePixel = 0
@@ -251,7 +245,6 @@ local FillCorner = Instance.new("UICorner")
 FillCorner.CornerRadius = UDim.new(1, 0)
 FillCorner.Parent = SliderFill
 
--- Fix Knob agar mentok pas di dalam Slider (Left Alignment)
 local SliderKnob = Instance.new("Frame")
 SliderKnob.Size = UDim2.fromOffset(10, 10)
 SliderKnob.Position = UDim2.new(1, -10, 0, 0)
@@ -268,7 +261,6 @@ KnobStroke.Transparency = 0.5
 KnobStroke.Thickness = 1
 KnobStroke.Parent = SliderKnob
 
--- Quick Preset Buttons (Mengisi area bawah slider yang kosong)
 local PresetRow = Instance.new("Frame")
 PresetRow.Size = UDim2.new(1, 0, 0, 18)
 PresetRow.Position = UDim2.fromOffset(0, 76)
@@ -301,7 +293,6 @@ for i, speedVal in ipairs(presets) do
 	end)
 end
 
--- Resize Handle (CornerSizeHandle)
 local ResizeHandle = Instance.new("ImageButton")
 ResizeHandle.Name = "CornerSizeHandle"
 ResizeHandle.Size = UDim2.fromOffset(12, 12)
@@ -312,7 +303,6 @@ ResizeHandle.ImageColor3 = Color3.fromRGB(100, 105, 115)
 ResizeHandle.Rotation = 90
 ResizeHandle.Parent = Card
 
--- Smooth Animations (Tween) Functions
 local function animateShow(instance, targetScale)
 	instance.Visible = true
 	instance.Size = UDim2.new(0, 0, 0, 0)
@@ -328,7 +318,6 @@ local function animateHide(instance, onComplete)
 	tween:Play()
 end
 
--- Toggle Interaction
 ToggleBg.MouseButton1Click:Connect(function()
 	_G.FlySpeedEnabled = not _G.FlySpeedEnabled
 	if _G.FlySpeedEnabled then
@@ -342,7 +331,6 @@ ToggleBg.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Slider Dragging Logic (MIN 10, MAX 500)
 local isDragging = false
 local MIN_SPEED, MAX_SPEED = 10, 500
 
@@ -376,7 +364,6 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Window Drag Logic
 local isDraggingCard = false
 local dragStart, startPos
 Header.InputBegan:Connect(function(input)
@@ -400,7 +387,6 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- UISCALE SETUP FOR PROPOTIONAL RESIZING
 local CardScale = Card:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
 CardScale.Parent = Card
 
@@ -422,12 +408,8 @@ end)
 UserInputService.InputChanged:Connect(function(input)
 	if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - resizeStartPos
-		
-		-- Hitung perubahan skala berdasarkan pergerakan mouse/touch (diambil dari rata-rata delta X & Y)
 		local scaleDelta = (delta.X + delta.Y) / 300
 		local newScale = math.clamp(startScale + scaleDelta, MIN_SCALE, MAX_SCALE)
-		
-		-- Terapkan Skala ke Card (Semua elemen child di dalamnya otomatis menyesuaikan)
 		CardScale.Scale = newScale
 	end
 end)
@@ -438,7 +420,6 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Animated Button Bindings
 BackBtn.MouseButton1Click:Connect(function()
 	animateHide(Card, function()
 		animateShow(OpenBtn, UDim2.new(0, 80, 0, 20))
@@ -458,159 +439,100 @@ CloseBtn.MouseButton1Click:Connect(function()
 	end)
 end)
 
--- Entrance Animation
 Card.Size = UDim2.new(0, 0, 0, 0)
 animateShow(Card, UDim2.new(0, 250, 0, 150))
 
--- ORIGINAL FLY CAMERA LOGIC DECOMPILED (OPTIMIZED)
-local v_u_1 = game.Players.LocalPlayer
-local v2 = require(v_u_1:WaitForChild("PlayerScripts", 9):WaitForChild("PlayerModule", 9):WaitForChild("ControlModule", 9))
-local v_u_3 = game:GetService("ReplicatedStorage"):WaitForChild("StudioLiteFolder"):WaitForChild("ServerFunctions")
-local v_u_4 = nil
-local v_u_5 = nil
-local v_u_6 = nil
+local LocalPlayer = Players.LocalPlayer
+local ControlModule = require(LocalPlayer:WaitForChild("PlayerScripts", 9):WaitForChild("PlayerModule", 9):WaitForChild("ControlModule", 9))
 
-pcall(function()
-    task.wait(0.1)
-    game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-end)
+local flyCameraFocus = nil
+local linearVelocity = nil
+local currentCam = Workspace.CurrentCamera
 
-local v7 = 0
-local v8 = 0
-local v9 = 0
-local v_u_10 = nil
-local v_u_11 = nil
-local v12 = Vector3.new()
-
-function setupFlyMode()
-    while true do
-        local v14, v15 = pcall(function()
-            for _ = 1, 80 do
-                v_u_1 = game.Players.LocalPlayer
-                v_u_4 = v_u_1.Character
-                if v_u_4 then
-                    v_u_5 = v_u_4:FindFirstChildOfClass("Humanoid")
-                    v_u_6 = v_u_4.PrimaryPart
-                    if v_u_1 and (v_u_4 and (v_u_4.Parent and (v_u_5 and v_u_6))) then
-                        break
-                    end
-                end
-                task.wait(0.1)
-            end
-            if v_u_5 then
-                v_u_5.PlatformStand = true
-                v_u_4:PivotTo(CFrame.new(0, 5000, 0))
-                v_u_6.Anchored = true
-                v_u_1.CameraMode = Enum.CameraMode.Classic
-                local v13 = game:GetService("ReplicatedStorage"):WaitForChild("FlyCameraFocus", 9):Clone()
-                v13.Parent = workspace
-                v_u_10 = v13:WaitForChild("LinearVelocity")
-                v_u_11 = workspace.CurrentCamera
-                v_u_11.CameraType = Enum.CameraType.Track
-                v_u_11.CameraSubject = v13
-                v_u_1.CameraMaxZoomDistance = 10
-                v_u_1.CameraMinZoomDistance = 10
-                task.wait()
-                v_u_11.CFrame = v_u_11.CFrame * CFrame.Angles(0.55, 3.1415, 0)
-                _G.CameraCFrameOrig = v_u_11.CFrame
-            else
-                warn("SL_ char still not loaded after 8 seconds.  Try :LoadCharacter.")
-                v_u_3:InvokeServer("StopClearServerWorkspace")
-            end
-        end)
-        if v14 then
-            break
-        end
-        warn("SL_ERROR: " .. script.Name .. "  " .. v15)
-        task.wait(2)
-    end
+local function CleanupFlyFocus()
+	local existing = Workspace:FindFirstChild("FlyCameraFocus")
+	if existing then
+		existing:Destroy()
+	end
+	flyCameraFocus = nil
+	linearVelocity = nil
 end
 
-setupFlyMode()
-
-local v16 = game:GetService("UserInputService")
-v16.InputChanged:Connect(function(p17, p18)
-    if p17.UserInputType == Enum.UserInputType.MouseWheel and (not p18 and v_u_11) then
-        v_u_10.VectorVelocity = v_u_11.CFrame.lookVector * p17.Position.Z * 100
-    end
-end)
-
-local v_u_19 = 0
-v16.InputBegan:Connect(function(p20, p21)
-    if p20.UserInputType == Enum.UserInputType.Keyboard and not p21 then
-        if p20.KeyCode == Enum.KeyCode.Q then
-            v_u_19 = -1
-            return
-        end
-        if p20.KeyCode == Enum.KeyCode.E then
-            v_u_19 = 1
-        end
-    end
-end)
-
-v16.InputEnded:Connect(function(p22, p23)
-    if p22.UserInputType == Enum.UserInputType.Keyboard and not p23 then
-        if p22.KeyCode == Enum.KeyCode.Q then
-            v_u_19 = 0
-            return
-        end
-        if p22.KeyCode == Enum.KeyCode.E then
-            v_u_19 = 0
-        end
-    end
-end)
-
-local v_u_24 = 0
-v16.TouchPinch:Connect(function(_, p25, _, p26)
-    if p26 == Enum.UserInputState.Change or p26 == Enum.UserInputState.End and v_u_11 then
-        v_u_10.VectorVelocity = v_u_11.CFrame.lookVector * (p25 - v_u_24)
-    end
-    v_u_24 = p25
-end)
-
-task.spawn(function()
-	while task.wait(0.016) do
-		local v27 = v_u_10
-		local v28 = v_u_19
-		local v29 = v_u_11
-		local v30 = v_u_6
-
-		local v31
-		if _G.BlockCameraMovement then
-			v31 = v12
-		else
-			if not v30 or v30.Position.Y <= 4000 then
-				setupFlyMode()
-			end
-			v31 = v2:GetMoveVector()
-			if v31 == v12 then
-				v31 = v12
-			else
-				v7 = v31.z < -0.2 and 1 or (v31.z > 0.2 and -1 or 0)
-				if v31.x < -0.2 then
-					v8 = -1
-				elseif v31.x > 0.2 then
-					v8 = 1
-				else
-					v8 = 0
-				end
-			end
-			if v8 == 0 and (v7 == 0 and v28 == 0) then
-				if v27 then v27.VectorVelocity = Vector3.new() end
-				v9 = 0
-			else
-				local targetSpeed = _G.FlySpeedEnabled and (_G.FlySpeed or 50) or 90
-				if _G.FlySpeedEnabled then
-					v9 = targetSpeed
-				else
-					local v32 = v9 + 5
-					v9 = v32 > targetSpeed and targetSpeed or v32
-				end
-				if v27 and v29 then
-					v27.VectorVelocity = (v29.CFrame.LookVector * v7 + v29.CFrame.RightVector * v8 + Vector3.new(0, v28, 0)) * v9
-				end
-			end
+local function GetFlyFocus()
+	if not flyCameraFocus or not flyCameraFocus.Parent then
+		local existing = Workspace:FindFirstChild("FlyCameraFocus")
+		if existing then
+			flyCameraFocus = existing
+			linearVelocity = flyCameraFocus:FindFirstChildOfClass("LinearVelocity") or flyCameraFocus:FindFirstChild("LinearVelocity")
 		end
-		v12 = v31
+	end
+	return flyCameraFocus, linearVelocity
+end
+
+local keyDirection = 0
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	if input.KeyCode == Enum.KeyCode.Q then
+		keyDirection = -1
+	elseif input.KeyCode == Enum.KeyCode.E then
+		keyDirection = 1
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input, processed)
+	if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	if input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.E then
+		keyDirection = 0
+	end
+end)
+
+local pinchDelta = 0
+UserInputService.TouchPinch:Connect(function(_, scale, _, state)
+	if state == Enum.UserInputState.Change or state == Enum.UserInputState.End then
+		local focus, lv = GetFlyFocus()
+		if lv and currentCam then
+			lv.VectorVelocity = currentCam.CFrame.LookVector * (scale - pinchDelta)
+		end
+	end
+	pinchDelta = scale
+end)
+
+UserInputService.InputChanged:Connect(function(input, processed)
+	if not processed and input.UserInputType == Enum.UserInputType.MouseWheel then
+		local focus, lv = GetFlyFocus()
+		if lv and currentCam then
+			lv.VectorVelocity = currentCam.CFrame.LookVector * input.Position.Z * 100
+		end
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	local focus, lv = GetFlyFocus()
+	if not focus or not lv or not focus:IsDescendantOf(Workspace) then
+		return
+	end
+
+	if _G.BlockCameraMovement then
+		lv.VectorVelocity = Vector3.zero
+		return
+	end
+
+	local moveVec = ControlModule:GetMoveVector()
+	local moveZ = (moveVec.Z < -0.2 and 1) or (moveVec.Z > 0.2 and -1) or 0
+	local moveX = (moveVec.X < -0.2 and -1) or (moveVec.X > 0.2 and 1) or 0
+
+	if moveX == 0 and moveZ == 0 and keyDirection == 0 then
+		lv.VectorVelocity = Vector3.zero
+	else
+		local currentSpeed = _G.FlySpeedEnabled and (_G.FlySpeed or 50) or 90
+		if currentCam then
+			lv.VectorVelocity = (currentCam.CFrame.LookVector * moveZ + currentCam.CFrame.RightVector * moveX + Vector3.new(0, keyDirection, 0)) * currentSpeed
+		end
+	end
+end)
+
+Workspace.ChildRemoved:Connect(function(child)
+	if child.Name == "FlyCameraFocus" then
+		CleanupFlyFocus()
 	end
 end)
