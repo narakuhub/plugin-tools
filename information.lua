@@ -132,7 +132,7 @@ end)
 local JoinBtn = Instance.new("TextButton")
 JoinBtn.Name = "JoinBtn"
 JoinBtn.Size = UDim2.new(1, -28, 0, 32)
-JoinBtn.Position = UDim2.new(0, 14, 1, -35)
+JoinBtn.Position = UDim2.new(0, 14, 1, -50)
 JoinBtn.BackgroundColor3 = Color3.fromRGB(223, 230, 237)
 JoinBtn.Text = "JOINED DISCORD"
 JoinBtn.TextColor3 = Color3.fromRGB(15, 15, 18)
@@ -148,7 +148,7 @@ BtnCorner.Parent = JoinBtn
 
 local BtnIcon = Instance.new("ImageLabel")
 BtnIcon.Name = "BtnIcon"
-BtnIcon.Size = UDim2.fromOffset(14, 14)
+BtnIcon.Size = UDim2.fromOffset(16, 16)
 BtnIcon.Position = UDim2.new(0, 10, 0.5, -7)
 BtnIcon.BackgroundTransparency = 1
 BtnIcon.Image = "rbxassetid://125600127845630"
