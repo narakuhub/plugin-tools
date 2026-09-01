@@ -400,24 +400,35 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- Window Resize Logic (MINIMUM FIXED TO NORMAL CARD SIZE: 250 x 150)
+-- UISCALE SETUP FOR PROPOTIONAL RESIZING
+local CardScale = Card:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+CardScale.Parent = Card
+
 local isResizing = false
-local resizeStartPos, resizeStartSize
+local resizeStartPos = nil
+local startScale = 1
+
+local MIN_SCALE = 1.0 
+local MAX_SCALE = 2.5
+
 ResizeHandle.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		isResizing = true
 		resizeStartPos = input.Position
-		resizeStartSize = Card.Size
+		startScale = CardScale.Scale
 	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - resizeStartPos
-		-- Batas minimum di-set ke 250 (X) dan 150 (Y) sesuai ukuran normal Card
-		local newX = math.clamp(resizeStartSize.X.Offset + delta.X, 250, 600)
-		local newY = math.clamp(resizeStartSize.Y.Offset + delta.Y, 150, 400)
-		Card.Size = UDim2.fromOffset(newX, newY)
+		
+		-- Hitung perubahan skala berdasarkan pergerakan mouse/touch (diambil dari rata-rata delta X & Y)
+		local scaleDelta = (delta.X + delta.Y) / 300
+		local newScale = math.clamp(startScale + scaleDelta, MIN_SCALE, MAX_SCALE)
+		
+		-- Terapkan Skala ke Card (Semua elemen child di dalamnya otomatis menyesuaikan)
+		CardScale.Scale = newScale
 	end
 end)
 
