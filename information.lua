@@ -132,7 +132,7 @@ end)
 local JoinBtn = Instance.new("TextButton")
 JoinBtn.Name = "JoinBtn"
 JoinBtn.Size = UDim2.new(1, -28, 0, 32)
-JoinBtn.Position = UDim2.new(0, 14, 1, -40)
+JoinBtn.Position = UDim2.new(0, 14, 1, -35)
 JoinBtn.BackgroundColor3 = Color3.fromRGB(223, 230, 237)
 JoinBtn.Text = "JOINED DISCORD"
 JoinBtn.TextColor3 = Color3.fromRGB(15, 15, 18)
