@@ -52,7 +52,6 @@ local function UpdateGizmo()
 		return
 	end
 
-	-- Adornment otomatis menempel ke target CFrame
 	AxisX.Adornee = SelectedTarget
 	AxisY.Adornee = SelectedTarget
 	AxisZ.Adornee = SelectedTarget
@@ -75,10 +74,9 @@ local function HookStudioLiteHandles()
 	local HandlesB = StudioGui:FindFirstChild("HandlesB")
 	local ArcHandles = StudioGui:FindFirstChild("ArcHandles")
 
-	-- Render Loop
 	if RenderConnection then RenderConnection:Disconnect() end
 	RenderConnection = RunService.RenderStepped:Connect(function()
-		-- Cari target aktif langsung dari Studio Lite Adornee
+			
 		local activeTarget = (HandlesR and HandlesR.Adornee) 
 			or (HandlesG and HandlesG.Adornee) 
 			or (HandlesB and HandlesB.Adornee) 
@@ -94,10 +92,8 @@ local function HookStudioLiteHandles()
 	end)
 end
 
--- Inisialisasi awal
 task.spawn(HookStudioLiteHandles)
 
--- Latch pada Event Reset Internal Studio Lite
 local ExplorerEvent = Workspace:FindFirstChild("ExplorerSelectionChangedToMain")
 if ExplorerEvent then
 	ExplorerEvent.Event:Connect(function()
