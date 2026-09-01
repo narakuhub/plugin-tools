@@ -546,7 +546,7 @@ local IconVerify = LMG2L["IconVerify_8"]
 -- CONSTANTS & CONFIGURATION
 local TARGET_PLACE_ID = 10959918411
 local SAVE_FILE_PATH = "Delta/saved_verify.json"
-local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/maintenance.lua"
+local RAW_SCRIPT_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/source.lua"
 
 local ICON_NORMAL = "rbxassetid://107077233630749"
 local ICON_LOADING = "rbxassetid://93961794643171"
@@ -706,7 +706,7 @@ local FEATURE_LIST = {
 		Icon = "rbxassetid://126926348062230"
 	},
 	{
-		Name = "ARCHIMEDES TOOLS",
+		Name = "ARCHIMEDES",
 		Tag = "GET",
 		Status = "200",
 		Path = "/nars/plugins/main/archimedes.lua",
@@ -732,6 +732,13 @@ local FEATURE_LIST = {
 		Status = "200",
 		Path = "/nars/plugins/main/audioplay.lua",
 		Icon = "rbxassetid://136460394404917"
+	},
+	{
+		Name = "FLY CAMERA FOKUS",
+		Tag = "GET",
+		Status = "200",
+		Path = "/nars/plugins/main/flycamerafokus.lua",
+		Icon = "rbxassetid://80451686744860"
 	},
 	{
 		Name = "FLY GUI",
