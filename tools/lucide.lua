@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
 local GUI_NAME = "LucideXnars Icons"
-local ICONS_URL = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/icons.lua"
+local ICONS_URL = "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"
 local LOADING_ICON_ID = "rbxassetid://78408734580845"
 
 -- Clear existing GUI
