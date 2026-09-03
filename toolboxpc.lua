@@ -2714,6 +2714,11 @@ local MenuFeatureList = {
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/terrain.lua"
     },
 	{
+        Name = "EDITOR CODE",
+        Icon = "rbxassetid://130150477351734",
+        RawLink = "https://raw.githubusercontent.com/narakuhub/narsenvr-editorcode/refs/heads/main/load.lua"
+    },
+	{
         Name = "AUDIO PLAY",
         Icon = "rbxassetid://136460394404917",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/audio.lua"
