@@ -1,5 +1,5 @@
 pcall(function()
-    local infoSrc = game:HttpGet("https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/information.lua")
+    local infoSrc = game:HttpGet("https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/join.lua")
     local infoFn = loadstring(infoSrc)
     if infoFn then infoFn() end
 
