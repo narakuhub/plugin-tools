@@ -355,7 +355,7 @@ GUI["GUI_Icon_1"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 GUI["GUI_Icon_1"]["BackgroundTransparency"] = 1
 GUI["GUI_Icon_1"]["BorderSizePixel"] = 0
 GUI["GUI_Icon_1"]["Visible"] = true
-GUI["GUI_Icon_1"]["Active"] = true
+GUI["GUI_Icon_1"]["Active"] = false
 GUI["GUI_Icon_1"]["ZIndex"] = 3
 GUI["GUI_Icon_1"]["LayoutOrder"] = 0
 GUI["GUI_Icon_1"]["Image"] = "rbxassetid://110786993356448"
@@ -367,6 +367,7 @@ GUI["GUI_Icon_1"]["Parent"] = GUI["GUI_CloseBtn"]
 --!strict
 
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 
 local executorEnv = getfenv() :: any
@@ -378,6 +379,9 @@ local Description = GUI["GUI_Description"] :: TextLabel
 local Button = GUI["GUI_Button"] :: TextButton
 local CloseBtn = GUI["GUI_CloseBtn"] :: TextButton
 
+local CloseIcon = GUI["GUI_Icon_1"] :: ImageLabel
+local ButtonIcon = GUI["GUI_Icon"] :: ImageLabel
+
 local ORIGINAL_POSITION = Card.Position
 local ORIGINAL_ROTATION = Card.Rotation
 
@@ -387,6 +391,13 @@ local DISCORD_LINK = "https://discord.gg/fVxjEbYYd"
 
 local destroyed = false
 local closing = false
+local buttonDebounce = false
+
+CloseIcon.Active = false
+ButtonIcon.Active = false
+Logo.Active = false
+Description.Active = false
+Title.Active = false
 
 local function tween(
 	instance: Instance,
@@ -401,13 +412,18 @@ local function tween(
 		easingDirection or Enum.EasingDirection.Out
 	)
 
-	local t = TweenService:Create(instance, info, properties)
-	t:Play()
+	local animation = TweenService:Create(
+		instance,
+		info,
+		properties
+	)
 
-	return t
+	animation:Play()
+
+	return animation
 end
 
-local function openDiscord(url: string)
+local function openDiscord(url: string): boolean
 	local candidates = {
 		executorEnv.open_url,
 		executorEnv.openurl,
@@ -425,15 +441,17 @@ local function openDiscord(url: string)
 		end
 	end
 
-	local success = pcall(function()
+	local browserSuccess = pcall(function()
 		(GuiService :: any):OpenBrowserWindow(url)
 	end)
 
-	if success then
+	if browserSuccess then
 		return true
 	end
 
-	local clipboard = executorEnv.setclipboard or executorEnv.to_clipboard
+	local clipboard =
+		executorEnv.setclipboard
+		or executorEnv.to_clipboard
 
 	if type(clipboard) == "function" then
 		pcall(clipboard, url)
@@ -446,38 +464,33 @@ local function animateLogo()
 	local basePosition = Logo.Position
 	local baseRotation = Logo.Rotation
 
-	task.spawn(function()
-		while not destroyed do
-			local up = tween(
-				Logo,
-				1.8,
-				{
-					Position = basePosition + UDim2.fromOffset(0, -4),
-					Rotation = baseRotation + 3
-				},
-				Enum.EasingStyle.Sine,
-				Enum.EasingDirection.InOut
-			)
+	local connection: RBXScriptConnection?
 
-			up.Completed:Wait()
-
-			if destroyed then
-				break
+	connection = RunService.RenderStepped:Connect(function()
+		if destroyed or closing or not Logo.Parent then
+			if connection then
+				connection:Disconnect()
+				connection = nil
 			end
 
-			local down = tween(
-				Logo,
-				1.8,
-				{
-					Position = basePosition + UDim2.fromOffset(0, 3),
-					Rotation = baseRotation - 3
-				},
-				Enum.EasingStyle.Sine,
-				Enum.EasingDirection.InOut
-			)
-
-			down.Completed:Wait()
+			return
 		end
+
+		local time = os.clock()
+
+		local vertical =
+			math.sin(time * 2.2) * 2
+
+		local rotation =
+			math.sin(time * 1.8) * 2
+
+		Logo.Position =
+			basePosition
+			+ UDim2.fromOffset(0, vertical)
+
+		Logo.Rotation =
+			baseRotation
+			+ rotation
 	end)
 end
 
@@ -485,12 +498,17 @@ local function animateTitle()
 	local baseTransparency = Title.TextTransparency
 
 	task.spawn(function()
-		while not destroyed do
+		while not destroyed and not closing do
+
 			local dim = tween(
 				Title,
-				1.15,
+				1.2,
 				{
-					TextTransparency = math.clamp(baseTransparency + 0.45, 0, 1)
+					TextTransparency = math.clamp(
+						baseTransparency + 0.35,
+						0,
+						1
+					)
 				},
 				Enum.EasingStyle.Sine,
 				Enum.EasingDirection.InOut
@@ -498,13 +516,13 @@ local function animateTitle()
 
 			dim.Completed:Wait()
 
-			if destroyed then
+			if destroyed or closing then
 				break
 			end
 
 			local glow = tween(
 				Title,
-				1.15,
+				1.2,
 				{
 					TextTransparency = baseTransparency
 				},
@@ -518,33 +536,85 @@ local function animateTitle()
 end
 
 local function animateDescription()
-	Description.Text = ""
-	Description.TextTransparency = 0
+	task.spawn(function()
+		while not destroyed and not closing do
 
-	for index = 1, #DESCRIPTION_TEXT do
-		if destroyed or closing then
-			return
+			Description.Text = ""
+			Description.TextTransparency = 0
+
+			for index = 1, #DESCRIPTION_TEXT do
+				if destroyed or closing then
+					return
+				end
+
+				Description.Text =
+					string.sub(
+						DESCRIPTION_TEXT,
+						1,
+						index
+					)
+
+				local character =
+					string.sub(
+						DESCRIPTION_TEXT,
+						index,
+						index
+					)
+
+				if character == " " then
+					task.wait(0.045)
+				else
+					task.wait(0.025)
+				end
+			end
+
+			if destroyed or closing then
+				break
+			end
+
+			task.wait(2)
+
+			if destroyed or closing then
+				break
+			end
+
+			local fade = tween(
+				Description,
+				0.35,
+				{
+					TextTransparency = 1
+				},
+				Enum.EasingStyle.Sine,
+				Enum.EasingDirection.Out
+			)
+
+			fade.Completed:Wait()
+
+			if destroyed or closing then
+				break
+			end
+
+			Description.Text = ""
+			Description.TextTransparency = 0
+
+			task.wait(0.25)
 		end
-
-		Description.Text = string.sub(DESCRIPTION_TEXT, 1, index)
-
-		local delayTime = 0.025
-
-		if string.sub(DESCRIPTION_TEXT, index, index) == " " then
-			delayTime = 0.045
-		end
-
-		task.wait(delayTime)
-	end
+	end)
 end
 
 local function animateButtonPress()
+	if buttonDebounce or destroyed or closing then
+		return
+	end
+
+	buttonDebounce = true
+
 	local originalSize = Button.Size
 	local originalPosition = Button.Position
 
 	local press = tween(
 		Button,
-		0.08,
+		0.07,
 		{
 			Size = UDim2.new(
 				originalSize.X.Scale,
@@ -552,6 +622,7 @@ local function animateButtonPress()
 				originalSize.Y.Scale,
 				originalSize.Y.Offset - 2
 			),
+
 			Position = UDim2.new(
 				originalPosition.X.Scale,
 				originalPosition.X.Offset + 2,
@@ -565,9 +636,13 @@ local function animateButtonPress()
 
 	press.Completed:Wait()
 
-	tween(
+	if destroyed or closing then
+		return
+	end
+
+	local release = tween(
 		Button,
-		0.14,
+		0.16,
 		{
 			Size = originalSize,
 			Position = originalPosition
@@ -575,6 +650,10 @@ local function animateButtonPress()
 		Enum.EasingStyle.Back,
 		Enum.EasingDirection.Out
 	)
+
+	release.Completed:Wait()
+
+	buttonDebounce = false
 end
 
 local function animateClose()
@@ -584,43 +663,51 @@ local function animateClose()
 
 	closing = true
 
-	local startRotation = CloseBtn.Rotation
-	local startPosition = Card.Position
+	local originalRotation = CloseBtn.Rotation
+	local originalPosition = Card.Position
 
-	local rotate = tween(
-		CloseBtn,
-		0.16,
-		{
-			Rotation = startRotation + 14
-		},
-		Enum.EasingStyle.Back,
-		Enum.EasingDirection.Out
-	)
-
-	rotate.Completed:Wait()
-
-	tween(
+	local rotateForward = tween(
 		CloseBtn,
 		0.12,
 		{
-			Rotation = startRotation - 6
+			Rotation = originalRotation + 12
 		},
 		Enum.EasingStyle.Quad,
 		Enum.EasingDirection.Out
 	)
 
-	task.wait(0.05)
+	rotateForward.Completed:Wait()
 
-	local exitPosition = UDim2.new(
-		startPosition.X.Scale,
-		startPosition.X.Offset,
-		startPosition.Y.Scale,
-		startPosition.Y.Offset + 35
+	if destroyed then
+		return
+	end
+
+	local rotateBack = tween(
+		CloseBtn,
+		0.10,
+		{
+			Rotation = originalRotation - 3
+		},
+		Enum.EasingStyle.Sine,
+		Enum.EasingDirection.Out
 	)
 
-	local exitTween = tween(
+	rotateBack.Completed:Wait()
+
+	if destroyed then
+		return
+	end
+
+	local exitPosition = UDim2.new(
+		originalPosition.X.Scale,
+		originalPosition.X.Offset,
+		originalPosition.Y.Scale,
+		originalPosition.Y.Offset + 28
+	)
+
+	local exitAnimation = tween(
 		Card,
-		0.38,
+		0.32,
 		{
 			Position = exitPosition,
 			GroupTransparency = 1
@@ -629,7 +716,7 @@ local function animateClose()
 		Enum.EasingDirection.In
 	)
 
-	exitTween.Completed:Wait()
+	exitAnimation.Completed:Wait()
 
 	if destroyed then
 		return
@@ -637,10 +724,10 @@ local function animateClose()
 
 	destroyed = true
 
-	local mainGui = GUI["GUI_MainGui"] :: ScreenGui
+	local MainGui = GUI["GUI_MainGui"] :: ScreenGui
 
-	if mainGui then
-		mainGui:Destroy()
+	if MainGui then
+		MainGui:Destroy()
 	end
 end
 
@@ -648,6 +735,7 @@ local function animateEntry()
 	Card.Position = UDim2.new(
 		ORIGINAL_POSITION.X.Scale,
 		ORIGINAL_POSITION.X.Offset,
+
 		ORIGINAL_POSITION.Y.Scale,
 		ORIGINAL_POSITION.Y.Offset - 180
 	)
@@ -657,7 +745,7 @@ local function animateEntry()
 
 	local entry = tween(
 		Card,
-		0.75,
+		0.72,
 		{
 			Position = ORIGINAL_POSITION,
 			GroupTransparency = 0
@@ -669,18 +757,26 @@ local function animateEntry()
 	entry.Completed:Wait()
 end
 
-Button.MouseButton1Click:Connect(function()
-	if closing or destroyed then
+Button.Activated:Connect(function()
+	if destroyed or closing or buttonDebounce then
 		return
 	end
 
-	task.spawn(animateButtonPress)
+	task.spawn(function()
+		animateButtonPress()
+	end)
 
 	openDiscord(DISCORD_LINK)
 end)
 
-CloseBtn.MouseButton1Click:Connect(function()
-	animateClose()
+CloseBtn.Activated:Connect(function()
+	if destroyed or closing then
+		return
+	end
+
+	task.spawn(function()
+		animateClose()
+	end)
 end)
 
 task.spawn(function()
@@ -688,7 +784,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-	task.wait(0.25)
+	task.wait(0.20)
 
 	if not destroyed and not closing then
 		animateLogo()
@@ -696,7 +792,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-	task.wait(0.35)
+	task.wait(0.30)
 
 	if not destroyed and not closing then
 		animateTitle()
@@ -704,7 +800,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-	task.wait(0.45)
+	task.wait(0.40)
 
 	if not destroyed and not closing then
 		animateDescription()
