@@ -2735,7 +2735,7 @@ local MenuFeatureList = {
     },
 	{
         Name = "LUCIDE ICONS",
-        Icon = "rbxassetid://126610009605241",
+        Icon = "rbxassetid://74893210499305",
         RawLink = "https://raw.githubusercontent.com/narakuhub/plugin-tools/refs/heads/main/tools/lucide.lua"
     },
 	{
