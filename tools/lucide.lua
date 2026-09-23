@@ -472,7 +472,7 @@ ResizeHandle.BackgroundTransparency = 1
 ResizeHandle.Image = "rbxassetid://103321376129527"
 ResizeHandle.ImageColor3 = Color3.fromRGB(130, 135, 150)
 ResizeHandle.ImageTransparency = 0.5
-ResizeHandle.Rotation = -45
+ResizeHandle.Rotation = -35
 ResizeHandle.ZIndex = 60
 ResizeHandle.Parent = Main
 
