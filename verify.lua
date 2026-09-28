@@ -14,7 +14,7 @@ Ophyn.new({
     -- Intro
     Intro = true,
     startintro_size = 80,
-    squareintro_time = 1.2,
+    squareintro_time = 1,
 
     -- Appearance
     Changelogocolor = false,
