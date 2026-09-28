@@ -23,11 +23,9 @@ Ophyn.new({
 
     -- Links
     discord_link = "https://discord.gg/byB7wCTKM",
-    website_link = "https://github.com/narsendeavor/plugin",
 
     -- Cards
     Discord = true,
-    Website = true,
 
     -- Games
     SupportedGames = {
