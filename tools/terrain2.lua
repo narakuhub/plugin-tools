@@ -1,4 +1,4 @@
--- Terrain Tools N'sEdv remake Zynn
+-- Terrain Original Zynn Remake NarsEdv
 
 local executorEnv = getfenv() :: any
 
